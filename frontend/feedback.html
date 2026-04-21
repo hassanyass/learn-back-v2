@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LearnBack — Your Teaching Impact</title>
+  <meta name="description" content="Review how Kido's understanding evolved across every topic you taught this session.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" href="styles/main.css">
+</head>
+<body class="fb-body">
+
+  <!-- ── Navigation ──────────────────────────────── -->
+  <header class="nav-bar">
+    <div class="nav-bar__left">
+      <a href="index.html" class="nav-bar__back" aria-label="Back">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </a>
+      <img src="Logo/Transparent2.png" alt="LearnBack" class="nav-bar__brand-img logo-light" style="height:44px;width:auto;margin-left:-4px;">
+      <img src="Logo/transparent_dark_mode.png" alt="LearnBack" class="nav-bar__brand-img logo-dark" style="height:44px;width:auto;margin-left:-4px;">
+      <span class="nav-bar__divider"></span>
+      <span class="nav-bar__session">Session Summary</span>
+    </div>
+    <div class="nav-bar__right" style="display:flex;align-items:center;gap:12px;">
+      <button type="button" class="btn btn-theme-toggle" id="btn-theme-toggle" aria-label="Toggle dark mode">
+        <svg class="theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round" style="display:none;">
+          <circle cx="12" cy="12" r="5"></circle>
+          <line x1="12" y1="1" x2="12" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="23"></line>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+          <line x1="1" y1="12" x2="3" y2="12"></line>
+          <line x1="21" y1="12" x2="23" y2="12"></line>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+        <svg class="theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+        <span class="theme-toggle-text">Dark</span>
+      </button>
+      <div class="nav-bar__avatar" id="nav-avatar" aria-label="Your account">You</div>
+    </div>
+  </header>
+
+  <!-- ── Main Scrollable Area ────────────────────── -->
+  <main class="fb-main" id="fb-main">
+
+    <!-- Hero Header -->
+    <div class="fb-hero">
+      <div class="fb-hero__text">
+        <h1 class="fb-hero__title">Your Teaching Impact</h1>
+        <p class="fb-hero__sub">Reflect on how Kido's understanding evolved across each topic and review the specific misconceptions you helped resolve.</p>
+      </div>
+    </div>
+
+    <!-- Mastery Hero Card -->
+    <div class="fb-mastery-card" id="fb-mastery-card">
+      <div class="fb-mastery-left">
+        <span class="fb-mastery-label">Overall Session Mastery</span>
+        <div class="fb-mastery-bar-container">
+          <span class="fb-mastery-score" id="mastery-score">0%</span>
+          <div class="fb-mastery-track">
+            <div class="fb-mastery-fill" id="mastery-fill"></div>
+          </div>
+        </div>
+        <p class="fb-mastery-desc" id="mastery-desc">Kido made significant progress. Keep up the great teaching!</p>
+      </div>
+      <div class="fb-mastery-right">
+        <img src="Kido_feedback.png" alt="Kido" class="fb-kido-img">
+      </div>
+      <!-- Collapsible Misconceptions Drawer -->
+      <button class="fb-map-toggle" id="fb-map-toggle" aria-expanded="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+        View Session Misconceptions
+        <svg class="fb-map-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="fb-map-drawer" id="fb-map-drawer" hidden>
+        <div class="fb-misconceptions-list" id="fb-misconceptions-list">
+          <!-- Injected by feedback.js -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Topic Cards Grid — dynamic, auto-fit -->
+    <section class="fb-grid" id="fb-grid" aria-label="Topic feedback cards">
+      <!-- Rendered by feedback.js -->
+    </section>
+
+  </main>
+
+  <!-- ── Sticky Action Footer ────────────────────── -->
+  <footer class="fb-footer" id="fb-footer">
+    <div class="fb-footer__inner">
+      <button class="btn btn--ghost" id="btn-dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:17px; height:17px; flex-shrink:0;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        Return to Dashboard
+      </button>
+
+      <button class="btn btn--primary" id="btn-retry">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:17px; height:17px; flex-shrink:0;"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+        Try Again
+      </button>
+    </div>
+  </footer>
+
+  <!-- ── Back to Top ─────────────────────────────── -->
+  <button class="fb-back-top" id="fb-back-top" aria-label="Back to top" hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+  </button>
+
+  <script src="apiClient.js"></script>
+  <script src="sessionStore.js"></script>
+  <script src="feedback.js"></script>
+</body>
+</html>

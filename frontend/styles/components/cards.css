@@ -1,0 +1,370 @@
+/* ============================================================
+   styles/components/cards.css
+   Concept Cards, Action Cards & Topic Tiles
+   ============================================================ */
+
+/* ── INTEGRATED CONCEPT CARD ── */
+.concept-card {
+  position: relative;
+  align-self: center;
+  width: 240px;
+  height: 200px;
+  margin: 12px auto 1.25rem;
+  background: var(--surface);
+  border-radius: var(--r-card);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+  border: 1.5px solid var(--border);
+  flex-shrink: 0;
+  z-index: 2;
+  transition: border-color var(--t-normal);
+}
+
+/* Status Colors (controlled via data-state) */
+.concept-card[data-state='mastered'] { border-color: #BBF7D0; }
+.concept-card[data-state='mastered'] .card-header { background: #F0FDF4; border-bottom: 1px solid #BBF7D0; }
+.concept-card[data-state='mastered'] .card-title { color: #166534; }
+
+.concept-card[data-state='developing'] { border-color: #FDE68A; }
+.concept-card[data-state='developing'] .card-header { background: #FEF3C7; border-bottom: 1px solid #FDE68A; }
+.concept-card[data-state='developing'] .card-title { color: #92400E; }
+
+.concept-card[data-state='revising'] { border-color: #FBCFE8; }
+.concept-card[data-state='revising'] .card-header { background: #FDF2F8; border-bottom: 1px solid #FBCFE8; }
+.concept-card[data-state='revising'] .card-title { color: #7A3F60; }
+
+.concept-card[data-state='thinking'],
+.concept-card[data-state='waiting'] { border-color: var(--border); }
+.concept-card[data-state='thinking'] .card-header,
+.concept-card[data-state='waiting'] .card-header { background: var(--surface-kido); border-bottom: 1px solid var(--border); }
+.concept-card[data-state='thinking'] .card-title,
+.concept-card[data-state='waiting'] .card-title { color: var(--navy-60); }
+
+.card-header {
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  transition: background var(--t-normal), border-bottom-color var(--t-normal);
+}
+
+.card-title {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: color var(--t-normal);
+}
+
+.card-title svg { flex-shrink: 0; }
+
+.card-progress-zone {
+  padding: 24px 16px 16px 16px;
+  background: var(--surface-kido);
+  border-bottom: 1px dashed var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.card-comment-wrapper {
+  flex: 1;
+  position: relative;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--surface);
+}
+
+.card-comment-wrapper::-webkit-scrollbar { width: 4px; }
+.card-comment-wrapper::-webkit-scrollbar-track { background: transparent; }
+.card-comment-wrapper::-webkit-scrollbar-thumb { background-color: #CBD5E1; border-radius: 10px; }
+.card-comment-wrapper:hover::-webkit-scrollbar-thumb { background-color: var(--text-mid); }
+
+.card-comment {
+  padding: 12px 14px;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--navy);
+  transition: opacity 160ms ease, transform 160ms ease;
+  word-wrap: break-word;
+}
+
+.card-comment.is-exiting { opacity: 0; transform: translateY(-4px); }
+.card-comment.is-entering { opacity: 0; transform: translateY(4px); }
+
+/* Delta Ghost CSS */
+.progress-track {
+  height: 6px;
+  background: var(--plum-bg);
+  border-radius: 3px;
+  position: relative;
+  width: 100%;
+}
+
+.ghost-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--plum);
+  position: absolute;
+  left: 0;
+  top: 0;
+  transition: width 0.4s ease, background 0.4s ease;
+}
+
+.ghost-fill.danger { background: var(--plum-bg); opacity: 0.5; }
+
+.ghost-outline {
+  height: 100%;
+  border-radius: 3px;
+  border: 1.5px dashed var(--plum);
+  box-sizing: border-box;
+  position: absolute;
+  top: 0;
+  transition: width 0.4s ease, left 0.4s ease;
+}
+
+.concept-badge {
+  position: absolute;
+  top: -24px;
+  transform: translateX(-50%);
+  background: var(--surface);
+  color: var(--navy);
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 800;
+  border: 1px solid var(--plum-border);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  transition: left 0.4s ease;
+}
+
+.concept-badge.negative { background: rgba(26, 31, 54, 0.02); }
+.concept-badge span.fade { opacity: 0.4; }
+
+.concept-card__tail {
+  position: absolute;
+  bottom: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 1px;
+  height: 16px;
+  z-index: 1;
+  background: rgba(146, 94, 120, 0.50);
+  transition: background var(--t-normal);
+}
+
+.concept-card[data-state='mastered'] .concept-card__tail { background: rgba(93, 162, 113, 0.50); }
+.concept-card[data-state='developing'] .concept-card__tail { background: rgba(246, 174, 45, 0.40); }
+
+/* ── ACTION CARDS (Studio Approach) ── */
+.action-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.action-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 13px;
+  background: var(--action-card-bg);
+  border-radius: 12px;
+  border: 2px solid rgba(146, 94, 120, 0.20);
+  box-shadow: 0 4px 0 rgba(146, 94, 120, 0.35);
+  text-align: left;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+  cursor: pointer;
+}
+
+.action-card:hover {
+  background: #f0d8dc;
+  border-color: rgba(146, 94, 120, 0.30);
+  box-shadow: 0 4px 0 rgba(146, 94, 120, 0.45);
+  transform: translateY(-1px);
+}
+
+.action-card:active {
+  transform: translateY(3px) !important;
+  box-shadow: 0 0 0 transparent !important;
+}
+
+.action-card__icon {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(2, 43, 58, 0.06);
+  border-radius: var(--r-sm);
+  flex-shrink: 0;
+}
+
+.action-card__icon svg {
+  width: 16px;
+  height: 16px;
+  color: var(--navy);
+}
+
+.action-card__text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.action-card__title {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--navy);
+}
+
+.action-card__subtitle {
+  font-size: 0.63rem;
+  color: var(--text-mid);
+}
+
+.action-card--cube {
+  flex: 1 1 0px !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  padding: 12px 8px !important;
+  height: 84px !important;
+  text-align: center !important;
+  position: relative !important;
+}
+
+.action-card--cube .action-card__icon { margin: 0 auto; }
+.action-card--cube .action-card__text { align-items: center; margin-top: 6px; }
+.action-card--cube .action-card__title { font-size: 10px; line-height: 1.2; }
+.action-card--cube .action-card__subtitle { display: none; }
+.action-card--cube .kwl-count-badge,
+.action-card--cube .misconceptions-badge { position: absolute; top: 6px; right: 6px; }
+
+/* ── TOPIC CARDS (Concept 3) ── */
+.topic-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.topic-card {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 2px solid var(--border-light);
+  box-shadow: 0 4px 0 var(--border-light);
+  background: var(--surface);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+  cursor: pointer;
+}
+
+.topic-card:active:not(.is-past):not(.is-skipped) {
+  transform: translateY(3px) !important;
+  box-shadow: 0 0 0 transparent !important;
+}
+
+.topic-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.25s ease;
+}
+
+.topic-icon svg { width: 14px; height: 14px; }
+
+.topic-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.topic-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy);
+  line-height: 1.35;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.topic-badge {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* Topic Card States */
+.topic-card.is-past {
+  background: #FAFAFA;
+  border-color: var(--border);
+  box-shadow: 0 2px 0 var(--border);
+  transform: translateY(2px);
+}
+.topic-card.is-past .topic-icon { background: rgba(93, 162, 113, 0.10); }
+.topic-card.is-past .topic-icon svg { color: var(--green); stroke: var(--green); }
+.topic-card.is-past .topic-title { color: #6B7280; }
+
+.topic-card.is-skipped { background: transparent; border-color: transparent; opacity: 0.6; }
+.topic-card.is-skipped .topic-icon { background: transparent; }
+.topic-card.is-skipped .topic-icon svg { color: #9CA3AF; stroke: #9CA3AF; }
+.topic-card.is-skipped .topic-title { color: #9CA3AF; text-decoration: line-through; }
+.topic-card.is-skipped .topic-badge { color: #9CA3AF; }
+
+.topic-card.is-current {
+  background: var(--navy);
+  border-color: var(--navy);
+  box-shadow: 0 4px 0 #01161d;
+}
+.topic-card.is-current .topic-icon { background: rgba(146, 94, 120, 0.30); }
+.topic-card.is-current .topic-icon svg { color: var(--surface-kido); stroke: var(--surface-kido); }
+.topic-card.is-current .topic-title { color: var(--surface); font-weight: 700; }
+
+.topic-badge-now {
+  color: var(--surface-kido);
+  background: rgba(146, 94, 120, 0.45);
+  padding: 3px 8px;
+  border-radius: 100px;
+}
+
+.topic-card.is-upcoming { cursor: pointer; position: relative; z-index: 10; }
+.topic-card.is-upcoming:hover { background: #F9FAFB; border-color: #D1D5DB; transform: translateY(-1px); box-shadow: 0 4px 0 #D1D5DB; }
+.topic-card.is-upcoming .topic-icon { background: var(--bg); }
+.topic-card.is-upcoming .topic-icon svg { color: #9CA3AF; stroke: #9CA3AF; }
+.topic-card.is-upcoming .topic-title { color: #9CA3AF; font-weight: 500; }
+
+/* Entrance Animation */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.thought-card--misconception,
+.thought-card--kido-note,
+.thought-card {
+  animation: fadeInUp 0.4s ease-out forwards;
+}

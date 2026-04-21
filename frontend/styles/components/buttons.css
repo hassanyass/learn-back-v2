@@ -1,0 +1,99 @@
+/* ============================================================
+   styles/components/buttons.css
+   Shared Buttons & Toggles
+   ============================================================ */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.btn--ghost {
+  background: transparent;
+  color: var(--plum);
+  border: 1px solid var(--plum);
+  border-radius: 8px;
+  padding: 8px 20px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  transition: background var(--t-fast);
+}
+.btn--ghost:hover { background: var(--plum-bg); }
+
+.btn--primary {
+  background: var(--navy);
+  color: var(--surface);
+  border: 1px solid var(--navy);
+  border-radius: 8px;
+  padding: 8px 20px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  transition: opacity var(--t-fast);
+}
+.btn--primary:hover { opacity: 0.88; }
+
+.btn--text { color: var(--plum); font-weight: 600; font-size: var(--fs-sm); transition: opacity var(--t-fast); }
+.btn--text:hover { opacity: 0.8; }
+
+.btn--neutral { color: var(--text-mid); font-weight: 600; font-size: var(--fs-sm); transition: color var(--t-fast); }
+.btn--neutral:hover { color: var(--navy); }
+
+.btn--green { background: var(--green); border-color: var(--green); }
+
+/* Unified Modal Buttons */
+.btn--unified-primary { background: var(--plum); color: var(--surface); border: none; border-radius: 8px; width: 100%; padding: 12px 0; font-size: var(--fs-sm); font-weight: 600; transition: opacity var(--t-fast); }
+.btn--unified-primary:hover { opacity: 0.88; }
+
+.btn--unified-secondary { background: transparent; color: var(--plum); border: 1px solid var(--plum); border-radius: 8px; width: 100%; padding: 12px 0; font-size: var(--fs-sm); font-weight: 600; transition: background var(--t-fast); }
+.btn--unified-secondary:hover { background: rgba(146, 94, 120, 0.05); }
+
+.btn--unified-neutral { background: transparent; color: var(--text-soft); border: none; width: 100%; font-size: 0.75rem; font-weight: 500; transition: color var(--t-fast); }
+.btn--unified-neutral:hover { color: rgba(2, 43, 58, 0.80); }
+
+.btn--sage-green { background: var(--green); color: var(--surface); border: none; border-radius: 8px; width: 100%; padding: 12px 0; font-size: var(--fs-sm); font-weight: 600; transition: opacity var(--t-fast); }
+.btn--sage-green:hover { opacity: 0.9; }
+
+/* Specialized Actions */
+.btn-back-status { display: flex; align-items: center; gap: 3px; padding: 4px 10px; border-radius: var(--r-sm); font-size: var(--fs-xs); font-weight: 600; color: #fff; border: none; border-bottom: 2px solid var(--navy); background: var(--plum); transition: transform var(--t-fast), filter var(--t-fast); }
+.btn-back-status:hover { transform: translateY(-1px); filter: brightness(1.05); }
+.btn-back-status:active { transform: translateY(1px); border-bottom-width: 1px; }
+.btn-back-status svg { width: 12px; height: 12px; }
+
+.btn-close-slides { display: inline-flex; align-items: center; gap: 6px; background: var(--plum); color: #fff; border: none; border-radius: var(--r-sm); padding: 7px 14px; font-size: var(--fs-xs); font-weight: 700; cursor: pointer; transition: opacity var(--t-fast); flex-shrink: 0; }
+.btn-close-slides:hover { opacity: 0.88; }
+.btn-close-slides svg { width: 14px; height: 14px; }
+
+/* Theme Switchers */
+.btn-theme-toggle { display: flex; align-items: center; gap: 4px; padding: 6px 10px; background: transparent; border: 1px solid #E2E8F0; color: var(--text-soft); font-size: 13px; font-family: inherit; border-radius: 6px; cursor: pointer; transition: background 140ms ease, color 140ms ease, border-color 140ms ease; }
+.btn-theme-toggle:hover { background: rgba(0, 0, 0, 0.04); }
+.btn-theme-toggle svg { width: 16px; height: 16px; }
+
+[data-theme="dark"] .btn-theme-toggle {
+  background: var(--control-bg);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .btn-theme-toggle:hover {
+  background: var(--control-hover);
+  border-color: var(--border-strong);
+}
+
+[data-theme="dark"] #btn-mute-sounds {
+  background: var(--control-bg) !important;
+  border-color: var(--border) !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] #btn-mute-sounds:hover {
+  background: var(--control-hover) !important;
+}
+
+.theme-btn { transition: transform 140ms ease, outline 140ms ease; }
+.theme-btn:hover { transform: scale(1.1); }
+.theme-btn.active { outline: 2px solid currentColor; outline-offset: 2px; }
+.theme-btn[data-theme-btn="1"].active { color: #5eb8a2; }
+.theme-btn[data-theme-btn="2"].active { color: #4634cb; }
+.theme-btn[data-theme-btn="3"].active { color: #7252ad; }

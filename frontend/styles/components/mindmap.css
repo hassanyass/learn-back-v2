@@ -1,0 +1,265 @@
+/* ============================================================
+   styles/components/mindmap.css
+   Cognitive Atlas & D3 Nodes
+   ============================================================ */
+
+.mindmap-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(12px);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+}
+
+.mindmap-overlay[hidden] { display: none; }
+
+.mindmap-toolbar {
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--border-light);
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.mindmap-toolbar__title { font-size: var(--fs-md); font-weight: 700; color: var(--navy); }
+.mindmap-toolbar__actions { display: flex; gap: 12px; }
+
+.mindmap-canvas-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+/* D3 Graph Elements */
+.mm-node {
+  fill: var(--surface);
+  stroke: var(--plum);
+  stroke-width: 1.5px;
+  cursor: pointer;
+  transition: fill var(--t-fast), stroke-width var(--t-fast);
+}
+
+.mm-node:hover { stroke-width: 2.5px; }
+
+.mm-node.verified {
+  stroke: var(--state-mastered);
+  fill: rgba(93, 162, 113, 0.05);
+}
+
+.mm-node-text {
+  font-family: var(--font);
+  font-size: var(--fs-sm);
+  fill: var(--navy);
+  pointer-events: none;
+  font-weight: 600;
+}
+
+.mm-link-confirmed { stroke: var(--plum); stroke-width: 1.5px; fill: none; }
+.mm-link-uncertain { stroke: var(--plum); stroke-width: 1.5px; stroke-dasharray: 4, 4; fill: none; }
+.mm-link-fallback, .mm-node-fallback { stroke: #EF4444; stroke-width: 2px; }
+
+.mm-node.pulse-sage { animation: pulse-sage 0.5s ease-out; }
+@keyframes pulse-sage {
+  0% { fill: rgba(93, 162, 113, 0.8); transform: scale(1); }
+  50% { fill: rgba(93, 162, 113, 0.2); transform: scale(1.1); }
+  100% { fill: var(--surface); transform: scale(1); }
+}
+
+.scan-glow .mm-node-fallback,
+.scan-glow .mm-link-fallback { animation: soft-glow-fallback 1.5s infinite alternate; }
+@keyframes soft-glow-fallback {
+  from { filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.2)); }
+  to { filter: drop-shadow(0 0 12px rgba(239, 68, 68, 0.6)); }
+}
+
+/* MCP App Message Bubble inside Chat */
+.message__bubble--app {
+  padding: 0;
+  max-width: 100%;
+  width: 100%;
+  aspect-ratio: 16/11;
+  min-height: 480px;
+  overflow: hidden;
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-xl);
+}
+
+.message__bubble--app.kc-root { aspect-ratio: unset; min-height: unset; height: auto; }
+.message:has(.kc-root) { max-width: 96%; width: 96%; }
+.message__bubble--app iframe { width: 100%; height: 100%; border: none; display: block; }
+
+/* Mini Avatar Overlay */
+.mindmap-kido-corner {
+  position: absolute;
+  bottom: 24px;
+  right: 24px;
+  width: 48px;
+  height: 48px;
+  background: var(--surface-kido);
+  border: 1px solid var(--plum-border);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-zone);
+  color: var(--plum);
+  transition: transform var(--t-fast);
+}
+
+.mkido-avatar { width: 32px; height: 32px; }
+.mkido-eyebrow { transition: d 300ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+/* In-Chat Knowledge Check Card */
+.knowledge-check-card {
+  background: var(--surface);
+  border: 1px solid var(--plum);
+  border-radius: var(--r-card);
+  overflow: hidden;
+  margin: 16px 0;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+}
+
+.kcc-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-light);
+  background: var(--plum-bg);
+  color: var(--plum);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.kcc-map-container {
+  height: 200px;
+  width: 100%;
+  border-bottom: 1px solid var(--border-light);
+  background: #FAFAFB;
+  position: relative;
+  overflow: hidden;
+}
+
+.kcc-content { padding: 16px; font-size: var(--fs-sm); line-height: 1.625; color: var(--navy); min-height: 80px; }
+.kcc-actions { display: flex; gap: 12px; padding: 0 16px 16px 16px; }
+
+.kcc-node-verified .mm-node { fill: rgba(93, 162, 113, 0.1); stroke: var(--state-mastered); }
+.kcc-node-selected .mm-node { stroke-width: 2.5px; filter: drop-shadow(0 0 6px rgba(146, 94, 120, 0.4)); }
+/* HOTFIX: Prevent Map Cubes from turning solid navy on success */
+.message__bubble--app .correct,
+.message__bubble--app .corrected,
+.message__bubble--app [class*="correct"],
+.message__bubble--app [class*="verified"] {
+  background-color: var(--surface) !important;
+  color: var(--text-primary) !important;
+}
+
+
+
+/* Optional: Add the subtle green success tint to the border/shadow instead */
+.message__bubble--app .correct,
+.message__bubble--app .corrected {
+  border-color: var(--green) !important;
+  box-shadow: 0 4px 0 var(--green), 0 8px 16px rgba(93, 162, 113, 0.15) !important;
+}
+
+/* HOTFIX 8.5: Fix Knowledge Map Colors (Undo wildcard fill bug) */
+
+/* 1. Force the wrapper and HTML backgrounds to be white */
+.message__bubble--app .correct,
+.message__bubble--app .corrected,
+.message__bubble--app [class*="correct"] {
+  background-color: var(--surface) !important;
+  /* Keep the green shadow from Phase 8 */
+  border-color: var(--green) !important;
+  box-shadow: 0 4px 0 var(--green), 0 8px 16px rgba(93, 162, 113, 0.15) !important;
+}
+
+/* 2. If rendered as SVG, explicitly force the shapes to be white */
+.message__bubble--app .correct rect,
+.message__bubble--app .corrected rect,
+.message__bubble--app [class*="correct"] rect {
+  fill: var(--surface) !important;
+  stroke: var(--green) !important;
+  stroke-width: 2px !important;
+}
+
+/* 3. Explicitly target ONLY text elements to be Deep Navy */
+.message__bubble--app .correct text,
+.message__bubble--app .corrected text,
+.message__bubble--app [class*="correct"] text,
+.message__bubble--app .correct span,
+.message__bubble--app .corrected span,
+.message__bubble--app [class*="correct"] p {
+  fill: var(--navy) !important;
+  color: var(--navy) !important;
+  font-weight: 700 !important;
+}
+
+[data-theme="dark"] .mindmap-overlay {
+  background: rgba(3, 14, 18, 0.74);
+}
+
+[data-theme="dark"] .mindmap-toolbar {
+  background: rgba(6, 23, 32, 0.84);
+  border-bottom-color: var(--border);
+}
+
+[data-theme="dark"] .mindmap-toolbar__title,
+[data-theme="dark"] .mm-node-text,
+[data-theme="dark"] .kcc-content {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .mm-node {
+  fill: var(--surface-widget);
+  stroke: var(--border-strong);
+}
+
+[data-theme="dark"] .mm-node.verified {
+  fill: rgba(93, 162, 113, 0.12);
+}
+
+[data-theme="dark"] .mm-link-confirmed,
+[data-theme="dark"] .mm-link-uncertain {
+  stroke: var(--widget-connector);
+}
+
+[data-theme="dark"] .kcc-header {
+  background: var(--plum-bg);
+  color: #f3d2e0;
+  border-bottom-color: var(--border);
+}
+
+[data-theme="dark"] .kcc-map-container {
+  background: linear-gradient(180deg, var(--surface-2), var(--surface));
+}
+
+[data-theme="dark"] .message__bubble--app .correct,
+[data-theme="dark"] .message__bubble--app .corrected,
+[data-theme="dark"] .message__bubble--app [class*="correct"] {
+  background-color: var(--surface-widget) !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .message__bubble--app .correct text,
+[data-theme="dark"] .message__bubble--app .corrected text,
+[data-theme="dark"] .message__bubble--app [class*="correct"] text,
+[data-theme="dark"] .message__bubble--app .correct span,
+[data-theme="dark"] .message__bubble--app .corrected span,
+[data-theme="dark"] .message__bubble--app [class*="correct"] p {
+  fill: var(--text-primary) !important;
+  color: var(--text-primary) !important;
+}

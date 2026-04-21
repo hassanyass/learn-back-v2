@@ -1,0 +1,167 @@
+/* ============================================================
+   styles/layout/slide-deck.css
+   Full Workspace PDF Overlay Mechanics
+   ============================================================ */
+
+.slide-deck-overlay {
+  display: none;
+  position: absolute;
+  inset: 56px 0 0 0;
+  z-index: 500;
+  padding: 24px 24px 24px 104px;
+  gap: 20px;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.slide-deck-overlay.active {
+  display: flex;
+  flex-direction: row;
+}
+
+/* Chat strip — 35% */
+.slide-deck__chat-strip {
+  flex: 0 0 35%;
+  min-width: 0;
+  background: #fff;
+  border-radius: var(--r-zone);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-zone);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.slide-deck__chat-messages-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.slide-deck__chat-hint {
+  font-size: var(--fs-sm);
+  color: var(--text-soft);
+  text-align: center;
+  line-height: 1.6;
+}
+
+/* PDF Workspace — 65% */
+.slide-deck__pdf-workspace {
+  flex: 0 0 65%;
+  min-width: 0;
+  background: var(--bg);
+  border-radius: var(--r-zone);
+  border: 2px solid var(--navy);
+  box-shadow: 0 12px 32px rgba(2, 43, 58, 0.12);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Resize Handle */
+.resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -10px;
+  width: 20px;
+  cursor: col-resize;
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+}
+
+.resize-handle::after {
+  content: '';
+  width: 12px;
+  height: 100%;
+  background: transparent;
+  transition: background var(--t-fast);
+}
+
+.resize-handle:hover::after,
+.resize-handle:active::after {
+  background: rgba(2, 43, 58, 0.2);
+}
+
+/* PDF Workspace Body */
+.pdf-workspace-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* PDF Rendering Core */
+.pdf-render-area {
+  flex: 1;
+  background: var(--bg);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px;
+  gap: 16px;
+  min-height: 0;
+  position: relative;
+}
+
+.pdf-render-area::-webkit-scrollbar { width: 4px; }
+.pdf-render-area::-webkit-scrollbar-track { background: transparent; }
+.pdf-render-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: var(--r-pill); }
+
+.pdf-viewer-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: var(--surface);
+  cursor: grab;
+  user-select: none;
+  border-radius: var(--r-md);
+  margin-top: 16px;
+  display: flex;
+}
+
+.pdf-viewer-container:active { cursor: grabbing; }
+
+.pdf-viewer-container.fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+  margin: 0;
+  border-radius: 0;
+  background: var(--bg);
+}
+
+.pdf-render-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: top center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  gap: 16px;
+  padding: 16px;
+  will-change: transform;
+}
+
+.pdf-page-wrapper {
+  background: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+@media (max-width: 600px) {
+  .slide-deck-overlay { flex-direction: column; padding: 10px; }
+  .slide-deck__chat-strip { flex: 0 0 180px; }
+  .slide-deck__pdf-workspace { flex: 1 1 0; }
+}

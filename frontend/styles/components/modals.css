@@ -1,0 +1,101 @@
+/* ============================================================
+   styles/components/modals.css
+   Overlay Dialogs & Misconception Alerts
+   ============================================================ */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(229, 231, 235, 0.40); /* Platinum Gray at 40% */
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-overlay[hidden] { display: none; }
+
+.modal {
+  background: var(--surface);
+  border-radius: 16px;
+  border: 1px solid rgba(2, 43, 58, 0.10);
+  padding: 32px 24px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 25px 50px -12px rgba(2, 43, 58, 0.25);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.modal--pink {
+  background: var(--action-card-bg);
+  border: 1px solid rgba(146, 94, 120, 0.20);
+}
+
+.modal__icon-unified {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  color: var(--plum);
+}
+
+.modal__icon-unified svg { width: 32px; height: 32px; }
+.modal__title { color: var(--navy); font-size: 1.25rem; font-weight: 700; margin: 0 0 12px 0; text-align: center; }
+.modal__body { color: rgba(2, 43, 58, 0.70); font-size: 0.875rem; line-height: 1.625; margin: 0 0 24px 0; text-align: center; }
+
+.modal__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+/* Misconceptions Modal Variant */
+.modal--misconceptions { border-top: 4px solid #EF4444; }
+.modal__icon-unified--warn svg { color: #EF4444; }
+
+.modal__body--misconception {
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--text-primary);
+  border-left: 3px solid #EF4444;
+  padding-left: 12px;
+  margin: 4px 0 12px;
+}
+
+.misconceptions-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 14px;
+  background: rgba(239, 68, 68, 0.06);
+  border-radius: 8px;
+  font-size: 0.775rem;
+  color: #B91C1C;
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+/* Toast Notifications */
+.toast-notification {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--green);
+  color: var(--surface);
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  opacity: 0;
+  transition: opacity 300ms ease, transform 300ms ease;
+  z-index: 2000;
+}
+
+.toast--show { opacity: 1; transform: translateX(-50%) translateY(0); }

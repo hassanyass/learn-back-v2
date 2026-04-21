@@ -1,0 +1,41 @@
+/* ============================================
+   Color Utilities
+   Success/Warning States (Sage Green & Golden Yellow)
+   ============================================ */
+
+.text-green-600 {
+  color: var(--green);
+}
+
+.bg-green-100 {
+  background: var(--green-bg);
+}
+
+.text-yellow-600,
+.text-amber-600 {
+  color: var(--gold);
+}
+
+.bg-yellow-100,
+.bg-amber-100 {
+  background: var(--gold-glow);
+}
+
+/* Dark Mode Overrides */
+[data-theme="dark"] .text-green-600 {
+  color: var(--green) !important;
+}
+
+[data-theme="dark"] .bg-green-100 {
+  background: rgba(93, 162, 113, 0.15) !important;
+}
+
+[data-theme="dark"] .text-yellow-600,
+[data-theme="dark"] .text-amber-600 {
+  color: var(--gold) !important;
+}
+
+[data-theme="dark"] .bg-yellow-100,
+[data-theme="dark"] .bg-amber-100 {
+  background: rgba(246, 174, 45, 0.15) !important;
+}

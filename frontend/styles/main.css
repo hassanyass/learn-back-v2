@@ -1,0 +1,40 @@
+/* ============================================================
+   LearnBack — Master Stylesheet
+   Entry point for the modular 7-1 CSS Architecture
+   ============================================================ */
+
+/* 1. Base (Design Tokens & Resets) */
+@import 'base/variables.css';
+@import 'base/reset.css';
+@import 'base/typography.css';
+@import 'base/global.css';
+
+/* 2. Themes (Dark Mode & Custom Mappings) */
+@import 'themes/dark-theme.css';
+@import 'themes/custom-themes.css';
+
+/* 3. Layout (Structural Skeletons) */
+@import 'layout/workspace.css';
+@import 'layout/navigation.css';
+@import 'layout/slide-deck.css';
+
+/* 4. Components (Reusable UI Elements) */
+@import 'components/buttons.css';
+@import 'components/cards.css';
+@import 'components/chat-engine.css';
+@import 'components/kido-hud.css';
+@import 'components/mindmap.css';
+@import 'components/modals.css';
+/* Note: forms.css is intentionally omitted until built */
+
+/* 5. Pages (Specific View Overrides) */
+@import 'pages/session.css';
+@import 'pages/dashboard.css';
+@import 'pages/feedback.css';
+@import 'pages/upload.css';
+@import 'pages/auth.css';
+
+/* 6. Utilities (Helper Classes - Must load last) */
+@import 'utilities/colors.css';
+@import 'utilities/helpers.css';
+@import 'utilities/spacing.css';

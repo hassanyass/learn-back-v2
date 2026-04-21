@@ -1,0 +1,139 @@
+/* ============================================================
+   styles/themes/dark-theme.css
+   Deep Navy Dark Mode Overrides
+   ============================================================ */
+
+:root[data-theme="dark"] {
+  /* Core dark palette */
+  --text: #F8FAFC;
+  --background: #0F172A;
+  --primary: #b07a96;
+  --secondary: #67b77c;
+  --accent: #e6b04a;
+
+  /* RGB equivalents for alpha-transparency utility */
+  --text-rgb: 255, 255, 255;
+  --background-rgb: 15, 23, 42;
+  --primary-rgb: 176, 122, 150;
+  --secondary-rgb: 103, 183, 124;
+  --accent-rgb: 230, 176, 74;
+
+  /* Semantic surfaces */
+  --bg: var(--background);
+  --surface: #1E293B;
+  --surface-2: #1E293B;
+  --surface-3: #334155;
+  --surface-4: #3D4F63;
+  --surface-kido: rgba(176, 122, 150, 0.10);
+  --action-card-bg: var(--surface-3);
+  --control-bg: rgba(255, 255, 255, 0.06);
+  --control-hover: rgba(255, 255, 255, 0.12);
+
+  /* Typography */
+  --text-primary: var(--text);
+  --text-mid: #94A3B8;
+  --text-soft: #64748B;
+
+  /* Borders */
+  --border: rgba(255, 255, 255, 0.12);
+  --border-light: rgba(255, 255, 255, 0.06);
+  --border-strong: rgba(255, 255, 255, 0.20);
+
+  /* Brand */
+  --navy: #0A1020;
+  --plum: var(--primary);
+  --green: var(--secondary);
+  --gold: var(--accent);
+  --plum-bg: rgba(176, 122, 150, 0.16);
+  --plum-border: rgba(176, 122, 150, 0.28);
+  --gold-glow: rgba(230, 176, 74, 0.18);
+  --green-bg: rgba(103, 183, 124, 0.14);
+
+  /* Elevation */
+  --shadow-zone: none;
+  --shadow-card: none;
+  --shadow-sm: none;
+
+  /* Session tokens */
+  --surface-subtle: rgba(30, 41, 59, 0.72);
+  --surface-elevated: var(--surface-3);
+  --surface-strong: var(--surface-4);
+  --surface-widget: var(--surface-3);
+  --surface-control: var(--control-bg);
+  --surface-control-hover: var(--control-hover);
+  --chat-canvas-bg: var(--surface);
+  --chat-fade-bg: var(--surface);
+  --bubble-ai-bg: var(--surface-3);
+  --bubble-ai-border: var(--border);
+  --bubble-user-bg: var(--primary);
+  --bubble-system-bg: var(--surface-3);
+  --hint-bg: var(--surface-4);
+  --hint-text: rgba(255, 245, 226, 0.92);
+  --widget-header-bg: rgba(10, 16, 32, 0.72);
+  --widget-tint: rgba(176, 122, 150, 0.18);
+  --widget-node-bg: var(--surface-2);
+  --widget-node-border: var(--border-strong);
+  --widget-node-shadow: #0A1020;
+  --session-success-bg: rgba(103, 183, 124, 0.16);
+  --session-success-border: rgba(103, 183, 124, 0.38);
+  --session-warning-bg: rgba(230, 176, 74, 0.16);
+  --session-warning-border: rgba(230, 176, 74, 0.38);
+  --session-danger-bg: rgba(224, 106, 106, 0.16);
+  --session-danger-border: rgba(224, 106, 106, 0.38);
+
+  /* Widget-specific */
+  --widget-shell-bg: var(--surface-3);
+  --widget-shell-border: var(--border);
+  --widget-title: var(--text-primary);
+  --widget-hint: rgba(243, 210, 224, 0.82);
+  --widget-legend: var(--text-mid);
+  --widget-pending-bg: var(--surface-2);
+  --widget-pending-border: var(--border-strong);
+  --widget-pending-shadow: #0A1020;
+  --widget-pending-text: var(--text-primary);
+  --widget-connector: #d6a7bf;
+  --widget-quote-bg: var(--surface-2);
+  --widget-quote-border: var(--border-strong);
+  --widget-quote-text: var(--text-primary);
+  --widget-prior-bg: rgba(230, 176, 74, 0.12);
+  --widget-prior-border: rgba(230, 176, 74, 0.28);
+  --widget-prior-label: #f6d58f;
+  --widget-secondary-bg: var(--surface-2);
+  --widget-secondary-text: #f3d2e0;
+  --widget-textarea-bg: var(--surface);
+  --widget-textarea-border: var(--border-strong);
+  --widget-textarea-text: var(--text-primary);
+}
+
+/* Smooth transition for theme switch */
+body,
+.nav-bar,
+.zone,
+.zone__header,
+.zone__body,
+.chat-pill,
+.modal,
+.concept-card,
+.card-header,
+.message__bubble {
+  transition: background-color 320ms ease, color 320ms ease, border-color 320ms ease, box-shadow 320ms ease;
+}
+
+/* ────────────────────────────────────
+   Dark Theme Component Overrides
+   ──────────────────────────────────── */
+
+/* Turn standard icons to white */
+[data-theme="dark"] .zone__header-icon,
+[data-theme="dark"] .action-card--kwl .action-card__icon svg,
+[data-theme="dark"] .action-card--misconceptions .action-card__icon svg,
+[data-theme="dark"] .kwl-view__title-wrap svg {
+  color: var(--text-primary) !important;
+}
+
+/* Fix primary buttons background color */
+[data-theme="dark"] .btn--primary {
+  background: var(--plum) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--plum-border) !important;
+}

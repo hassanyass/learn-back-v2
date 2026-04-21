@@ -1,0 +1,725 @@
+/* ============================================================
+   LearnBack — Feedback Interface
+   Premium SaaS Design · feedback.css
+   ============================================================ */
+
+/* ── Page Shell ───────────────────────────────────── */
+.fb-body {
+  height: auto;
+  min-height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--bg);
+}
+
+.fb-main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 48px 32px 140px;
+  /* 140px clears the sticky footer */
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+/* ── Hero Header ──────────────────────────────────── */
+.fb-hero {
+  text-align: center;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.fb-hero__title {
+  font-family: var(--font);
+  font-size: 2.25rem;
+  /* 36px — prominent but not screaming */
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.2;
+  margin-bottom: 12px;
+  letter-spacing: -0.5px;
+}
+
+.fb-hero__sub {
+  font-family: var(--font);
+  font-size: 1rem;
+  /* 16px — comfortable reading size */
+  font-weight: 400;
+  color: var(--text-mid);
+  line-height: 1.65;
+  margin: 0;
+}
+
+/* ── Mastery Hero Card ────────────────────────────── */
+.fb-mastery-card {
+  background: linear-gradient(135deg, rgba(93, 162, 113, 0.15) 0%, rgba(93, 162, 113, 0.05) 100%);
+  border: 1px solid rgba(93, 162, 113, 0.25);
+  border-radius: 20px;
+  padding: 40px 48px;
+  display: flex;
+  align-items: center;
+  gap: 48px;
+  position: relative;
+  overflow: hidden;
+  flex-wrap: wrap;
+  box-shadow: 0 4px 24px rgba(93, 162, 113, 0.12);
+}
+
+/* Subtle decorative circle in the top corner */
+.fb-mastery-card::before {
+  content: '';
+  position: absolute;
+  top: -40px;
+  right: -40px;
+  width: 180px;
+  height: 180px;
+  background: rgba(93, 162, 113, 0.08);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.fb-mastery-left {
+  flex: 1;
+  min-width: 240px;
+}
+
+.fb-mastery-right {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.fb-kido-img {
+  max-width: 480px;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  margin: -10px 0;
+  /* lets it breathe visually larger without breaking padding */
+}
+
+.fb-mastery-label {
+  display: block;
+  font-family: var(--font);
+  font-size: 0.75rem;
+  /* 12px — small supporting label */
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--state-mastered);
+  margin-bottom: 16px;
+}
+
+/* ── Knowledge Gain Bar ─────────────────────────── */
+.fb-mastery-bar-container {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.fb-mastery-score {
+  font-family: var(--font);
+  font-size: 3rem;
+  /* 48px — massive, single confident number */
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1;
+  min-width: 90px;
+}
+
+.fb-mastery-track {
+  flex: 1;
+  height: 12px;
+  background: rgba(93, 162, 113, 0.15);
+  /* Soft mastered green */
+  border-radius: 100px;
+  overflow: hidden;
+  max-width: 320px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.fb-mastery-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--state-mastered);
+  border-radius: 100px;
+  transition: width 1.4s cubic-bezier(0.25, 1, 0.5, 1);
+  box-shadow: 0 0 10px rgba(93, 162, 113, 0.4);
+}
+
+/* ── Mind Map Drawer Toggle ───────────────────────── */
+.fb-map-toggle {
+  flex-basis: 100%;
+  margin-top: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font);
+  font-size: 0.875rem;
+  /* 14px */
+  font-weight: 600;
+  color: var(--state-mastered);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: opacity var(--t-fast);
+}
+
+.fb-map-toggle:hover {
+  opacity: 0.75;
+}
+
+.fb-map-toggle svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.fb-map-chevron {
+  width: 16px !important;
+  height: 16px !important;
+  margin-left: auto;
+  transition: transform var(--t-normal);
+}
+
+.fb-map-toggle[aria-expanded="true"] .fb-map-chevron {
+  transform: rotate(180deg);
+}
+
+.fb-map-drawer {
+  flex-basis: 100%;
+  margin-top: 20px;
+  border-top: 1px solid rgba(93, 162, 113, 0.2);
+  padding-top: 20px;
+}
+
+.fb-misconceptions-list {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 12px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-family: var(--font);
+  font-size: 0.875rem;
+  color: var(--text-mid);
+}
+
+.fb-misconceptions-list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.fb-misconceptions-list li {
+  padding-left: 24px;
+  position: relative;
+  line-height: 1.6;
+  color: rgba(127, 29, 29, 0.85);
+  font-weight: 500;
+}
+
+.fb-misconceptions-list li b {
+  color: #C0392B;
+  display: block;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+}
+
+.fb-misconceptions-list li::before {
+  content: '→';
+  position: absolute;
+  left: 0;
+  top: 18px;
+  /* Offset because of the bold title above */
+  font-weight: 600;
+  color: #C0392B;
+}
+
+.fb-misc-empty {
+  text-align: center;
+  color: var(--text-soft);
+  padding: 20px;
+  font-style: italic;
+}
+
+/* ── Topic Cards Grid (Dynamic, Auto-Fit) ─────────── */
+.fb-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 24px;
+  align-items: start;
+  /* cards do NOT stretch to equal height — they breathe naturally */
+}
+
+.fb-topic-card {
+  background: var(--surface);
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  transition: box-shadow var(--t-normal), transform var(--t-normal);
+  border-top: 4px solid transparent;
+  align-self: start;       /* strict override: do not stretch */
+  height: fit-content;     /* strict override: wrap content only */
+}
+
+.fb-topic-card:hover {
+  box-shadow: var(--shadow-card);
+  transform: translateY(-2px);
+}
+
+/* ── Status accent — white card with colored offset ledge (bottom highlight only) ─ */
+/* This mirrors the user request to remove top color and keep bottom.                  */
+.fb-topic-card--complete {
+  box-shadow: 0 4px 0 rgba(93, 162, 113, 0.30) !important;
+}
+
+.fb-topic-card--complete:hover {
+  box-shadow: 0 6px 0 rgba(93, 162, 113, 0.40) !important;
+}
+
+.fb-topic-card--good {
+  box-shadow: 0 4px 0 rgba(246, 174, 45, 0.30) !important;
+}
+
+.fb-topic-card--good:hover {
+  box-shadow: 0 6px 0 rgba(246, 174, 45, 0.40) !important;
+}
+
+.fb-topic-card--weak {
+  box-shadow: 0 4px 0 rgba(239, 68, 68, 0.28) !important;
+}
+
+.fb-topic-card--weak:hover {
+  box-shadow: 0 6px 0 rgba(239, 68, 68, 0.38) !important;
+}
+
+.fb-topic-card--skipped {
+  box-shadow: 0 4px 0 rgba(148, 163, 184, 0.25) !important;
+  opacity: 0.72;
+}
+
+/* ── Card Header ─── */
+.fb-card-head {
+  padding: 24px 28px 20px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  cursor: pointer;
+}
+
+.fb-card-title {
+  font-family: var(--font);
+  font-size: 1.0625rem;
+  /* 17px — bold but not oversized */
+  font-weight: 700;
+  color: var(--text-primary);
+  /* anchors the card visually */
+  line-height: 1.35;
+  margin: 0;
+  flex: 1;
+  letter-spacing: -0.15px;
+}
+
+.fb-card-chevron {
+  width: 20px;
+  height: 20px;
+  color: var(--text-soft);
+  transition: transform var(--t-normal);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.fb-topic-card[aria-expanded="true"] .fb-card-chevron {
+  transform: rotate(180deg);
+}
+
+.fb-card-collapsible {
+  display: none;
+}
+
+.fb-topic-card[aria-expanded="true"] .fb-card-collapsible {
+  display: block;
+}
+
+/* Status chip — minimal, pill */
+.fb-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border-radius: 100px;
+  font-family: var(--font);
+  font-size: 0.6875rem;
+  /* 11px */
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.fb-chip svg {
+  width: 13px;
+  height: 13px;
+}
+
+.fb-chip--complete {
+  background: rgba(93, 162, 113, 0.13);
+  color: var(--state-mastered);
+}
+
+.fb-chip--incomplete {
+  background: rgba(239, 68, 68, 0.1);
+  color: #DC2626;
+}
+
+.fb-chip--skipped {
+  background: var(--navy-05);
+  color: var(--text-soft);
+}
+
+/* ── Understanding Level Bar ─── */
+.fb-level-row {
+  padding: 0 28px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.fb-level-label {
+  font-family: var(--font);
+  font-size: 0.8125rem;
+  /* 13px */
+  color: var(--text-soft);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.fb-level-track {
+  flex: 1;
+  height: 6px;
+  background: var(--border-light);
+  border-radius: 100px;
+  overflow: hidden;
+}
+
+.fb-level-fill {
+  height: 100%;
+  border-radius: 100px;
+  transition: width 1s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.fb-level-fill--strong {
+  background: var(--state-mastered);
+  width: 100%;
+}
+
+.fb-level-fill--good {
+  background: var(--state-developing);
+  width: 65%;
+}
+
+.fb-level-fill--weak {
+  background: #EF4444;
+  width: 28%;
+}
+
+.fb-level-text {
+  font-family: var(--font);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  min-width: 44px;
+  text-align: right;
+}
+
+.fb-level-text--strong {
+  color: var(--state-mastered);
+}
+
+.fb-level-text--good {
+  color: var(--state-developing);
+}
+
+.fb-level-text--weak {
+  color: #EF4444;
+}
+
+/* ── Card Divider ─── */
+.fb-card-divider {
+  height: 1px;
+  background: var(--border-light);
+  margin: 0 28px;
+}
+
+/* ── Card Body ─── */
+.fb-card-body {
+  padding: 20px 28px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* Narrative feedback paragraph */
+.fb-card-body p {
+  font-family: var(--font);
+  font-size: 0.9375rem;
+  /* 15px — comfortable reading */
+  line-height: 1.65;
+  color: var(--text-mid);
+  margin: 0;
+}
+
+/* ── Focus Areas (Misconceptions) block ────────────────────────── */
+/* Doubled color: warm rose bg + rose border + darker rose offset ledge   */
+/* This is the SAME pattern as .action-card in index.html                  */
+.fb-focus {
+  background: #FDF0F0;
+  /* very soft rose wash */
+  border-radius: 12px;
+  border: 1.5px solid rgba(220, 38, 38, 0.18);
+  /* soft red ring */
+  box-shadow: 0 4px 0 rgba(220, 38, 38, 0.15);
+  /* the 'second color' ledge */
+  padding: 16px 18px;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.fb-focus__title {
+  font-family: var(--font);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #C0392B;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fb-focus__title svg {
+  width: 14px;
+  height: 14px;
+}
+
+.fb-focus ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.fb-focus li {
+  font-family: var(--font);
+  font-size: 0.875rem;
+  color: rgba(127, 29, 29, 0.80);
+  line-height: 1.55;
+  padding-left: 16px;
+  position: relative;
+}
+
+.fb-focus li::before {
+  content: '–';
+  position: absolute;
+  left: 2px;
+  font-weight: 500;
+  color: #C0392B;
+  opacity: 0.65;
+}
+
+/* ── For Next Time (Recommendation) block ─────────────────── */
+/* Doubled color: light navy-blue bg + navy ring + darker navy offset ledge */
+.fb-rec {
+  background: rgba(2, 43, 58, 0.05);
+  /* very soft navy wash */
+  border-radius: 12px;
+  border: 1.5px solid rgba(2, 43, 58, 0.12);
+  /* thin navy ring */
+  box-shadow: 0 4px 0 rgba(2, 43, 58, 0.10);
+  /* the 'second color' ledge */
+  padding: 16px 18px;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.fb-rec__title {
+  font-family: var(--font);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--navy-60);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fb-rec p {
+  font-size: 0.875rem !important;
+  color: var(--text-mid) !important;
+  line-height: 1.6 !important;
+  margin: 0 !important;
+}
+
+/* ── Skipped card body ─── */
+.fb-card-skipped-note {
+  padding: 20px 28px 24px;
+  font-family: var(--font);
+  font-size: 0.9375rem;
+  color: var(--text-soft);
+  line-height: 1.6;
+  font-style: italic;
+}
+
+/* ── Action Footer ────────────────────────────────── */
+.fb-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 80;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  background: rgba(243, 244, 246, 0.88);
+  /* matches --bg */
+  border-top: 1px solid var(--border-light);
+}
+
+.fb-footer__inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 20px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+/* Button base */
+/* Outline — "Return to Dashboard" */
+/* Solid Primary — "Try Again" */
+/* ── Back to Top Button ───────────────────────────── */
+.fb-back-top {
+  position: fixed;
+  bottom: 100px;
+  right: 32px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--navy);
+  color: var(--surface);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(2, 43, 58, 0.25);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity var(--t-normal), transform var(--t-normal);
+  pointer-events: none;
+  z-index: 90;
+}
+
+.fb-back-top.visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.fb-back-top:hover {
+  background: #044566;
+}
+
+.fb-back-top svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* ── Slide-down animation for drawer ─── */
+@keyframes fb-slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fb-map-drawer:not([hidden]) {
+  animation: fb-slide-down 0.22s ease;
+}
+
+/* ── Dark mode overrides ──────────────────────────── */
+[data-theme="dark"] .fb-body {
+  background: var(--bg);
+}
+
+[data-theme="dark"] .fb-mastery-card {
+  background: linear-gradient(135deg, rgba(93, 162, 113, 0.12) 0%, rgba(93, 162, 113, 0.06) 100%);
+  border-color: rgba(93, 162, 113, 0.2);
+}
+
+[data-theme="dark"] .fb-topic-card {
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+[data-theme="dark"] .fb-focus {
+  background: rgba(185, 28, 28, 0.12);
+  border-color: rgba(220, 38, 38, 0.25);
+  box-shadow: 0 4px 0 rgba(185, 28, 28, 0.25);
+}
+
+[data-theme="dark"] .fb-rec {
+  background: rgba(2, 43, 58, 0.35);
+  border-color: rgba(255, 255, 255, 0.10);
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.25);
+}
+
+[data-theme="dark"] .fb-footer {
+  background: rgba(15, 23, 42, 0.90);
+  border-top-color: var(--border);
+}
+
+[data-theme="dark"] /* ── Responsive ───────────────────────────────────── */
+@media (max-width: 768px) {
+  .fb-main {
+    padding: 32px 20px 140px;
+  }
+
+  .fb-hero__title {
+    font-size: 1.75rem;
+  }
+
+  .fb-mastery-card {
+    padding: 28px 24px;
+    gap: 28px;
+  }
+
+  .fb-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .fb-footer__inner {
+    padding: 16px 20px;
+  }
+}

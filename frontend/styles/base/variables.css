@@ -1,0 +1,86 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+/* ── Design Tokens ─────────────────────────────────────────── */
+:root {
+  /* Brand Palette */
+  --navy: #022B3A;
+  --primary: #0f2a33;
+  --accent: #925e78;
+  --danger: #ef4444;
+
+  --navy-05: rgba(2, 43, 58, 0.05);
+  --navy-10: rgba(2, 43, 58, 0.10);
+  --navy-20: rgba(2, 43, 58, 0.20);
+  --navy-40: rgba(2, 43, 58, 0.40);
+  --navy-60: rgba(2, 43, 58, 0.60);
+
+  --gold: #F6AE2D;
+  --gold-hover: #e59d1a;
+  --gold-glow: rgba(246, 174, 45, 0.20);
+
+  --green: #5DA271;
+  --green-bg: rgba(93, 162, 113, 0.10);
+
+  --plum: #925E78;
+  --plum-bg: rgba(146, 94, 120, 0.08);
+  --plum-border: rgba(146, 94, 120, 0.18);
+
+  /* Surfaces */
+  --bg: #F3F4F6;
+  /* Global app background — cool off-white */
+  --surface: #FFFFFF;
+  /* Panel / card surface */
+  --surface-kido: #FDF5F6;
+  /* subtle pink tint for KIDO zone body */
+  --action-card-bg: #F6E8EA;
+  /* Studio action card bg */
+
+  /* Text */
+  --text-primary: #022B3A;
+  --text-mid: rgba(2, 43, 58, 0.60);
+  --text-soft: rgba(2, 43, 58, 0.38);
+
+  /* Borders */
+  --border: #E4E5EB;
+  --border-light: #EEEFF3;
+
+  /* Shadows (elevation) */
+  --shadow-zone: 0 2px 8px rgba(2, 43, 58, 0.04), 0 12px 32px rgba(2, 43, 58, 0.06);
+  --shadow-card: 0 2px 8px rgba(2, 43, 58, 0.06);
+  --shadow-sm: 0 1px 4px rgba(2, 43, 58, 0.05);
+
+  /* Typography */
+  --font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --fs-xs: 0.6875rem;
+  /* 11px */
+  --fs-sm: 0.8125rem;
+  /* 13px */
+  --fs-base: 0.875rem;
+  /* 14px */
+  --fs-md: 1rem;
+  /* 16px */
+  --fs-lg: 1.125rem;
+  /* 18px */
+
+  /* Radius */
+  --r-zone: 16px;
+  --r-card: 12px;
+  --r-pill: 100px;
+  --r-sm: 8px;
+  --r-xs: 6px;
+
+  /* Transitions */
+  --t-fast: 140ms ease;
+  --t-normal: 240ms ease;
+
+  /* State Colors — learning only */
+  --state-mastered: #5DA271;
+  --state-developing: #F6AE2D;
+  --state-revising: #925E78;
+  --session-success-bg: rgba(93, 162, 113, 0.10);
+  --session-success-border: rgba(93, 162, 113, 0.24);
+  --session-warning-bg: rgba(246, 174, 45, 0.10);
+  --session-warning-border: rgba(246, 174, 45, 0.24);
+  --session-danger-bg: rgba(239, 68, 68, 0.10);
+  --session-danger-border: rgba(239, 68, 68, 0.24);
+}

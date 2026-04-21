@@ -1,0 +1,11 @@
+/* ============================================
+   Spacing Utilities
+   (Margins & Paddings)
+   ============================================ */
+
+/* 
+   Our current layout architecture heavily relies on flexbox/grid gaps 
+   rather than explicit margin/padding utility classes (like .mt-4 or .p-2). 
+   
+   Add spacing utility classes below as needed for future component usage.
+*/
