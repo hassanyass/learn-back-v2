@@ -8,7 +8,7 @@
   };
 
   var DEFAULTS = {
-    apiBaseUrl: 'http://127.0.0.1:8000'
+    apiBaseUrl: 'http://127.0.0.1:8002'
   };
 
   var UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -54,7 +54,7 @@
   }
 
   function getApiBaseUrl() {
-    return normalizeApiBaseUrl(readLocalStorage(STORAGE_KEYS.apiBaseUrl));
+    return 'http://127.0.0.1:8002';
   }
 
   function getAuthToken() {
@@ -365,10 +365,10 @@
     fetchDashboardState: function () {
       return requestWithFallback([
         function () {
-          return request('/api/dashboard/summary');
+          return request('/dashboard');
         },
         function () {
-          return request('/api/users/me/dashboard');
+          return request('/users/me/dashboard');
         }
       ]);
     },

@@ -1,14 +1,9 @@
 (function () {
   'use strict';
+  console.warn("🚨 AUTH.JS HAS SUCCESSFULLY LOADED 🚨");
 
   // ── Constants ───────────────────────────────────────────────
-  var API_BASE = (function () {
-    try {
-      return (window.localStorage.getItem('learnback_api_base_url') || 'http://127.0.0.1:8000').replace(/\/+$/, '');
-    } catch (_) {
-      return 'http://127.0.0.1:8000';
-    }
-  })();
+  var API_BASE = 'http://127.0.0.1:8002';
 
   var TOKEN_KEY = 'learnback_token';
   var USER_KEY = 'learnback_user';
@@ -125,87 +120,106 @@
     return payload;
   }
 
-  // ── Login ───────────────────────────────────────────────────
-  loginForm.addEventListener('submit', async function (e) {
-    e.preventDefault();
-    hideAllBanners();
-    clearAllValidation();
+  // ── Listeners wrapped in DOMContentLoaded ───────────────
+  document.addEventListener("DOMContentLoaded", () => {
+    console.warn("🟢 DOM fully loaded and parsed (auth)");
+    
+    var loginForm = document.getElementById('login-form');
+    var registerForm = document.getElementById('register-form');
 
-    var email = document.getElementById('login-email').value.trim();
-    var password = document.getElementById('login-password').value;
-    var valid = true;
+    if (loginForm) {
+      loginForm.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        hideAllBanners();
+        clearAllValidation();
 
-    if (!email || !EMAIL_RE.test(email)) {
-      showFieldError('login-email', 'login-email-error', 'Please enter a valid email');
-      valid = false;
+        var email = document.getElementById('login-email').value.trim();
+        var password = document.getElementById('login-password').value;
+        var valid = true;
+
+        if (!email || !EMAIL_RE.test(email)) {
+          showFieldError('login-email', 'login-email-error', 'Please enter a valid email');
+          valid = false;
+        }
+        if (!password) {
+          showFieldError('login-password', 'login-password-error', 'Password is required');
+          valid = false;
+        }
+        if (!valid) return;
+
+        var loginSubmit = document.getElementById('login-submit');
+        setLoading(loginSubmit, true);
+
+        try {
+          console.warn("🟢 Login Button Clicked! Sending request...");
+          var data = await apiPost('/auth/login', { email: email, password: password });
+          storeAuth(data.access_token, { user_id: data.user_id, username: data.username });
+          window.location.href = 'dashboard.html';
+        } catch (err) {
+          console.error("Login fetch error:", err);
+          var loginErrorText = document.getElementById('login-error-text');
+          var loginError = document.getElementById('login-error');
+          if (loginErrorText) loginErrorText.textContent = err.message;
+          if (loginError) loginError.classList.add('visible');
+        } finally {
+          setLoading(loginSubmit, false);
+        }
+      });
     }
-    if (!password) {
-      showFieldError('login-password', 'login-password-error', 'Password is required');
-      valid = false;
-    }
-    if (!valid) return;
 
-    setLoading(loginSubmit, true);
+    if (registerForm) {
+      registerForm.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        hideAllBanners();
+        clearAllValidation();
 
-    try {
-      var data = await apiPost('/api/auth/login', { email: email, password: password });
-      storeAuth(data.access_token, { user_id: data.user_id, username: data.username });
-      window.location.href = 'dashboard.html';
-    } catch (err) {
-      loginErrorText.textContent = err.message;
-      loginError.classList.add('visible');
-    } finally {
-      setLoading(loginSubmit, false);
-    }
-  });
+        var username = document.getElementById('register-username').value.trim();
+        var email = document.getElementById('register-email').value.trim();
+        var password = document.getElementById('register-password').value;
+        var valid = true;
 
-  // ── Register ────────────────────────────────────────────────
-  registerForm.addEventListener('submit', async function (e) {
-    e.preventDefault();
-    hideAllBanners();
-    clearAllValidation();
+        if (!username) {
+          showFieldError('register-username', 'register-username-error', 'Username is required');
+          valid = false;
+        }
+        if (!email || !EMAIL_RE.test(email)) {
+          showFieldError('register-email', 'register-email-error', 'Please enter a valid email');
+          valid = false;
+        }
+        if (!password || password.length < 8) {
+          showFieldError('register-password', 'register-password-error', 'Must be at least 8 characters');
+          valid = false;
+        }
+        if (!valid) return;
 
-    var username = document.getElementById('register-username').value.trim();
-    var email = document.getElementById('register-email').value.trim();
-    var password = document.getElementById('register-password').value;
-    var valid = true;
+        var registerSubmit = document.getElementById('register-submit');
+        setLoading(registerSubmit, true);
 
-    if (!username) {
-      showFieldError('register-username', 'register-username-error', 'Username is required');
-      valid = false;
-    }
-    if (!email || !EMAIL_RE.test(email)) {
-      showFieldError('register-email', 'register-email-error', 'Please enter a valid email');
-      valid = false;
-    }
-    if (!password || password.length < 8) {
-      showFieldError('register-password', 'register-password-error', 'Must be at least 8 characters');
-      valid = false;
-    }
-    if (!valid) return;
+        try {
+          console.warn("🟢 Register Button Clicked! Sending request...");
+          await apiPost('/auth/register', { email: email, username: username, password: password });
 
-    setLoading(registerSubmit, true);
+          var registerSuccess = document.getElementById('register-success');
+          if (registerSuccess) registerSuccess.classList.add('visible');
 
-    try {
-      // 1. Register
-      await apiPost('/api/auth/register', { email: email, username: username, password: password });
+          var loginData = await apiPost('/auth/login', { email: email, password: password });
+          storeAuth(loginData.access_token, { user_id: loginData.user_id, username: loginData.username });
 
-      // 2. Show success, then auto-login
-      registerSuccess.classList.add('visible');
-
-      var loginData = await apiPost('/api/auth/login', { email: email, password: password });
-      storeAuth(loginData.access_token, { user_id: loginData.user_id, username: loginData.username });
-
-      // Brief pause to show success message
-      setTimeout(function () {
-        window.location.href = 'dashboard.html';
-      }, 800);
-    } catch (err) {
-      registerSuccess.classList.remove('visible');
-      registerErrorText.textContent = err.message;
-      registerError.classList.add('visible');
-    } finally {
-      setLoading(registerSubmit, false);
+          setTimeout(function () {
+            window.location.href = 'dashboard.html';
+          }, 800);
+        } catch (err) {
+          console.error("Register fetch error:", err);
+          var registerSuccess = document.getElementById('register-success');
+          var registerErrorText = document.getElementById('register-error-text');
+          var registerError = document.getElementById('register-error');
+          if (registerSuccess) registerSuccess.classList.remove('visible');
+          if (registerErrorText) registerErrorText.textContent = err.message;
+          if (registerError) registerError.classList.add('visible');
+        } finally {
+          setLoading(registerSubmit, false);
+        }
+      });
     }
   });
 

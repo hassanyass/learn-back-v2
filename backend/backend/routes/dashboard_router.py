@@ -20,7 +20,7 @@ async def get_current_user_id(
     return auth_service.decode_token(credentials.credentials)
 
 
-@router.get("/", response_model=DashboardResponse)
+@router.get("", response_model=DashboardResponse)
 async def get_dashboard(
     timezone: str = Query(default="UTC"),
     user_id: int = Depends(get_current_user_id),

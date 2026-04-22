@@ -4,6 +4,7 @@
 
 (function () {
   'use strict';
+  console.warn("🚨 DASHBOARD.JS HAS SUCCESSFULLY LOADED 🚨");
 
   // ── Auth Guard ──────────────────────────────────────────────
   // Redirect to login if no JWT token is present
@@ -481,7 +482,7 @@
     }
 
     try {
-      var me = await window.LearnBackAPI.request('/api/auth/me');
+      var me = await window.LearnBackAPI.request('/auth/me');
       // Update stored user details from backend
       if (me && me.username) {
         try {
@@ -539,5 +540,8 @@
     validateSession();
   }
 
-  init();
+  document.addEventListener("DOMContentLoaded", () => {
+    console.warn("🟢 DOM fully loaded and parsed (dashboard)");
+    init();
+  });
 })();
