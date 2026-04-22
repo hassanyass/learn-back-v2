@@ -31,7 +31,8 @@ You must return ONLY a JSON object with these exact keys:
   "kido_learned_summary": "A concise statement of what Kido learned from the student in this exchange.",
   "instruction_for_kido": "A clear directive telling Kido how to respond. Include what to say, tone, and any follow-up question Kido should ask.",
   "widget_type": "TEXT|PROCESS|COMPARISON|MATH",
-  "identified_metaphors": "Any analogy, metaphor, or real-world comparison the student used. Empty string if none."
+  "identified_metaphors": "Any analogy, metaphor, or real-world comparison the student used. Empty string if none.",
+  "detected_misconception": "A concise description of the factual error or misconception the student expressed. null if no misconception."
 }
 
 ## Label Definitions
@@ -52,6 +53,11 @@ You must return ONLY a JSON object with these exact keys:
 - **PROCESS**: The concept involves sequential steps or a workflow.
 - **COMPARISON**: The concept involves comparing or contrasting items.
 - **MATH**: The concept involves mathematical formulas or numerical reasoning.
+
+## detected_misconception
+- Set to a concise description when the label is INCORRECT and the student
+  expressed a clear factual error or conceptual misunderstanding.
+- Set to null for CORRECT, NEEDS_INFO, or IRRELEVANT labels.
 
 ## Rules
 1. Evaluate ONLY the CURRENT POINT. Ignore future points.

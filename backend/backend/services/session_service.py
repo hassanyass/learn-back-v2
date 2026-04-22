@@ -1,9 +1,14 @@
-"""Phase 3 — Dual-Agent Session Orchestrator.
+"""Phase 3A+4 — Dual-Agent Session Orchestrator.
 
 Owns the full message lifecycle:
   User Message → Evaluator LLM → BKT Update → State Mutation → Kido LLM → Persist
 
 All session-state mutations happen here.  Routers are thin transport.
+
+State format (Phase 3A):
+  The session_state JSONB is a deeply nested lesson map with per-point
+  BKT scores, misconceptions, and kido_memory slots.  See
+  Architecture/04_session_orchestrator.md for the full blueprint.
 """
 
 from __future__ import annotations
@@ -26,20 +31,22 @@ from backend.services.bkt_service import BKTService, MASTERY_THRESHOLD
 logger = logging.getLogger(__name__)
 
 MAX_ATTEMPTS_PER_POINT: int = 5
+OVERALL_BKT_COMPLETION_THRESHOLD: float = 0.95
 
 
 # ──────────────────────────────────────────────────────────────────────
-# Helper: default session-state factory
+# Helper: default session-state factory (legacy fallback)
 # ──────────────────────────────────────────────────────────────────────
 
 def _default_session_state() -> dict[str, Any]:
+    """Build a minimal session_state for sessions created without
+    the Phase 3A nested blueprint (backwards compatibility)."""
     return {
         "current_topic_index": 0,
         "current_point_index": 0,
-        "attempt_counter": 0,
-        "user_metaphors": [],
-        "what_kido_learned": [],
-        "bkt_scores": {},
+        "point_attempts": 0,
+        "current_difficulty": 1,
+        "topics": [],
     }
 
 
@@ -79,16 +86,17 @@ class SessionService:
         """Full dual-agent pipeline for a single user message.
 
         Returns a dict with keys:
-            kido_response  (str)   – Kido's formatted reply
-            widget_type    (str)   – rendering hint for the frontend
-            session_state  (dict)  – updated state snapshot
-            advanced       (bool)  – True if the point was auto-advanced
+            kido_response    (str)   – Kido's formatted reply
+            widget_type      (str)   – rendering hint for the frontend
+            session_state    (dict)  – updated state snapshot
+            advanced         (bool)  – True if the point was auto-advanced
+            session_complete (bool)  – True if the session has been terminated
         """
         session = await self._get_session(session_id)
         state = self._ensure_state(session)
         segments = await self._get_segments(session)
 
-        current_point = self._resolve_current_point(segments, state)
+        current_point = self._resolve_current_point(state, segments)
         conversation_history = await self._build_conversation_history(session_id)
 
         # --- 1. Persist user message ---
@@ -101,37 +109,61 @@ class SessionService:
             user_text=user_text,
         )
 
-        # --- 3. BKT Update ---
-        point_key = f"{state['current_topic_index']}_{state['current_point_index']}"
-        prev_score = state["bkt_scores"].get(point_key, self.bkt.initial_probability())
+        # --- 3. BKT Update (per-point) ---
+        ti = state["current_topic_index"]
+        pi = state["current_point_index"]
+        point_node = self._get_point_node(state, ti, pi)
+        prev_score = point_node["bkt_score"] if point_node else self.bkt.initial_probability()
         bkt_direction = evaluator_output.get("bkt_shift_direction", 0)
         new_score = self.bkt.update(prev_score, int(bkt_direction))
-        state["bkt_scores"][point_key] = new_score
+        if point_node:
+            point_node["bkt_score"] = new_score
 
-        # --- 4. Accumulate learned items and metaphors ---
+        # --- 3b. Track misconceptions live (nested inside point) ---
+        detected_misconception = evaluator_output.get("detected_misconception")
+        if detected_misconception and evaluator_output.get("label") == "INCORRECT" and point_node:
+            point_node["misconceptions"].append({
+                "misconception": detected_misconception,
+                "timestamp": datetime.utcnow().isoformat(),
+            })
+
+        # --- 4. Accumulate learned items and metaphors (session-level for Kido) ---
+        # These are kept as transient context for the Kido prompt, not persisted
+        # in the per-point structure (kido_memory is generated once on completion).
         learned_summary = evaluator_output.get("kido_learned_summary", "")
-        if learned_summary:
-            state["what_kido_learned"].append(learned_summary)
-
         identified_metaphors = evaluator_output.get("identified_metaphors", "")
-        if identified_metaphors:
-            state["user_metaphors"].append(identified_metaphors)
+
+        # Build running lists from evaluator output for Kido's context
+        # (these live ephemerally in the pipeline, not in session_state)
+        kido_learned_so_far = [learned_summary] if learned_summary else []
+        kido_metaphors = [identified_metaphors] if identified_metaphors else []
 
         # --- 5. Increment attempt counter ---
-        state["attempt_counter"] += 1
+        state["point_attempts"] += 1
 
         # --- 6. Limit Check (Python-enforced) ---
         advanced = False
+        session_complete = False
         instruction_for_kido = evaluator_output.get("instruction_for_kido", "")
 
-        if state["attempt_counter"] >= MAX_ATTEMPTS_PER_POINT or self.bkt.is_mastered(new_score):
+        if state["point_attempts"] >= MAX_ATTEMPTS_PER_POINT or self.bkt.is_mastered(new_score):
             advanced = True
-            state["attempt_counter"] = 0
+
+            # Mark current point as completed
+            if point_node:
+                point_node["status"] = "completed"
+                # Phase 3B: kido_memory would be generated here
+
+            state["point_attempts"] = 0
             state["current_point_index"] += 1
 
-            # Resolve next point title for a graceful transition
-            next_point = self._resolve_current_point(segments, state)
+            # Resolve next point
+            next_point = self._resolve_current_point(state, segments)
             if next_point:
+                # Mark the new current point as in_progress
+                new_node = self._get_point_node(state, state["current_topic_index"], state["current_point_index"])
+                if new_node:
+                    new_node["status"] = "in_progress"
                 instruction_for_kido += (
                     f"\n\nIMPORTANT: Acknowledge the end of this point gracefully "
                     f"and ask about the next point: \"{next_point}\"."
@@ -140,25 +172,41 @@ class SessionService:
                 # All points in this topic are complete — check for next topic
                 state["current_point_index"] = 0
                 state["current_topic_index"] += 1
-                next_point = self._resolve_current_point(segments, state)
+                next_point = self._resolve_current_point(state, segments)
                 if next_point:
+                    new_node = self._get_point_node(state, state["current_topic_index"], state["current_point_index"])
+                    if new_node:
+                        new_node["status"] = "in_progress"
                     instruction_for_kido += (
                         f"\n\nIMPORTANT: Celebrate finishing this topic! "
                         f"Now transition to the next topic. Ask about: \"{next_point}\"."
                     )
                 else:
-                    instruction_for_kido += (
-                        "\n\nIMPORTANT: The student has covered ALL points! "
-                        "Celebrate their achievement warmly and let them know "
-                        "the session is complete."
-                    )
+                    # All topics exhausted → terminate session
+                    session_complete = True
+
+        # --- 6b. Termination check: Overall BKT mastery ---
+        overall_bkt = self._aggregate_bkt(state)
+        if overall_bkt > OVERALL_BKT_COMPLETION_THRESHOLD and overall_bkt > 0:
+            session_complete = True
+
+        # --- 6c. Force closing message if session is complete ---
+        if session_complete:
+            instruction_for_kido = (
+                "\n\nIMPORTANT: The teaching session is now COMPLETE! "
+                "Celebrate the student's incredible achievement warmly. "
+                "Thank them for being such a wonderful teacher. "
+                "Let them know they can view their personalized feedback "
+                "and learning report on the feedback dashboard. "
+                "End with an encouraging, uplifting closing message."
+            )
 
         # --- 7. Call Kido ---
         widget_type = evaluator_output.get("widget_type", "TEXT")
         kido_response = await self._call_kido(
             instruction_for_kido=instruction_for_kido,
-            identified_metaphors=evaluator_output.get("identified_metaphors", ""),
-            what_kido_learned=state["what_kido_learned"],
+            identified_metaphors=identified_metaphors,
+            what_kido_learned=kido_learned_so_far,
             conversation_history=conversation_history,
         )
 
@@ -167,7 +215,10 @@ class SessionService:
 
         # --- 9. Flush state back to DB ---
         session.session_state = deepcopy(state)
-        session.bkt_score = self._aggregate_bkt(state)
+        session.bkt_score = overall_bkt
+        if session_complete:
+            session.status = "completed"
+            session.end_time = datetime.utcnow()
         await self.db.commit()
 
         return {
@@ -175,6 +226,7 @@ class SessionService:
             "widget_type": widget_type,
             "session_state": state,
             "advanced": advanced,
+            "session_complete": session_complete,
         }
 
     async def generate_hint(self, session_id: int) -> dict[str, Any]:
@@ -186,7 +238,7 @@ class SessionService:
         state = self._ensure_state(session)
         segments = await self._get_segments(session)
 
-        current_point = self._resolve_current_point(segments, state)
+        current_point = self._resolve_current_point(state, segments)
         if not current_point:
             return {"hint_text": "No more points to cover!", "widget_type": "TEXT"}
 
@@ -242,6 +294,7 @@ class SessionService:
                 "instruction_for_kido": "Ask the student to clarify their explanation.",
                 "widget_type": "TEXT",
                 "identified_metaphors": "",
+                "detected_misconception": None,
             }
 
         return parsed
@@ -351,24 +404,51 @@ class SessionService:
         segments = deck.segmented_json.get("extracted_segments", [])
         return segments
 
-    def _resolve_current_point(
-        self,
-        segments: list[dict[str, Any]],
+    @staticmethod
+    def _get_point_node(
         state: dict[str, Any],
+        topic_idx: int,
+        point_idx: int,
+    ) -> dict[str, Any] | None:
+        """Safely retrieve a point node from the nested topics array."""
+        topics = state.get("topics", [])
+        if topic_idx >= len(topics):
+            return None
+        points = topics[topic_idx].get("points", [])
+        if point_idx >= len(points):
+            return None
+        return points[point_idx]
+
+    @staticmethod
+    def _resolve_current_point(
+        state: dict[str, Any],
+        segments: list[dict[str, Any]],
     ) -> str | None:
-        """Return the current concept string or None if all exhausted."""
+        """Return the current concept string or None if all exhausted.
+
+        Reads from the nested topics array in state if available,
+        falling back to the raw segments for backwards compatibility.
+        """
         topic_idx = state["current_topic_index"]
         point_idx = state["current_point_index"]
 
+        # Phase 3A: read from nested topics in state
+        topics = state.get("topics", [])
+        if topics:
+            if topic_idx >= len(topics):
+                return None
+            points = topics[topic_idx].get("points", [])
+            if point_idx >= len(points):
+                return None
+            return points[point_idx]["point_title"]
+
+        # Fallback: read from raw segments (legacy sessions)
         if topic_idx >= len(segments):
             return None
-
         topic = segments[topic_idx]
         concepts = topic.get("extracted_concepts", [])
-
         if point_idx >= len(concepts):
             return None
-
         return concepts[point_idx]
 
     async def _build_conversation_history(self, session_id: int) -> str:
@@ -416,10 +496,17 @@ class SessionService:
     @staticmethod
     def _aggregate_bkt(state: dict[str, Any]) -> float:
         """Compute a single aggregate BKT score across all tracked points."""
-        scores = state.get("bkt_scores", {})
-        if not scores:
-            return 0.0
-        return sum(scores.values()) / len(scores)
+        topics = state.get("topics", [])
+        if topics:
+            all_scores = [
+                pt["bkt_score"]
+                for topic in topics
+                for pt in topic.get("points", [])
+            ]
+            if not all_scores:
+                return 0.0
+            return sum(all_scores) / len(all_scores)
+        return 0.0
 
     @staticmethod
     def _parse_json(raw: str) -> dict[str, Any]:

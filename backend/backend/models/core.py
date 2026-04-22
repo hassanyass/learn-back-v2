@@ -34,12 +34,22 @@ class LearningSession(Base):
 
     # Phase 3: Dynamic session state stored as JSONB.
     # Schema: { current_topic_index, current_point_index, attempt_counter,
-    #           user_metaphors: [], what_kido_learned: [], bkt_scores: {} }
+    #           user_metaphors: [], what_kido_learned: [], bkt_scores: {},
+    #           misconceptions: [] }
     session_state: Mapped[dict | None] = mapped_column(
         JSONB,
         nullable=True,
         default=None,
         doc="Mutable session progression state managed exclusively by SessionService.",
+    )
+
+    # Phase 4: Final feedback report stored as JSONB.
+    # Schema: { overall_bkt_score, misconceptions: [], topic_cards: [] }
+    feedback_data: Mapped[dict | None] = mapped_column(
+        JSONB,
+        nullable=True,
+        default=None,
+        doc="Generated feedback report saved after session completion.",
     )
 
     messages: Mapped[list["SessionMessage"]] = relationship(

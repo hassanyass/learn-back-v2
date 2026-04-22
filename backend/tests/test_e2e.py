@@ -398,20 +398,27 @@ class TestSessionOrchestrator:
                         f"Unexpected widget_type: {data['widget_type']}"
                     )
 
-                    # Verify session_state structure
+                    # Verify session_state structure (Phase 3A nested format)
                     state = data["session_state"]
                     assert "current_topic_index" in state
                     assert "current_point_index" in state
-                    assert "attempt_counter" in state
-                    assert "bkt_scores" in state
-                    assert "user_metaphors" in state
-                    assert "what_kido_learned" in state
+                    assert "point_attempts" in state
+                    assert "topics" in state
+                    assert isinstance(state["topics"], list)
+                    assert len(state["topics"]) >= 1, "Should have at least 1 topic"
 
-                    # After first message, attempt_counter should be 1
-                    # (unless auto-advanced which resets to 0)
-                    assert state["attempt_counter"] in (0, 1), (
-                        f"Unexpected attempt_counter: {state['attempt_counter']}"
-                    )
+                    # Verify nested topic/point structure
+                    first_topic = state["topics"][0]
+                    assert "topic_title" in first_topic
+                    assert "points" in first_topic
+                    assert len(first_topic["points"]) >= 1
+
+                    first_point = first_topic["points"][0]
+                    assert "point_title" in first_point
+                    assert "bkt_score" in first_point
+                    assert "status" in first_point
+                    assert "misconceptions" in first_point
+                    assert first_point["status"] in ("in_progress", "completed")
 
                 elif parsed["type"] == "error":
                     pytest.fail(
@@ -517,7 +524,57 @@ class TestSessionOrchestrator:
 
 
 # ===========================================================================
-# TEST 6: ANTI-CHEAT SERVICE (unit-level verification)
+# TEST 6: FEEDBACK GENERATION — GET /session/{id}/feedback
+# ===========================================================================
+
+
+@pytest.mark.e2e
+class TestFeedbackGeneration:
+    """Verify that feedback is correctly generated and structured for a session."""
+
+    async def test_generate_feedback_returns_valid_schema(self):
+        """GET /session/{id}/feedback → 200 with overall_bkt, misconceptions, topic_cards."""
+        assert ctx.token, "No JWT token available."
+        assert ctx.session_id, "No session_id — session create test must run first."
+
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            resp = await client.get(
+                f"{BASE_URL}/session/{ctx.session_id}/feedback",
+                headers=_auth_headers(),
+            )
+
+        assert resp.status_code == 200, (
+            f"Feedback generation failed: {resp.status_code} — {resp.text}"
+        )
+        body = resp.json()
+
+        # Validate Schema
+        assert "overall_bkt_score" in body
+        assert "misconceptions" in body
+        assert "topic_cards" in body
+
+        assert isinstance(body["overall_bkt_score"], (int, float))
+        assert isinstance(body["misconceptions"], list)
+        assert isinstance(body["topic_cards"], list)
+
+        # We had at least 1 message in the orchestrator test, so there should be at least 1 card
+        # but even if empty, it should be a list.
+        for card in body["topic_cards"]:
+            assert "topic" in card
+            assert "bkt_score" in card
+            assert "strengths" in card
+            assert "weaknesses" in card
+            assert "suggestions" in card
+
+            assert isinstance(card["topic"], str)
+            assert isinstance(card["bkt_score"], (int, float))
+            assert isinstance(card["strengths"], list)
+            assert isinstance(card["weaknesses"], list)
+            assert isinstance(card["suggestions"], list)
+
+
+# ===========================================================================
+# TEST 7: ANTI-CHEAT SERVICE (unit-level verification)
 # ===========================================================================
 
 
@@ -566,7 +623,213 @@ class TestAntiCheatService:
 
 
 # ===========================================================================
-# TEST 7: HEALTH CHECK
+# TEST 8: EVALUATOR SERVICE (unit-level with mocked LLM)
+# ===========================================================================
+
+
+def _make_dummy_session_state() -> dict:
+    """Build a minimal Phase 3A nested session_state for evaluator tests."""
+    return {
+        "current_topic_index": 0,
+        "current_point_index": 0,
+        "point_attempts": 0,
+        "current_difficulty": 1,
+        "topics": [
+            {
+                "topic_title": "Introduction to AI",
+                "points": [
+                    {
+                        "point_title": "The Turing Test",
+                        "bkt_score": 0.3,
+                        "status": "in_progress",
+                        "misconceptions": [],
+                        "kido_memory": None,
+                    },
+                    {
+                        "point_title": "Symbolic vs Connectionist AI",
+                        "bkt_score": 0.3,
+                        "status": "pending",
+                        "misconceptions": [],
+                        "kido_memory": None,
+                    },
+                ],
+            },
+        ],
+    }
+
+
+@pytest.mark.e2e
+class TestEvaluatorService:
+    """Verify EvaluatorService logic with mocked LLM responses."""
+
+    async def test_correct_label_updates_bkt_and_saves_memory(self):
+        """CORRECT → BKT +0.60, status=completed, kido_memory saved, difficulty+1."""
+        from unittest.mock import AsyncMock, patch
+
+        from backend.services.evaluator_service import EvaluatorService
+
+        # Mock LLM response: CORRECT
+        mock_llm_response = json.dumps({
+            "evaluation_label": "CORRECT",
+            "detected_misconception": None,
+            "memory_title": "Turing Test",
+            "memory_summary": "A test where a human judges if responses are from a machine.",
+        })
+
+        service = EvaluatorService()
+
+        with patch.object(service.llm_manager, "call_with_fallback", new=AsyncMock(return_value=mock_llm_response)):
+            state = _make_dummy_session_state()
+            updated_state, label, point_completed = await service.evaluate_message(
+                session_state=state,
+                user_message="The Turing Test is when a human can't tell if they're talking to a machine.",
+            )
+
+        # Label should be CORRECT
+        assert label == "CORRECT"
+        assert point_completed is True
+
+        # BKT should increase by 0.60 (from 0.3 → 0.9)
+        point = updated_state["topics"][0]["points"][0]
+        assert point["bkt_score"] == pytest.approx(0.9, abs=0.01), (
+            f"Expected BKT ~0.9, got {point['bkt_score']}"
+        )
+
+        # Status should be completed
+        assert point["status"] == "completed"
+
+        # Kido memory should be saved
+        assert point["kido_memory"] is not None
+        assert point["kido_memory"]["title"] == "Turing Test"
+        assert "machine" in point["kido_memory"]["summary"].lower()
+
+        # Difficulty should be incremented (1 → 2)
+        assert updated_state["current_difficulty"] == 2
+
+        # No misconceptions should be recorded
+        assert point["misconceptions"] == []
+
+    async def test_incorrect_label_decrements_bkt_and_tracks_misconception(self):
+        """INCORRECT → BKT -0.10, point_attempts+1, difficulty-1, misconception appended."""
+        from unittest.mock import AsyncMock, patch
+
+        from backend.services.evaluator_service import EvaluatorService
+
+        mock_llm_response = json.dumps({
+            "evaluation_label": "INCORRECT",
+            "detected_misconception": "Confused the Turing Test with the Chinese Room argument.",
+            "memory_title": "Turing Test",
+            "memory_summary": "Student mixed up Turing Test with Chinese Room.",
+        })
+
+        service = EvaluatorService()
+
+        with patch.object(service.llm_manager, "call_with_fallback", new=AsyncMock(return_value=mock_llm_response)):
+            state = _make_dummy_session_state()
+            state["current_difficulty"] = 2  # start at 2 so we can verify decrement
+            updated_state, label, point_completed = await service.evaluate_message(
+                session_state=state,
+                user_message="The Turing Test is when you put Chinese symbols in a room.",
+            )
+
+        # Label should be INCORRECT
+        assert label == "INCORRECT"
+
+        # BKT should decrease by 0.10 (from 0.3 → 0.2)
+        point = updated_state["topics"][0]["points"][0]
+        assert point["bkt_score"] == pytest.approx(0.2, abs=0.01), (
+            f"Expected BKT ~0.2, got {point['bkt_score']}"
+        )
+
+        # Attempts should have incremented
+        assert updated_state["point_attempts"] == 1
+
+        # Difficulty should have decremented (2 → 1)
+        assert updated_state["current_difficulty"] == 1
+
+        # Misconception should be recorded
+        assert len(point["misconceptions"]) == 1
+        assert "Chinese Room" in point["misconceptions"][0]
+
+        # First attempt at 0.2 BKT — should NOT be completed yet
+        assert point_completed is False
+        assert point["status"] == "in_progress"
+
+    async def test_needs_info_increments_attempts_only(self):
+        """NEEDS_INFO → point_attempts+1, no BKT change, no difficulty change."""
+        from unittest.mock import AsyncMock, patch
+
+        from backend.services.evaluator_service import EvaluatorService
+
+        mock_llm_response = json.dumps({
+            "evaluation_label": "NEEDS_INFO",
+            "detected_misconception": None,
+            "memory_title": "Turing Test",
+            "memory_summary": "Student mentioned the test but didn't explain the criteria.",
+        })
+
+        service = EvaluatorService()
+
+        with patch.object(service.llm_manager, "call_with_fallback", new=AsyncMock(return_value=mock_llm_response)):
+            state = _make_dummy_session_state()
+            original_bkt = state["topics"][0]["points"][0]["bkt_score"]
+            original_difficulty = state["current_difficulty"]
+
+            updated_state, label, point_completed = await service.evaluate_message(
+                session_state=state,
+                user_message="The Turing Test is... something about AI?",
+            )
+
+        assert label == "NEEDS_INFO"
+
+        # BKT should NOT change for NEEDS_INFO
+        point = updated_state["topics"][0]["points"][0]
+        assert point["bkt_score"] == pytest.approx(original_bkt, abs=0.01)
+
+        # Attempts should have incremented
+        assert updated_state["point_attempts"] == 1
+
+        # Difficulty should NOT change
+        assert updated_state["current_difficulty"] == original_difficulty
+
+        # Not completed after just 1 NEEDS_INFO
+        assert point_completed is False
+
+    async def test_max_attempts_triggers_completion(self):
+        """After 3 attempts (max), the point should auto-complete even without mastery."""
+        from unittest.mock import AsyncMock, patch
+
+        from backend.services.evaluator_service import EvaluatorService
+
+        mock_llm_response = json.dumps({
+            "evaluation_label": "NEEDS_INFO",
+            "detected_misconception": None,
+            "memory_title": "Turing Test",
+            "memory_summary": "Student kept trying but couldn't fully explain.",
+        })
+
+        service = EvaluatorService()
+
+        with patch.object(service.llm_manager, "call_with_fallback", new=AsyncMock(return_value=mock_llm_response)):
+            state = _make_dummy_session_state()
+            state["point_attempts"] = 2  # Already at 2, this call will be the 3rd
+
+            updated_state, label, point_completed = await service.evaluate_message(
+                session_state=state,
+                user_message="I think the Turing Test is about intelligence...",
+            )
+
+        assert label == "NEEDS_INFO"
+        assert updated_state["point_attempts"] == 3
+        assert point_completed is True
+        assert updated_state["topics"][0]["points"][0]["status"] == "completed"
+
+        # Memory should be saved since title and summary exist
+        assert updated_state["topics"][0]["points"][0]["kido_memory"] is not None
+
+
+# ===========================================================================
+# TEST 9: HEALTH CHECK
 # ===========================================================================
 
 
@@ -585,7 +848,7 @@ class TestHealthCheck:
 
 
 # ===========================================================================
-# TEST 8: CLEANUP — Delete test user
+# TEST 10: CLEANUP — Delete test user
 # ===========================================================================
 
 

@@ -56,8 +56,9 @@ async def create_session(
 ) -> dict[str, Any]:
     """Create a new learning session for the user's latest slide deck.
 
-    Extracts the first topic title from the most recent SlideDeck and
-    creates a LearningSession in 'in_progress' status.
+    Initialises session_state as a complete map of the lesson, built from
+    the SlideDeck's segmented_json.  Every topic and every point within it
+    gets its own BKT score, misconceptions list, and kido_memory slot.
     """
     # Get the user's latest slide deck
     stmt = (
@@ -72,17 +73,47 @@ async def create_session(
             detail="No slide deck found. Upload slides first.",
         )
 
-    # Extract the first topic title from segmented JSON
+    # Extract segments from the AI-generated curriculum
     segments = deck.segmented_json.get("extracted_segments", [])
     topic = segments[0]["topic_title"] if segments else "Untitled Topic"
 
-    # Create the learning session
+    # ── Build the nested session_state from segments ──────────────────
+    topics: list[dict[str, Any]] = []
+    for seg in segments:
+        points: list[dict[str, Any]] = []
+        for concept in seg.get("extracted_concepts", []):
+            points.append({
+                "point_title": concept,
+                "bkt_score": 0.3,       # BKT prior (p_init)
+                "status": "pending",     # pending → in_progress → completed
+                "misconceptions": [],
+                "kido_memory": None,     # {"title": "...", "summary": "..."} on completion
+            })
+        topics.append({
+            "topic_title": seg.get("topic_title", "Untitled"),
+            "points": points,
+        })
+
+    # Set the very first point to in_progress
+    if topics and topics[0]["points"]:
+        topics[0]["points"][0]["status"] = "in_progress"
+
+    session_state: dict[str, Any] = {
+        "current_topic_index": 0,
+        "current_point_index": 0,
+        "point_attempts": 0,
+        "current_difficulty": 1,
+        "topics": topics,
+    }
+
+    # Create the learning session with the full state machine
     session = LearningSession(
         user_id=user_id,
         topic=topic,
         status="in_progress",
         start_time=datetime.utcnow(),
         created_at=datetime.utcnow(),
+        session_state=session_state,
     )
     db.add(session)
     await db.commit()
