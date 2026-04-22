@@ -13,7 +13,7 @@ from backend.models.core import User
 class AuthService:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
-        self.jwt_secret = os.getenv("JWT_SECRET", "change-me-in-production")
+        self.jwt_secret = os.getenv("JWT_SECRET_KEY") or os.getenv("JWT_SECRET", "change-me-in-production")
         self.jwt_algorithm = os.getenv("JWT_ALGORITHM", "HS256")
         self.jwt_exp_minutes = int(os.getenv("JWT_EXP_MINUTES", "60"))
 

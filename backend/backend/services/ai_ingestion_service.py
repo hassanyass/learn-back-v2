@@ -15,7 +15,7 @@ class AIIngestionService:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
         self.groq_model = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
-        self.secondary_model = os.getenv("SECONDARY_LLM_MODEL", "gpt-4o-mini")
+        self.secondary_model = os.getenv("SECONDARY_LLM_MODEL", "openai/gpt-oss-20b")
         self.groq_url = os.getenv(
             "GROQ_CHAT_COMPLETIONS_URL",
             "https://api.groq.com/openai/v1/chat/completions",

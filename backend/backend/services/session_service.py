@@ -61,7 +61,7 @@ class SessionService:
             "GROQ_CHAT_COMPLETIONS_URL",
             "https://api.groq.com/openai/v1/chat/completions",
         )
-        self.secondary_model = os.getenv("SECONDARY_LLM_MODEL", "gpt-4o-mini")
+        self.secondary_model = os.getenv("SECONDARY_LLM_MODEL", "openai/gpt-oss-20b")
         self.secondary_url = os.getenv(
             "SECONDARY_CHAT_COMPLETIONS_URL",
             "https://api.openai.com/v1/chat/completions",
