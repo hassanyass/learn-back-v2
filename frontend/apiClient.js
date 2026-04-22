@@ -279,7 +279,7 @@
     request: request,
 
     uploadLecture: function (formData) {
-      return request('/api/upload_lecture', {
+      return request('/ingestion/upload-slides', {
         method: 'POST',
         body: formData
       });
@@ -295,7 +295,7 @@
         document_id: payload && payload.documentId ? payload.documentId : null
       });
 
-      return request('/api/session/start', {
+      return request('/session/create', {
         method: 'POST',
         body: body
       }).then(function (response) {

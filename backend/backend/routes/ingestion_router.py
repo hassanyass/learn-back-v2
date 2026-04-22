@@ -24,7 +24,7 @@ async def get_current_user_id(
     return auth_service.decode_token(credentials.credentials)
 
 
-@router.post("/upload-slides/")
+@router.post("/upload-slides")
 async def upload_slides(
     file: UploadFile = File(...),
     timezone: str = Query(default="UTC"),

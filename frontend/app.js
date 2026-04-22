@@ -384,7 +384,13 @@ async function startProcessing() {
         // Successfully educational
         // Aggressively search for arrays in the response to tolerate AI deviations
         let extractedSegments = [];
-        if (result.segments && Array.isArray(result.segments)) extractedSegments = result.segments;
+        if (result.segmentation && Array.isArray(result.segmentation.extracted_segments)) {
+            // Map the backend's specific schema to what the UI expects
+            extractedSegments = result.segmentation.extracted_segments.map(seg => ({
+                title: seg.topic_title || "Untitled Segment",
+                core_concepts: seg.extracted_concepts || []
+            }));
+        } else if (result.segments && Array.isArray(result.segments)) extractedSegments = result.segments;
         else if (result.Segments && Array.isArray(result.Segments)) extractedSegments = result.Segments;
         else if (result.sections && Array.isArray(result.sections)) extractedSegments = result.sections;
         else if (result.Sections && Array.isArray(result.Sections)) extractedSegments = result.Sections;
