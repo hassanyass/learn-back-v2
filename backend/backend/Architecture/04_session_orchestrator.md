@@ -211,3 +211,76 @@ on, and enthusiastically ask about the next point: "<Next Point Title>".]
 
 Kido must follow this directive faithfully — acknowledging the student's effort,
 never making them feel bad, and smoothly transitioning to the next concept.
+
+---
+
+## WebSocket Routing & Checkpoints
+
+### WS Payload Format
+
+The client communicates over `/ws/session/{session_id}` using structured JSON:
+
+#### Client → Server
+
+```json
+// Normal chat message
+{"type": "chat", "text": "The Turing Test checks if a machine can fool a human"}
+
+// Mind Map correction submission (after topic checkpoint)
+{"type": "mind_map_submit", "corrections": {"point_title": "corrected_summary"}}
+```
+
+#### Server → Client
+
+```json
+// Kido response (normal flow)
+{"type": "kido_response", "data": {"kido_response": "...", "widget_type": "text", "advanced": false, "session_state": {...}}}
+
+// Mind Map checkpoint (topic boundary)
+{"type": "kido_response", "data": {"kido_response": "...", "widget_type": "mind_map", "advanced": true, "session_state": {...}, "topic_checkpoint": true, "mind_map_data": [...]}}
+
+// Session complete
+{"type": "session_complete", "data": {"kido_response": "...", "session_state": {...}}}
+
+// Error
+{"type": "error", "detail": "..."}
+```
+
+### Topic Checkpoint
+
+When all points in the current topic transition to `completed`, the system
+intercepts the normal flow **before** advancing to the next topic:
+
+```
+All points completed → DO NOT advance topic index
+  ├── Collect kido_memory from every point in this topic
+  ├── Force Kido to output: "Here is what I learned! Check my Mind Map!"
+  ├── Set widget_type = "mind_map"
+  ├── Include mind_map_data (array of {title, summary} from kido_memory)
+  ├── Set topic_checkpoint = true
+  └── PAUSE — wait for mind_map_submit from client
+```
+
+The session stays in a "checkpoint" state until the client submits corrections.
+
+### Mind Map Submission
+
+When the client sends `{"type": "mind_map_submit", "corrections": {...}}`:
+
+1. **BKT Bonus**: For each correction the user provides, apply a `+0.05` BKT
+   bonus to that specific point (the user demonstrating they caught an error
+   shows metacognitive awareness).
+2. **Mark Reviewed**: Set the topic's `reviewed` flag to `true`.
+3. **Advance**: Increment `current_topic_index` by 1, reset
+   `current_point_index` to 0, mark the next topic's first point as
+   `in_progress`.
+4. **Kido Introduction**: Call Kido with a `[SYSTEM]` directive to introduce
+   the new topic.
+
+### End of Session
+
+If the Mind Map submission is for the **final topic** (no more topics remain):
+
+1. Kido sends a goodbye message celebrating the student's achievement.
+2. The backend marks the session as `completed` with `end_time`.
+3. The WebSocket is closed with standard code `1000` (normal closure).

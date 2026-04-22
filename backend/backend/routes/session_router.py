@@ -1,6 +1,15 @@
-"""Phase 3 — Session WebSocket & HTTP Router.
+"""Phase 3D — Session WebSocket & HTTP Router.
 
 Transport-only layer.  All business logic lives in SessionService.
+
+WebSocket payloads:
+  Client → Server:
+    {"type": "chat", "text": "..."}
+    {"type": "mind_map_submit", "corrections": {...}}
+  Server → Client:
+    {"type": "kido_response", "data": {...}}
+    {"type": "session_complete", "data": {...}}
+    {"type": "error", "detail": "..."}
 """
 
 from __future__ import annotations
@@ -127,17 +136,20 @@ async def create_session(
 
 
 # ──────────────────────────────────────────────────────────────────────
-# WebSocket endpoint
+# WebSocket endpoint (Phase 3D: JSON-typed payloads)
 # ──────────────────────────────────────────────────────────────────────
 
 @router.websocket("/ws/session/{session_id}")
 async def session_websocket(websocket: WebSocket, session_id: int) -> None:
     """Persistent WebSocket for a teaching session.
 
-    Client sends plain-text user messages.
+    Client sends JSON payloads:
+        {"type": "chat", "text": "..."}
+        {"type": "mind_map_submit", "corrections": {...}}
     Server responds with JSON payloads:
-        { "type": "kido_response", "data": { ... } }
-        { "type": "error", "detail": "..." }
+        {"type": "kido_response", "data": {...}}
+        {"type": "session_complete", "data": {...}}
+        {"type": "error", "detail": "..."}
     """
     await websocket.accept()
     _active_connections[session_id] = websocket
@@ -150,24 +162,96 @@ async def session_websocket(websocket: WebSocket, session_id: int) -> None:
         try:
             while True:
                 raw = await websocket.receive_text()
-                user_text = raw.strip()
-                if not user_text:
+                raw_stripped = raw.strip()
+                if not raw_stripped:
                     continue
 
+                # ── Parse incoming payload ────────────────────────────
                 try:
-                    result = await service.process_user_message(
-                        session_id=session_id,
-                        user_text=user_text,
-                    )
-                    await websocket.send_json({
-                        "type": "kido_response",
-                        "data": {
+                    payload = json.loads(raw_stripped)
+                except json.JSONDecodeError:
+                    # Legacy fallback: treat as plain-text chat message
+                    payload = {"type": "chat", "text": raw_stripped}
+
+                msg_type = payload.get("type", "chat")
+
+                try:
+                    if msg_type == "chat":
+                        user_text = payload.get("text", "").strip()
+                        if not user_text:
+                            continue
+
+                        result = await service.process_user_message(
+                            session_id=session_id,
+                            user_text=user_text,
+                        )
+
+                        # Check if session completed
+                        if result.get("session_complete"):
+                            await websocket.send_json({
+                                "type": "session_complete",
+                                "data": {
+                                    "kido_response": result["kido_response"],
+                                    "session_state": result["session_state"],
+                                },
+                            })
+                            # Close WebSocket with standard code
+                            await websocket.close(code=1000)
+                            return
+
+                        # Normal response (may include topic checkpoint)
+                        response_data: dict[str, Any] = {
                             "kido_response": result["kido_response"],
                             "widget_type": result["widget_type"],
                             "advanced": result["advanced"],
                             "session_state": result["session_state"],
-                        },
-                    })
+                        }
+
+                        # Include checkpoint data if present
+                        if result.get("topic_checkpoint"):
+                            response_data["topic_checkpoint"] = True
+                            response_data["mind_map_data"] = result.get("mind_map_data", [])
+
+                        await websocket.send_json({
+                            "type": "kido_response",
+                            "data": response_data,
+                        })
+
+                    elif msg_type == "mind_map_submit":
+                        corrections = payload.get("corrections", {})
+
+                        result = await service.process_mind_map(
+                            session_id=session_id,
+                            corrections=corrections,
+                        )
+
+                        if result.get("session_complete"):
+                            await websocket.send_json({
+                                "type": "session_complete",
+                                "data": {
+                                    "kido_response": result["kido_response"],
+                                    "session_state": result["session_state"],
+                                },
+                            })
+                            await websocket.close(code=1000)
+                            return
+
+                        await websocket.send_json({
+                            "type": "kido_response",
+                            "data": {
+                                "kido_response": result["kido_response"],
+                                "widget_type": result["widget_type"],
+                                "advanced": True,
+                                "session_state": result["session_state"],
+                            },
+                        })
+
+                    else:
+                        await websocket.send_json({
+                            "type": "error",
+                            "detail": f"Unknown message type: {msg_type}",
+                        })
+
                 except ValueError as exc:
                     logger.warning("Session error: %s", exc)
                     await websocket.send_json({

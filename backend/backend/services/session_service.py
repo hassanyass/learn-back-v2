@@ -1,14 +1,13 @@
-"""Phase 3A+4 — Dual-Agent Session Orchestrator.
+"""Phase 3D — Dual-Agent Session Orchestrator.
 
 Owns the full message lifecycle:
-  User Message → Evaluator LLM → BKT Update → State Mutation → Kido LLM → Persist
+  User Message → Evaluator → BKT Update → State Mutation → Kido → Persist
+
+Handles two pipelines:
+  1. process_chat_message  — standard Evaluator → Kido flow with topic checkpoint detection
+  2. process_mind_map      — mind map corrections → BKT bonus → topic advance → Kido intro
 
 All session-state mutations happen here.  Routers are thin transport.
-
-State format (Phase 3A):
-  The session_state JSONB is a deeply nested lesson map with per-point
-  BKT scores, misconceptions, and kido_memory slots.  See
-  Architecture/04_session_orchestrator.md for the full blueprint.
 """
 
 from __future__ import annotations
@@ -27,6 +26,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.models.core import LearningSession, SessionMessage, SlideDeck
 from backend.prompts.orchestrator_prompts import EVALUATOR_SYSTEM_PROMPT, KIDO_SYSTEM_PROMPT
 from backend.services.bkt_service import BKTService, MASTERY_THRESHOLD
+from backend.services.evaluator_service import EvaluatorService
+from backend.services.kido_service import KidoService
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +62,8 @@ class SessionService:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
         self.bkt = BKTService()
+        self.evaluator = EvaluatorService()
+        self.kido = KidoService()
 
         # LLM config (reuses project conventions from AIIngestionService)
         self.groq_model = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
@@ -75,7 +78,7 @@ class SessionService:
         )
 
     # ------------------------------------------------------------------
-    # Public API
+    # Public API: Chat Message Pipeline
     # ------------------------------------------------------------------
 
     async def process_user_message(
@@ -91,6 +94,8 @@ class SessionService:
             session_state    (dict)  – updated state snapshot
             advanced         (bool)  – True if the point was auto-advanced
             session_complete (bool)  – True if the session has been terminated
+            topic_checkpoint (bool)  – True if we hit a mind map checkpoint
+            mind_map_data    (list)  – kido_memory entries for the current topic
         """
         session = await self._get_session(session_id)
         state = self._ensure_state(session)
@@ -127,16 +132,10 @@ class SessionService:
                 "timestamp": datetime.utcnow().isoformat(),
             })
 
-        # --- 4. Accumulate learned items and metaphors (session-level for Kido) ---
-        # These are kept as transient context for the Kido prompt, not persisted
-        # in the per-point structure (kido_memory is generated once on completion).
+        # --- 4. Accumulate learned items and metaphors ---
         learned_summary = evaluator_output.get("kido_learned_summary", "")
         identified_metaphors = evaluator_output.get("identified_metaphors", "")
-
-        # Build running lists from evaluator output for Kido's context
-        # (these live ephemerally in the pipeline, not in session_state)
         kido_learned_so_far = [learned_summary] if learned_summary else []
-        kido_metaphors = [identified_metaphors] if identified_metaphors else []
 
         # --- 5. Increment attempt counter ---
         state["point_attempts"] += 1
@@ -144,6 +143,8 @@ class SessionService:
         # --- 6. Limit Check (Python-enforced) ---
         advanced = False
         session_complete = False
+        topic_checkpoint = False
+        mind_map_data: list[dict[str, Any]] = []
         instruction_for_kido = evaluator_output.get("instruction_for_kido", "")
 
         if state["point_attempts"] >= MAX_ATTEMPTS_PER_POINT or self.bkt.is_mastered(new_score):
@@ -152,37 +153,66 @@ class SessionService:
             # Mark current point as completed
             if point_node:
                 point_node["status"] = "completed"
-                # Phase 3B: kido_memory would be generated here
 
             state["point_attempts"] = 0
             state["current_point_index"] += 1
 
-            # Resolve next point
-            next_point = self._resolve_current_point(state, segments)
-            if next_point:
-                # Mark the new current point as in_progress
-                new_node = self._get_point_node(state, state["current_topic_index"], state["current_point_index"])
-                if new_node:
-                    new_node["status"] = "in_progress"
-                instruction_for_kido += (
-                    f"\n\nIMPORTANT: Acknowledge the end of this point gracefully "
-                    f"and ask about the next point: \"{next_point}\"."
+            # Check: are ALL points in the current topic completed?
+            topic_node = state["topics"][ti] if ti < len(state.get("topics", [])) else None
+            all_points_done = False
+            if topic_node:
+                all_points_done = all(
+                    p.get("status") == "completed"
+                    for p in topic_node.get("points", [])
                 )
+
+            if all_points_done and topic_node:
+                # ── TOPIC CHECKPOINT: Mind Map pause ──
+                topic_checkpoint = True
+                mind_map_data = [
+                    p.get("kido_memory") or {"title": p["point_title"], "summary": ""}
+                    for p in topic_node.get("points", [])
+                ]
+
+                # Force Kido to announce the Mind Map
+                kido_response_text = (
+                    "Wow, I learned so much about this topic! 🎉 "
+                    "Here is what I learned — check my Mind Map and let me "
+                    "know if I got anything wrong!"
+                )
+                widget_type = "mind_map"
+
+                # Persist Kido message
+                await self._persist_message(session_id, "kido", kido_response_text, widget_type=widget_type)
+
+                # Flush state (don't advance topic yet — wait for mind_map_submit)
+                session.session_state = deepcopy(state)
+                session.bkt_score = self._aggregate_bkt(state)
+                await self.db.commit()
+
+                return {
+                    "kido_response": kido_response_text,
+                    "widget_type": widget_type,
+                    "session_state": state,
+                    "advanced": advanced,
+                    "session_complete": False,
+                    "topic_checkpoint": True,
+                    "mind_map_data": mind_map_data,
+                }
+
             else:
-                # All points in this topic are complete — check for next topic
-                state["current_point_index"] = 0
-                state["current_topic_index"] += 1
+                # Normal point advancement (within same topic)
                 next_point = self._resolve_current_point(state, segments)
                 if next_point:
                     new_node = self._get_point_node(state, state["current_topic_index"], state["current_point_index"])
                     if new_node:
                         new_node["status"] = "in_progress"
                     instruction_for_kido += (
-                        f"\n\nIMPORTANT: Celebrate finishing this topic! "
-                        f"Now transition to the next topic. Ask about: \"{next_point}\"."
+                        f"\n\nIMPORTANT: Acknowledge the end of this point gracefully "
+                        f"and ask about the next point: \"{next_point}\"."
                     )
                 else:
-                    # All topics exhausted → terminate session
+                    # Edge case: shouldn't reach here if all_points_done check works
                     session_complete = True
 
         # --- 6b. Termination check: Overall BKT mastery ---
@@ -202,16 +232,20 @@ class SessionService:
             )
 
         # --- 7. Call Kido ---
+        evaluator_label = evaluator_output.get("label", "NEEDS_INFO")
         widget_type = evaluator_output.get("widget_type", "TEXT")
-        kido_response = await self._call_kido(
-            instruction_for_kido=instruction_for_kido,
-            identified_metaphors=identified_metaphors,
-            what_kido_learned=kido_learned_so_far,
-            conversation_history=conversation_history,
+
+        kido_result = await self.kido.generate_response(
+            session_state=state,
+            evaluator_label=evaluator_label,
+            user_message=user_text,
+            current_point=current_point or "Unknown Point",
         )
+        kido_response = kido_result.get("kido_response", "")
+        widget_type = kido_result.get("widget_type", widget_type.lower())
 
         # --- 8. Persist Kido message ---
-        await self._persist_message(session_id, "kido", kido_response, widget_type=widget_type)
+        await self._persist_message(session_id, "kido", kido_response, widget_type=widget_type.upper())
 
         # --- 9. Flush state back to DB ---
         session.session_state = deepcopy(state)
@@ -223,11 +257,100 @@ class SessionService:
 
         return {
             "kido_response": kido_response,
-            "widget_type": widget_type,
+            "widget_type": widget_type.upper(),
             "session_state": state,
             "advanced": advanced,
             "session_complete": session_complete,
+            "topic_checkpoint": False,
+            "mind_map_data": [],
         }
+
+    # ------------------------------------------------------------------
+    # Public API: Mind Map Submission Pipeline
+    # ------------------------------------------------------------------
+
+    async def process_mind_map(
+        self,
+        session_id: int,
+        corrections: dict[str, str],
+    ) -> dict[str, Any]:
+        """Process mind map corrections and advance to next topic.
+
+        Returns a dict with keys:
+            kido_response    (str)
+            widget_type      (str)
+            session_state    (dict)
+            session_complete (bool)
+        """
+        session = await self._get_session(session_id)
+        state = self._ensure_state(session)
+        segments = await self._get_segments(session)
+
+        # --- 1. Apply BKT bonuses via Evaluator ---
+        self.evaluator.evaluate_mind_map(state, corrections)
+
+        # --- 2. Advance to next topic ---
+        state["current_topic_index"] += 1
+        state["current_point_index"] = 0
+        state["point_attempts"] = 0
+
+        # --- 3. Check end of session ---
+        ti = state["current_topic_index"]
+        topics = state.get("topics", [])
+        session_complete = ti >= len(topics)
+
+        if session_complete:
+            # Generate goodbye message
+            kido_response = (
+                "You did it! 🎉🌟 You taught me everything and I learned so much! "
+                "Thank you for being the most amazing teacher ever! "
+                "Check out your feedback report to see how well you did. "
+                "I'll never forget what you taught me! 💖"
+            )
+            widget_type = "TEXT"
+
+            session.status = "completed"
+            session.end_time = datetime.utcnow()
+
+            await self._persist_message(session_id, "kido", kido_response, widget_type=widget_type)
+        else:
+            # Mark next topic's first point as in_progress
+            next_topic = topics[ti]
+            if next_topic.get("points"):
+                next_topic["points"][0]["status"] = "in_progress"
+
+            next_topic_title = next_topic.get("topic_title", "the next topic")
+            next_point_title = next_topic["points"][0]["point_title"] if next_topic.get("points") else "the first point"
+
+            # Call Kido to introduce the new topic
+            kido_result = await self.kido.generate_response(
+                session_state=state,
+                evaluator_label="CORRECT",
+                user_message="(Mind map reviewed — moving to next topic)",
+                current_point=next_point_title,
+                force_transition=True,
+                next_point=next_point_title,
+            )
+            kido_response = kido_result.get("kido_response", f"Let's learn about {next_topic_title}!")
+            widget_type = kido_result.get("widget_type", "text").upper()
+
+            await self._persist_message(session_id, "kido", kido_response, widget_type=widget_type)
+
+        # --- 4. Flush state ---
+        session.session_state = deepcopy(state)
+        session.bkt_score = self._aggregate_bkt(state)
+        await self.db.commit()
+
+        return {
+            "kido_response": kido_response,
+            "widget_type": widget_type,
+            "session_state": state,
+            "session_complete": session_complete,
+        }
+
+    # ------------------------------------------------------------------
+    # Public API: Hint
+    # ------------------------------------------------------------------
 
     async def generate_hint(self, session_id: int) -> dict[str, Any]:
         """Generate a hint for the current point and persist as a 'system' message.
@@ -424,15 +547,10 @@ class SessionService:
         state: dict[str, Any],
         segments: list[dict[str, Any]],
     ) -> str | None:
-        """Return the current concept string or None if all exhausted.
-
-        Reads from the nested topics array in state if available,
-        falling back to the raw segments for backwards compatibility.
-        """
+        """Return the current concept string or None if all exhausted."""
         topic_idx = state["current_topic_index"]
         point_idx = state["current_point_index"]
 
-        # Phase 3A: read from nested topics in state
         topics = state.get("topics", [])
         if topics:
             if topic_idx >= len(topics):
@@ -460,7 +578,6 @@ class SessionService:
         )
         rows = (await self.db.execute(stmt)).scalars().all()
 
-        # Keep last 20 messages to fit context windows
         recent = rows[-20:] if len(rows) > 20 else rows
         lines: list[str] = []
         for msg in recent:

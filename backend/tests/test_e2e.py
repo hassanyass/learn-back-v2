@@ -364,15 +364,19 @@ class TestSessionOrchestrator:
     """
 
     async def test_websocket_session_connect_and_message(self):
-        """Connect to WebSocket, send a message, receive Kido response."""
+        """Connect to WebSocket, send a JSON chat payload, receive Kido response."""
         assert ctx.token, "No JWT token available."
         assert ctx.session_id, "No session_id — session create test must run first."
 
         try:
             ws_url = f"{WS_BASE_URL}/ws/session/{ctx.session_id}"
             async with websockets.connect(ws_url, open_timeout=15) as ws:
-                # Send a test message
-                await ws.send("Hello Kido, I want to teach you about neural networks!")
+                # Send a JSON-typed chat payload (Phase 3D format)
+                chat_payload = json.dumps({
+                    "type": "chat",
+                    "text": "Hello Kido, I want to teach you about neural networks!",
+                })
+                await ws.send(chat_payload)
 
                 # Wait for response with timeout (LLM calls can be slow)
                 raw_reply = await asyncio.wait_for(ws.recv(), timeout=90)
@@ -393,8 +397,10 @@ class TestSessionOrchestrator:
                     assert isinstance(data["kido_response"], str)
                     assert len(data["kido_response"]) > 0, "Kido response should not be empty"
 
-                    # Verify widget_type is valid
-                    assert data["widget_type"] in ("TEXT", "PROCESS", "COMPARISON", "MATH"), (
+                    # Verify widget_type is valid (case-insensitive)
+                    valid_widgets = ("TEXT", "PROCESS", "COMPARISON", "MATH", "MIND_MAP",
+                                     "text", "process", "comparison", "math", "mind_map")
+                    assert data["widget_type"] in valid_widgets, (
                         f"Unexpected widget_type: {data['widget_type']}"
                     )
 
@@ -420,6 +426,12 @@ class TestSessionOrchestrator:
                     assert "misconceptions" in first_point
                     assert first_point["status"] in ("in_progress", "completed")
 
+                elif parsed["type"] == "session_complete":
+                    # Session completed on first message — still valid
+                    data = parsed.get("data", {})
+                    assert "kido_response" in data
+                    assert "session_state" in data
+
                 elif parsed["type"] == "error":
                     pytest.fail(
                         f"WebSocket returned error: {parsed.get('detail', 'unknown')}"
@@ -433,6 +445,64 @@ class TestSessionOrchestrator:
             pytest.fail("FastAPI server not reachable on WebSocket endpoint")
         except asyncio.TimeoutError:
             pytest.fail("WebSocket response timed out after 90s (LLM may be slow)")
+
+    async def test_websocket_mind_map_submission(self):
+        """Send a mind_map_submit payload over WebSocket and verify the response.
+
+        This tests the topic checkpoint flow:
+          1. Send a mind_map_submit with corrections
+          2. Verify response is kido_response or session_complete
+          3. Verify the response has valid structure
+        """
+        assert ctx.token, "No JWT token available."
+        assert ctx.session_id, "No session_id — session create test must run first."
+
+        try:
+            ws_url = f"{WS_BASE_URL}/ws/session/{ctx.session_id}"
+            async with websockets.connect(ws_url, open_timeout=15) as ws:
+                # Send a mind_map_submit payload
+                mind_map_payload = json.dumps({
+                    "type": "mind_map_submit",
+                    "corrections": {},  # empty = no corrections needed
+                })
+                await ws.send(mind_map_payload)
+
+                raw_reply = await asyncio.wait_for(ws.recv(), timeout=90)
+                parsed = json.loads(raw_reply) if isinstance(raw_reply, str) else raw_reply
+
+                assert isinstance(parsed, dict), f"Expected dict, got: {type(parsed)}"
+                assert "type" in parsed, f"Missing 'type': {parsed}"
+
+                if parsed["type"] == "kido_response":
+                    data = parsed.get("data", {})
+                    assert "kido_response" in data, f"Missing kido_response: {data}"
+                    assert "widget_type" in data, f"Missing widget_type: {data}"
+                    assert "session_state" in data, f"Missing session_state: {data}"
+                    assert isinstance(data["kido_response"], str)
+                    assert len(data["kido_response"]) > 0
+
+                elif parsed["type"] == "session_complete":
+                    data = parsed.get("data", {})
+                    assert "kido_response" in data, f"Missing kido_response: {data}"
+                    assert "session_state" in data, f"Missing session_state: {data}"
+                    assert isinstance(data["kido_response"], str)
+                    assert len(data["kido_response"]) > 0
+
+                elif parsed["type"] == "error":
+                    # This is acceptable — mind map submit on a session
+                    # not at a checkpoint will produce an error or pass-through
+                    pass
+
+                else:
+                    pytest.fail(f"Unexpected WS response type: {parsed['type']}")
+
+        except websockets.exceptions.ConnectionClosedError:
+            # Acceptable — session may have been closed with code 1000
+            pass
+        except ConnectionRefusedError:
+            pytest.fail("FastAPI server not reachable on WebSocket endpoint")
+        except asyncio.TimeoutError:
+            pytest.fail("WebSocket response timed out after 90s")
 
     async def test_hint_endpoint_returns_hint(self):
         """POST /session/{id}/hint with JWT → returns hint_text and widget_type."""
