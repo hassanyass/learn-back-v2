@@ -7,6 +7,11 @@
     user: 'learnback_user'
   };
 
+  // Nuke toxic cache on load to prevent zombie ports
+  try {
+    window.localStorage.removeItem('learnback_api_base_url');
+  } catch (_) { /* ignore */ }
+
   var DEFAULTS = {
     apiBaseUrl: 'http://127.0.0.1:8002'
   };
@@ -54,7 +59,13 @@
   }
 
   function getApiBaseUrl() {
-    return 'http://127.0.0.1:8002';
+    var hostname = window.location.hostname;
+    // If we are testing locally, point to your FastAPI port
+    if (hostname === "127.0.0.1" || hostname === "localhost") {
+      return 'http://127.0.0.1:8002'; 
+    }
+    // When we deploy to Vercel/Netlify later, it will automatically use this:
+    return 'https://your-future-production-backend.com';
   }
 
   function getAuthToken() {
