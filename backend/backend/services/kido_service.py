@@ -134,6 +134,7 @@ class KidoService:
                     f"can you explain it a bit more?"
                 ),
                 "widget_type": "text",
+                "widget_data": None,
             }
 
         # Ensure required keys exist
@@ -144,6 +145,8 @@ class KidoService:
             )
         if "widget_type" not in parsed:
             parsed["widget_type"] = "text"
+        if "widget_data" not in parsed:
+            parsed["widget_data"] = None
 
         # Normalize widget_type to lowercase
         parsed["widget_type"] = parsed["widget_type"].lower()
@@ -152,6 +155,21 @@ class KidoService:
         valid_types = {"text", "process", "comparison", "math"}
         if parsed["widget_type"] not in valid_types:
             parsed["widget_type"] = "text"
+
+        # Enforce widget_data rules: null for text/math, required for process/comparison
+        if parsed["widget_type"] in ("text", "math"):
+            parsed["widget_data"] = None
+        elif parsed["widget_type"] == "process" and parsed["widget_data"]:
+            # Validate process structure
+            if not isinstance(parsed["widget_data"].get("steps"), list):
+                parsed["widget_data"] = None
+                parsed["widget_type"] = "text"
+        elif parsed["widget_type"] == "comparison" and parsed["widget_data"]:
+            # Validate comparison structure
+            wd = parsed["widget_data"]
+            if not isinstance(wd.get("categories"), list) or not isinstance(wd.get("attributes"), list):
+                parsed["widget_data"] = None
+                parsed["widget_type"] = "text"
 
         return parsed
 

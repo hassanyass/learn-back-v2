@@ -246,6 +246,27 @@ async def session_websocket(websocket: WebSocket, session_id: int) -> None:
                             },
                         })
 
+                    elif msg_type == "widget_submit":
+                        submitted_data = payload.get("submitted_data", {})
+
+                        result = await service.process_widget_submit(
+                            session_id=session_id,
+                            submitted_data=submitted_data,
+                        )
+
+                        response_data = {
+                            "kido_response": result["kido_response"],
+                            "widget_type": result["widget_type"],
+                            "advanced": result.get("advanced", False),
+                            "session_state": result["session_state"],
+                            "evaluation_label": result.get("evaluation_label", ""),
+                        }
+
+                        await websocket.send_json({
+                            "type": "kido_response",
+                            "data": response_data,
+                        })
+
                     else:
                         await websocket.send_json({
                             "type": "error",

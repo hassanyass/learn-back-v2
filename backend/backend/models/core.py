@@ -78,6 +78,10 @@ class SessionMessage(Base):
         String(20), nullable=True, default="TEXT",
         doc="Frontend rendering hint: TEXT | PROCESS | COMPARISON | MATH",
     )
+    widget_data: Mapped[dict | None] = mapped_column(
+        JSONB, nullable=True, default=None,
+        doc="Structured widget data (e.g. PROCESS steps, COMPARISON attributes). null for TEXT.",
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, nullable=False,
     )

@@ -47,3 +47,12 @@ class MindMapPayload(BaseModel):
         default_factory=dict,
         description="Map of point_title → corrected_summary. Empty dict = no corrections.",
     )
+
+
+class WidgetSubmitPayload(BaseModel):
+    """Client → Server: widget interaction submission (PROCESS/COMPARISON)."""
+    type: str = Field("widget_submit", pattern="^widget_submit$")
+    submitted_data: dict[str, Any] = Field(
+        ...,
+        description="User's widget submission. For PROCESS: {steps: [...]}. For COMPARISON: {attributes: [...]}.",
+    )

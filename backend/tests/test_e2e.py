@@ -899,6 +899,121 @@ class TestEvaluatorService:
 
 
 # ===========================================================================
+# TEST 8B: WIDGET DATA ENGINE (Phase 5)
+# ===========================================================================
+
+
+@pytest.mark.e2e
+class TestWidgetDataEngine:
+    """Phase 5: Verify Kido generates widget_data and the Evaluator grades it purely."""
+
+    async def test_kido_generates_process_widget_data(self):
+        """Mock Kido's LLM response to return a PROCESS widget with steps.
+
+        Verifies the KidoService correctly parses and validates widget_data.
+        """
+        from unittest.mock import AsyncMock, patch
+
+        from backend.services.kido_service import KidoService
+
+        mock_response = json.dumps({
+            "kido_response": "Can you put these steps in order?",
+            "widget_type": "process",
+            "widget_data": {
+                "steps": [
+                    "Step 1: Collect data",
+                    "Step 2: Clean data",
+                    "Step 3: Train model",
+                    "Step 4: Evaluate results",
+                ]
+            },
+        })
+
+        service = KidoService()
+
+        with patch.object(
+            service.llm_manager, "call_with_fallback",
+            new=AsyncMock(return_value=mock_response),
+        ):
+            result = await service.generate_response(
+                session_state=_make_dummy_session_state(),
+                evaluator_label="CORRECT",
+                user_message="Here is how machine learning works...",
+                current_point="Machine Learning Pipeline",
+            )
+
+        # Verify structure
+        assert result["widget_type"] == "process"
+        assert result["widget_data"] is not None
+        assert isinstance(result["widget_data"]["steps"], list)
+        assert len(result["widget_data"]["steps"]) == 4
+        assert result["widget_data"]["steps"][0] == "Step 1: Collect data"
+        assert result["widget_data"]["steps"][3] == "Step 4: Evaluate results"
+
+    async def test_evaluator_grades_process_widget_strictly(self):
+        """Verify the widget evaluator uses strict binary matching.
+
+        - Perfect match → CORRECT (BKT +0.60)
+        - Wrong order → INCORRECT (BKT -0.10)
+
+        No LLM call involved — pure Python logic.
+        """
+        from backend.services.evaluator_service import (
+            BKT_CORRECT_INCREMENT,
+            BKT_INCORRECT_DECREMENT,
+            EvaluatorService,
+        )
+
+        service = EvaluatorService()
+
+        expected_data = {
+            "steps": ["Step 1", "Step 2", "Step 3", "Step 4"]
+        }
+
+        # --- TEST A: Perfect match → CORRECT ---
+        state_correct = _make_dummy_session_state()
+        initial_bkt = state_correct["topics"][0]["points"][0]["bkt_score"]
+
+        submitted_correct = {"steps": ["Step 1", "Step 2", "Step 3", "Step 4"]}
+        updated, label, completed = service.evaluate_widget(
+            session_state=state_correct,
+            expected_data=expected_data,
+            submitted_data=submitted_correct,
+            widget_type="PROCESS",
+        )
+
+        assert label == "CORRECT", f"Expected CORRECT, got {label}"
+        assert completed is True
+        point = updated["topics"][0]["points"][0]
+        expected_bkt = min(1.0, initial_bkt + BKT_CORRECT_INCREMENT)
+        assert point["bkt_score"] == pytest.approx(expected_bkt, abs=0.01), (
+            f"Expected BKT ~{expected_bkt}, got {point['bkt_score']}"
+        )
+        assert point["status"] == "completed"
+
+        # --- TEST B: Wrong order → INCORRECT ---
+        state_incorrect = _make_dummy_session_state()
+        initial_bkt_2 = state_incorrect["topics"][0]["points"][0]["bkt_score"]
+
+        submitted_wrong = {"steps": ["Step 2", "Step 1", "Step 3", "Step 4"]}
+        updated_2, label_2, completed_2 = service.evaluate_widget(
+            session_state=state_incorrect,
+            expected_data=expected_data,
+            submitted_data=submitted_wrong,
+            widget_type="PROCESS",
+        )
+
+        assert label_2 == "INCORRECT", f"Expected INCORRECT, got {label_2}"
+        assert completed_2 is False  # only 1 attempt, not max
+        point_2 = updated_2["topics"][0]["points"][0]
+        expected_bkt_2 = max(0.0, initial_bkt_2 - BKT_INCORRECT_DECREMENT)
+        assert point_2["bkt_score"] == pytest.approx(expected_bkt_2, abs=0.01), (
+            f"Expected BKT ~{expected_bkt_2}, got {point_2['bkt_score']}"
+        )
+        assert updated_2["point_attempts"] == 1
+
+
+# ===========================================================================
 # TEST 9: HEALTH CHECK
 # ===========================================================================
 

@@ -243,9 +243,13 @@ class SessionService:
         )
         kido_response = kido_result.get("kido_response", "")
         widget_type = kido_result.get("widget_type", widget_type.lower())
+        widget_data = kido_result.get("widget_data", None)
 
         # --- 8. Persist Kido message ---
-        await self._persist_message(session_id, "kido", kido_response, widget_type=widget_type.upper())
+        await self._persist_message(
+            session_id, "kido", kido_response,
+            widget_type=widget_type.upper(), widget_data=widget_data,
+        )
 
         # --- 9. Flush state back to DB ---
         session.session_state = deepcopy(state)
@@ -258,6 +262,7 @@ class SessionService:
         return {
             "kido_response": kido_response,
             "widget_type": widget_type.upper(),
+            "widget_data": widget_data,
             "session_state": state,
             "advanced": advanced,
             "session_complete": session_complete,
@@ -346,6 +351,103 @@ class SessionService:
             "widget_type": widget_type,
             "session_state": state,
             "session_complete": session_complete,
+        }
+
+    # ------------------------------------------------------------------
+    # Public API: Widget Submit Pipeline
+    # ------------------------------------------------------------------
+
+    async def process_widget_submit(
+        self,
+        session_id: int,
+        submitted_data: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Process a widget submission (PROCESS/COMPARISON).
+
+        1. Fetch last Kido message to get expected widget_data and widget_type.
+        2. Grade via EvaluatorService.evaluate_widget (pure Python).
+        3. Check transitions (point completed, max attempts).
+        4. Call Kido with evaluator label for a natural reaction.
+
+        Returns dict with keys:
+            kido_response, widget_type, session_state, advanced,
+            session_complete, evaluation_label
+        """
+        session = await self._get_session(session_id)
+        state = self._ensure_state(session)
+        segments = await self._get_segments(session)
+
+        # --- 1. Fetch last Kido message for expected data ---
+        last_kido = await self._get_last_kido_message(session_id)
+        if not last_kido or not last_kido.widget_data:
+            raise ValueError("No widget data found in last Kido message.")
+
+        expected_data = last_kido.widget_data
+        expected_widget_type = last_kido.widget_type or "TEXT"
+
+        # --- 2. Grade via pure Python ---
+        state, label, point_completed = self.evaluator.evaluate_widget(
+            session_state=state,
+            expected_data=expected_data,
+            submitted_data=submitted_data,
+            widget_type=expected_widget_type,
+        )
+
+        # --- 3. Check transitions ---
+        advanced = False
+        session_complete = False
+
+        if point_completed:
+            advanced = True
+            state["point_attempts"] = 0
+            state["current_point_index"] += 1
+
+            # Check if all points in topic are done
+            ti = state["current_topic_index"]
+            topic_node = state["topics"][ti] if ti < len(state.get("topics", [])) else None
+            all_done = topic_node and all(
+                p.get("status") == "completed" for p in topic_node.get("points", [])
+            )
+
+            if all_done:
+                # Will be handled by next chat or mind_map flow
+                pass
+            else:
+                # Mark next point as in_progress
+                next_point = self._resolve_current_point(state, segments)
+                if next_point:
+                    new_node = self._get_point_node(
+                        state, state["current_topic_index"], state["current_point_index"]
+                    )
+                    if new_node:
+                        new_node["status"] = "in_progress"
+
+        # --- 4. Call Kido for reaction ---
+        current_point = self._resolve_current_point(state, segments) or "this point"
+        kido_result = await self.kido.generate_response(
+            session_state=state,
+            evaluator_label=label,
+            user_message=f"(Widget submission: {label})",
+            current_point=current_point,
+        )
+        kido_response = kido_result.get("kido_response", "")
+        kido_widget_type = kido_result.get("widget_type", "text").upper()
+
+        await self._persist_message(session_id, "kido", kido_response, widget_type=kido_widget_type)
+
+        # --- 5. Flush state ---
+        overall_bkt = self._aggregate_bkt(state)
+        session.session_state = deepcopy(state)
+        session.bkt_score = overall_bkt
+        await self.db.commit()
+
+        return {
+            "kido_response": kido_response,
+            "widget_type": kido_widget_type,
+            "session_state": state,
+            "advanced": advanced,
+            "session_complete": session_complete,
+            "evaluation_label": label,
         }
 
     # ------------------------------------------------------------------
@@ -585,18 +687,33 @@ class SessionService:
             lines.append(f"[{role}]: {msg.message_text}")
         return "\n".join(lines) if lines else "(no messages yet)"
 
+    async def _get_last_kido_message(self, session_id: int) -> SessionMessage | None:
+        """Fetch the most recent Kido message for a session."""
+        stmt = (
+            select(SessionMessage)
+            .where(
+                SessionMessage.session_id == session_id,
+                SessionMessage.sender_role == "kido",
+            )
+            .order_by(SessionMessage.created_at.desc())
+            .limit(1)
+        )
+        return (await self.db.execute(stmt)).scalar_one_or_none()
+
     async def _persist_message(
         self,
         session_id: int,
         sender_role: str,
         text: str,
         widget_type: str | None,
+        widget_data: dict | None = None,
     ) -> SessionMessage:
         msg = SessionMessage(
             session_id=session_id,
             sender_role=sender_role,
             message_text=text,
             widget_type=widget_type or "TEXT",
+            widget_data=widget_data,
             created_at=datetime.utcnow(),
         )
         self.db.add(msg)
