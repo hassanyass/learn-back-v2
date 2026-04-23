@@ -34,3 +34,14 @@ Rationale:
 - Keep JSONB structure documented at service boundaries.
 - Validate required JSON keys in service code before persistence.
 - Prefer additive JSONB evolution over destructive schema rewrites.
+
+## Session ↔ SlideDeck Link (Phase 6)
+
+To prevent "latest deck" drift and ensure reproducibility, sessions can store
+an explicit reference to the slide deck used for initialization:
+
+- `learning_sessions.slide_deck_id` (nullable FK → `slide_decks.id`)
+
+Notes:
+- Nullable for legacy sessions created before this column existed.
+- On slide deck deletion, the FK is set to NULL (`ON DELETE SET NULL`).

@@ -623,10 +623,27 @@ class SessionService:
 
     async def _get_segments(self, session: LearningSession) -> list[dict[str, Any]]:
         """Retrieve the segmented curriculum for this session's slide deck."""
-        stmt = select(SlideDeck).where(SlideDeck.user_id == session.user_id).order_by(SlideDeck.created_at.desc()).limit(1)
+        if session.slide_deck_id is not None:
+            stmt = (
+                select(SlideDeck)
+                .where(
+                    SlideDeck.id == session.slide_deck_id,
+                    SlideDeck.user_id == session.user_id,
+                )
+                .limit(1)
+            )
+        else:
+            # Legacy fallback: sessions created before slide_deck_id existed.
+            stmt = (
+                select(SlideDeck)
+                .where(SlideDeck.user_id == session.user_id)
+                .order_by(SlideDeck.created_at.desc())
+                .limit(1)
+            )
+
         deck = (await self.db.execute(stmt)).scalars().first()
         if deck is None or not deck.segmented_json:
-            raise ValueError("No slide deck found for this session's user.")
+            raise ValueError("No slide deck found for this session.")
         segments = deck.segmented_json.get("extracted_segments", [])
         return segments
 

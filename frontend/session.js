@@ -202,7 +202,7 @@ import { dom } from './js/core/dom.js';
     dom.btnStartSession.addEventListener('click', function () {
       // Play start sound
       var startSound = new Audio('sounds/start.mp3');
-      startSound.play().catch(function () {});
+      startSound.play().catch(function () { });
 
       // Hide welcome, enable input
       if (dom.chatWelcome) {

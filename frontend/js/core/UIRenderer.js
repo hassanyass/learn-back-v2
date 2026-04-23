@@ -489,6 +489,7 @@ export class UIRenderer {
     topics.forEach(function (topic, i) {
       var card = document.createElement('div');
       card.className = 'topic-card';
+      card.dataset.topicIndex = i;
 
       var icon = document.createElement('div');
       icon.className = 'topic-icon';
@@ -522,6 +523,11 @@ export class UIRenderer {
         card.classList.add('is-upcoming');
         icon.innerHTML = ICON_CLOCK;
         content.appendChild(title);
+        // Upcoming topics are clickable (skip-to) via event delegation
+        card.setAttribute('data-action', 'skip_topic');
+        card.setAttribute('data-target-index', String(i));
+        card.style.cursor = 'pointer';
+        card.title = 'Click to skip to this topic';
       }
 
       card.appendChild(icon);

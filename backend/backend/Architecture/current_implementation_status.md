@@ -70,7 +70,16 @@ Phase 3:
 - [x] Session dynamic state persisted in `learning_sessions.session_state` JSONB.
 - [x] Session messages model/table introduced for persisted conversation history.
 
-## 3) Exact Terminal Commands to Boot Environment
+## 3) Phase 6 — Session Binding + Security Hardening (Implemented)
+
+- [x] Added `learning_sessions.slide_deck_id` (nullable FK → `slide_decks.id`) to bind a session to the deck used at creation time.
+- [x] `POST /session/create` persists `slide_deck_id` for new sessions.
+- [x] `SessionService` and `FeedbackService` load segmentation from the bound deck when present (fallback to latest deck for legacy sessions).
+- [x] WebSocket `/ws/session/{session_id}` now requires a JWT token query param and enforces session ownership before accepting.
+- [x] Ownership checks added for `POST /session/{session_id}/hint` and `GET /session/{session_id}/feedback`.
+- [ ] Frontend WebSocket URL must be updated to pass `?token=<JWT>` (planned in Phase 2).
+
+## 4) Exact Terminal Commands to Boot Environment
 
 From `LearnBack_V2/backend`:
 

@@ -159,6 +159,7 @@ POST /session/create
   │   └── Each extracted_concept → point node with bkt_score=0.3
   ├── Set topics[0].points[0].status = "in_progress"
   ├── Save complete session_state to LearningSession
+  ├── Persist slide_deck_id on LearningSession (bind session to this deck)
   └── Return { session_id, topic, status }
 ```
 
@@ -218,7 +219,12 @@ never making them feel bad, and smoothly transitioning to the next concept.
 
 ### WS Payload Format
 
-The client communicates over `/ws/session/{session_id}` using structured JSON:
+The client communicates over `/ws/session/{session_id}` using structured JSON.
+
+**Auth requirement (Phase 6):** WebSocket connections must include a JWT token
+as a query parameter so the backend can enforce session ownership:
+
+`ws://<host>/ws/session/{session_id}?token=<JWT>`
 
 #### Client → Server
 

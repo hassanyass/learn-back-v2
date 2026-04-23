@@ -59,8 +59,25 @@ class FeedbackService:
         state = session.session_state or {}
 
         # 2. Fetch Topics from SlideDeck
-        stmt_deck = select(SlideDeck).where(SlideDeck.user_id == session.user_id).order_by(SlideDeck.created_at.desc())
-        deck = (await self.db.execute(stmt_deck)).scalar_one_or_none()
+        if session.slide_deck_id is not None:
+            stmt_deck = (
+                select(SlideDeck)
+                .where(
+                    SlideDeck.id == session.slide_deck_id,
+                    SlideDeck.user_id == session.user_id,
+                )
+                .limit(1)
+            )
+        else:
+            # Legacy fallback: sessions created before slide_deck_id existed.
+            stmt_deck = (
+                select(SlideDeck)
+                .where(SlideDeck.user_id == session.user_id)
+                .order_by(SlideDeck.created_at.desc())
+                .limit(1)
+            )
+
+        deck = (await self.db.execute(stmt_deck)).scalars().first()
         if not deck or not deck.segmented_json:
             raise ValueError("No slide deck found to analyze topics.")
 

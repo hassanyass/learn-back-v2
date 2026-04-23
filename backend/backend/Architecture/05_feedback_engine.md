@@ -32,18 +32,18 @@ Misconceptions are captured **live** during the session — not post-generated.
 
 1. The Evaluator LLM prompt schema includes a `"detected_misconception"` field.
 2. When `label == "INCORRECT"` and `detected_misconception` is non-null,
-   `SessionService` appends a structured entry to `session_state.misconceptions[]`:
+   `SessionService` appends an entry to the current point node:
+
+   `session_state.topics[topic_idx].points[point_idx].misconceptions[]`
 
 ```json
 {
-  "topic_index": 0,
-  "point_index": 1,
   "misconception": "Student confused supervised vs unsupervised learning.",
   "timestamp": "2026-04-22T01:00:00Z"
 }
 ```
 
-3. This list lives inside the JSONB `session_state` column — no separate table needed.
+3. These lists live inside the JSONB `session_state` column — no separate table needed.
 
 ---
 
@@ -52,13 +52,16 @@ Misconceptions are captured **live** during the session — not post-generated.
 `FeedbackService.generate_session_feedback(session_id)` produces the final report:
 
 1. **Inputs**: `session_state` (BKT scores, misconceptions) + `SessionMessage` chat history.
-2. **Scoping**: Only topics that were **actually visited** (based on `current_topic_index`
+2. **Slide deck selection (Phase 6):** If `LearningSession.slide_deck_id` is set, the
+   engine reads topics from that exact deck. Otherwise it falls back to the latest deck
+   for the user (legacy sessions).
+3. **Scoping**: Only topics that were **actually visited** (based on `current_topic_index`
    reached) are analyzed. Unvisited topics are excluded.
-3. **LLM Prompt**: The chat history and BKT scores are sent to Groq with a strict
+4. **LLM Prompt**: The chat history and BKT scores are sent to Groq with a strict
    JSON output schema requesting `strengths`, `weaknesses`, and `suggestions` per topic.
-4. **Storage**: The combined result (LLM analysis + live misconceptions + BKT scores)
+5. **Storage**: The combined result (LLM analysis + live misconceptions + BKT scores)
    is saved to `LearningSession.feedback_data` (JSONB column).
-5. **Caching**: The endpoint returns cached `feedback_data` if it already exists.
+6. **Caching**: The endpoint returns cached `feedback_data` if it already exists.
    Regeneration is only triggered when `feedback_data IS NULL`.
 
 ---

@@ -119,6 +119,7 @@ async def create_session(
     # Create the learning session with the full state machine
     session = LearningSession(
         user_id=user_id,
+        slide_deck_id=deck.id,
         topic=topic,
         status="in_progress",
         start_time=datetime.utcnow(),
@@ -190,12 +191,30 @@ async def session_websocket(websocket: WebSocket, session_id: int) -> None:
         {"type": "session_complete", "data": {...}}
         {"type": "error", "detail": "..."}
     """
-    await websocket.accept()
-    _active_connections[session_id] = websocket
-    logger.info("WebSocket connected for session %s", session_id)
+    token = websocket.query_params.get("token")
+    if not token:
+        await websocket.close(code=1008)
+        return
 
     # Obtain a fresh DB session for the lifetime of this WS connection
     async for db in get_db():
+        # Authenticate and enforce ownership before accepting the WebSocket.
+        try:
+            auth_service = AuthService(db)
+            user_id = auth_service.decode_token(token)
+        except HTTPException:
+            await websocket.close(code=1008)
+            return
+
+        session = await db.get(LearningSession, session_id)
+        if not session or session.user_id != user_id:
+            await websocket.close(code=1008)
+            return
+
+        await websocket.accept()
+        _active_connections[session_id] = websocket
+        logger.info("WebSocket connected for session %s (user %s)", session_id, user_id)
+
         service = SessionService(db)
 
         try:
@@ -348,6 +367,10 @@ async def request_hint(
     Also broadcasts the hint to the active WebSocket if one exists.
     Requires JWT authentication.
     """
+    session = await db.get(LearningSession, session_id)
+    if not session or session.user_id != user_id:
+        raise HTTPException(status_code=404, detail="Session not found.")
+
     service = SessionService(db)
     try:
         hint_result = await service.generate_hint(session_id)

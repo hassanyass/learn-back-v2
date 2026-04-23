@@ -805,7 +805,8 @@
   </div>
 
   <!-- ═══ Phase 3: Loading Overlay ═══ -->
-  <div class="modal-overlay" id="session-loading" style="z-index:9999; background:rgba(255,255,255,0.92); display:flex; align-items:center; justify-content:center;">
+  <div class="modal-overlay" id="session-loading"
+    style="z-index:9999; background:rgba(255,255,255,0.92); display:flex; align-items:center; justify-content:center;">
     <div style="text-align:center;">
       <div class="typing-dots" style="margin:0 auto 16px; transform:scale(1.5);">
         <span></span><span></span><span></span>
@@ -818,14 +819,16 @@
   <div class="modal-overlay" id="mindmap-checkpoint-modal" hidden>
     <div class="modal" style="max-width:560px;">
       <div class="modal__icon-unified">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+          stroke-linejoin="round">
           <circle cx="12" cy="12" r="10"></circle>
           <polyline points="12 6 12 12 16 14"></polyline>
         </svg>
       </div>
       <h2 class="modal__title">Kido's Mind Map</h2>
       <p class="modal__body" style="margin-bottom:16px;">Review what Kido learned. Correct any mistakes below.</p>
-      <div id="mindmap-nodes-container" style="display:flex; flex-direction:column; gap:12px; max-height:300px; overflow-y:auto; margin-bottom:16px;">
+      <div id="mindmap-nodes-container"
+        style="display:flex; flex-direction:column; gap:12px; max-height:300px; overflow-y:auto; margin-bottom:16px;">
         <!-- JS injects: one card per kido_memory with textarea -->
       </div>
       <div style="display:flex; gap:10px;">
@@ -839,8 +842,11 @@
   <div class="modal-overlay" id="widget-modal" hidden>
     <div class="modal" style="max-width:520px;">
       <h2 class="modal__title" id="widget-modal-title">Interactive Widget</h2>
-      <pre id="widget-data-display" style="background:var(--bg-secondary,#f4f4f5); padding:12px; border-radius:8px; font-size:12px; max-height:200px; overflow:auto; margin-bottom:12px; white-space:pre-wrap;"></pre>
-      <textarea id="widget-input" rows="4" style="width:100%; padding:10px; border:1px solid var(--border-color,#e2e2e5); border-radius:8px; font-family:inherit; font-size:13px; resize:vertical;" placeholder="Enter your answer JSON here…"></textarea>
+      <pre id="widget-data-display"
+        style="background:var(--bg-secondary,#f4f4f5); padding:12px; border-radius:8px; font-size:12px; max-height:200px; overflow:auto; margin-bottom:12px; white-space:pre-wrap;"></pre>
+      <textarea id="widget-input" rows="4"
+        style="width:100%; padding:10px; border:1px solid var(--border-color,#e2e2e5); border-radius:8px; font-family:inherit; font-size:13px; resize:vertical;"
+        placeholder="Enter your answer JSON here…"></textarea>
       <div style="display:flex; gap:10px; margin-top:12px;">
         <button class="btn btn--unified-secondary" id="btn-widget-cancel" style="flex:1;">Cancel</button>
         <button class="btn btn--unified-primary" id="btn-widget-submit" style="flex:1;">Submit Answer</button>
@@ -851,15 +857,18 @@
   <!-- ═══ Phase 3: Session Complete Overlay ═══ -->
   <div class="modal-overlay" id="session-complete-overlay" hidden>
     <div class="modal" style="max-width:440px; text-align:center;">
-      <div class="modal__icon-unified" style="background:var(--state-mastered-bg,#ECFDF5); color:var(--state-mastered,#166534);">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <div class="modal__icon-unified"
+        style="background:var(--state-mastered-bg,#ECFDF5); color:var(--state-mastered,#166534);">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+          stroke-linejoin="round">
           <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
           <polyline points="22 4 12 14.01 9 11.01"></polyline>
         </svg>
       </div>
       <h2 class="modal__title">Session Complete! 🎉</h2>
       <p class="modal__body">You did an amazing job teaching Kido. View your detailed feedback report below.</p>
-      <button class="btn btn--unified-primary" id="btn-view-feedback" style="margin-top:16px; width:100%;">View Feedback Report</button>
+      <button class="btn btn--unified-primary" id="btn-view-feedback" style="margin-top:16px; width:100%;">View Feedback
+        Report</button>
     </div>
   </div>
 

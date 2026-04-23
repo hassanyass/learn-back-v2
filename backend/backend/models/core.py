@@ -25,6 +25,12 @@ class LearningSession(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    slide_deck_id: Mapped[int | None] = mapped_column(
+        ForeignKey("slide_decks.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        doc="Optional FK to the SlideDeck used to initialise this session.",
+    )
     topic: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="in_progress")
     bkt_score: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -54,6 +60,11 @@ class LearningSession(Base):
 
     messages: Mapped[list["SessionMessage"]] = relationship(
         "SessionMessage", back_populates="session", lazy="selectin",
+    )
+
+    slide_deck: Mapped["SlideDeck | None"] = relationship(
+        "SlideDeck",
+        lazy="selectin",
     )
 
 
