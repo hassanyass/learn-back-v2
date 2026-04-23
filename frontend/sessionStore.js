@@ -188,40 +188,15 @@
     return normalized;
   }
 
+  // [DEPRECATED] syncLegacySession — Phase 3: server state via REST+WS is authoritative.
+  // Legacy keys are no longer written to. Kept as stub for backwards compat.
   function syncLegacySession(sessionRecord) {
-    if (!sessionRecord || !sessionRecord.sessionId) return;
-
-    writeText(STORAGE_KEYS.legacySessionId, sessionRecord.sessionId);
-    writeText(STORAGE_KEYS.legacyTopicIndex, String(sessionRecord.topicIndex || 0));
-    writeText(STORAGE_KEYS.legacyProgress, String(sessionRecord.progress || 0));
-    writeText(STORAGE_KEYS.legacySessionTitle, sessionRecord.sessionTitle || 'Machine Learning');
-    writeText(STORAGE_KEYS.legacySessionComplete, sessionRecord.status === 'COMPLETED' ? 'true' : 'false');
-
-    if (sessionRecord.topics.length) {
-      writeJson(STORAGE_KEYS.legacyCategories, sessionRecord.topics);
-    }
-    if (sessionRecord.pdfUrl) writeText(STORAGE_KEYS.legacyPdfUrl, sessionRecord.pdfUrl);
-    if (sessionRecord.textId) writeText(STORAGE_KEYS.legacyTextId, sessionRecord.textId);
-    if (sessionRecord.documentId) writeText(STORAGE_KEYS.legacyDocumentId, sessionRecord.documentId);
-    if (sessionRecord.status === 'COMPLETED') {
-      writeText(STORAGE_KEYS.legacyFinalProgress, String(sessionRecord.progress || 0));
-    }
+    // No-op: legacy localStorage sync removed in Phase 3.
   }
 
+  // [DEPRECATED] clearLegacySession — Phase 3: legacy keys are no longer managed.
   function clearLegacySession() {
-    removeKeys([
-      STORAGE_KEYS.legacySessionId,
-      STORAGE_KEYS.legacyTopicIndex,
-      STORAGE_KEYS.legacyProgress,
-      STORAGE_KEYS.legacyCategories,
-      STORAGE_KEYS.legacySessionComplete,
-      STORAGE_KEYS.legacyFinalProgress,
-      STORAGE_KEYS.legacyMessageCount,
-      STORAGE_KEYS.legacyPdfUrl,
-      STORAGE_KEYS.legacyTextId,
-      STORAGE_KEYS.legacyDocumentId,
-      STORAGE_KEYS.legacySessionTitle
-    ]);
+    // No-op: legacy localStorage cleanup removed in Phase 3.
   }
 
   function readCurrentSession() {

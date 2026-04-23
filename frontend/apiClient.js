@@ -213,35 +213,7 @@
     };
   }
 
-  function normalizeChatResponse(payload) {
-    var evaluatorStatus = normalizeText(payload && (payload.evaluator_status || payload.eval_status), 'conversational');
-    var rawProgress = payload && (payload.progress_bar_percentage != null
-      ? payload.progress_bar_percentage
-      : payload.updated_bkt_score != null
-        ? payload.updated_bkt_score * 100
-        : payload.progress_score != null
-          ? payload.progress_score * 100
-          : 0);
-
-    var misconceptions = [];
-    if (payload && Array.isArray(payload.misconceptions_list)) {
-      misconceptions = payload.misconceptions_list.slice();
-    } else if (payload && payload.detected_misconception) {
-      misconceptions = [payload.detected_misconception];
-    }
-
-    return {
-      kidoResponse: normalizeText(payload && payload.kido_response, "I'm having trouble responding right now."),
-      evaluatorStatus: evaluatorStatus,
-      progressPercent: clamp(Math.round(toNumber(rawProgress, 0)), 0, 100),
-      misconceptions: misconceptions,
-      triggerMindMap: !!(payload && payload.trigger_mind_map),
-      newMindMapCardCreated: !!(payload && payload.new_mindmap_card_created),
-      detectedMisconception: payload ? payload.detected_misconception || null : null,
-      activeEquation: payload ? payload.active_equation || null : null,
-      debugInfo: payload ? payload.debug_info || null : null
-    };
-  }
+  // [REMOVED] normalizeChatResponse — chat now flows over WebSocket, not REST.
 
   function normalizeFeedbackPayload(payload, sessionId, sessionTitle) {
     var topics = Array.isArray(payload && payload.topics) ? payload.topics : [];
@@ -304,59 +276,9 @@
       });
     },
 
-    sendChatMessage: function (payload) {
-      var body = JSON.stringify({
-        session_id: payload.sessionId,
-        concept_id: payload.conceptId || null,
-        message: payload.message,
-        is_copied_from_slides: !!payload.isCopiedFromSlides,
-        hint_requested: !!payload.hintRequested
-      });
-
-      return requestWithFallback([
-        function () {
-          return request('/api/chat/send', {
-            method: 'POST',
-            body: body
-          }).then(normalizeChatResponse);
-        },
-        function () {
-          return request('/api/chat', {
-            method: 'POST',
-            body: JSON.stringify({
-              session_id: payload.sessionId,
-              message: payload.message,
-              action: payload.hintRequested ? 'HINT' : undefined
-            })
-          }).then(normalizeChatResponse);
-        }
-      ]);
-    },
-
-    finalizeSession: function (sessionId) {
-      return request('/api/session/' + encodeURIComponent(sessionId) + '/finalize', {
-        method: 'POST'
-      }).then(function (response) {
-        return normalizeSessionStartResponse(response, sessionId);
-      });
-    },
-
-    skipToTopic: function (sessionId, targetIndex) {
-      return requestWithFallback([
-        function () {
-          return request('/api/session/' + encodeURIComponent(sessionId) + '/skip', {
-            method: 'POST',
-            body: JSON.stringify({ target_index: targetIndex })
-          });
-        },
-        function () {
-          return request('/api/session/skip', {
-            method: 'POST',
-            body: JSON.stringify({ session_id: sessionId, target_index: targetIndex })
-          });
-        }
-      ]);
-    },
+    // [REMOVED] sendChatMessage — chat now flows over WebSocket.
+    // [REMOVED] finalizeSession — WS close code 1000 handles session end.
+    // [REMOVED] skipToTopic — not in current backend WS spec.
 
     fetchSessionFeedback: function (sessionId, sessionTitle) {
       return requestWithFallback([

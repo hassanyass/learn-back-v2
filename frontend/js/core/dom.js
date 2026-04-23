@@ -117,4 +117,33 @@ export const dom = {
   modalFinalize: document.getElementById('modal-finalize'),
   btnModalGrade: document.getElementById('btn-modal-grade'),
   btnModalCancelFinalize: document.getElementById('btn-modal-cancel-finalize'),
+
+  // ── Phase 3: Session Engine ──────────────────────────────
+  // Session title (nav bar)
+  sessionTitleEl: document.getElementById('session-title'),
+
+  // Loading overlay
+  sessionLoading: document.getElementById('session-loading'),
+
+  // Mind Map Checkpoint stub (C3)
+  mindmapCheckpointModal: document.getElementById('mindmap-checkpoint-modal'),
+  mindmapNodesContainer: document.getElementById('mindmap-nodes-container'),
+  btnMindmapSubmit: document.getElementById('btn-mindmap-submit'),
+  btnMindmapSkip: document.getElementById('btn-mindmap-skip'),
+
+  // Widget stub modal (C3)
+  widgetModal: document.getElementById('widget-modal'),
+  widgetModalTitle: document.getElementById('widget-modal-title'),
+  widgetDataDisplay: document.getElementById('widget-data-display'),
+  widgetInput: document.getElementById('widget-input'),
+  btnWidgetSubmit: document.getElementById('btn-widget-submit'),
+  btnWidgetCancel: document.getElementById('btn-widget-cancel'),
+
+  // Session Complete overlay
+  sessionCompleteOverlay: document.getElementById('session-complete-overlay'),
+  btnViewFeedback: document.getElementById('btn-view-feedback'),
+
+  // Chat welcome / start gate
+  chatWelcome: document.getElementById('chat-welcome'),
+  btnStartSession: document.getElementById('btn-start-session'),
 };

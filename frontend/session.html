@@ -8,7 +8,7 @@
   <meta name="description"
     content="LearnBack AI teaching session — reinforce your understanding by teaching KIDO, an AI student.">
 
-  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Tailwind removed — using vanilla CSS via styles/main.css -->
 
   <!-- Knowledge Cube Widget Styles (scoped under .kc- prefix) -->
   <style>
@@ -137,7 +137,7 @@
       <img src="Logo/transparent_dark_mode.png" alt="LearnBack Logo" class="nav-bar__brand-img logo-dark"
         style="height: 44px; width: auto; margin-left: -4px;">
       <span class="nav-bar__divider"></span>
-      <span class="nav-bar__session">Machine Learning</span>
+      <span class="nav-bar__session" id="session-title"></span>
     </div>
     <!-- Center title removed per user request -->
     <div class="nav-bar__right">
@@ -804,32 +804,98 @@
     </div>
   </div>
 
+  <!-- ═══ Phase 3: Loading Overlay ═══ -->
+  <div class="modal-overlay" id="session-loading" style="z-index:9999; background:rgba(255,255,255,0.92); display:flex; align-items:center; justify-content:center;">
+    <div style="text-align:center;">
+      <div class="typing-dots" style="margin:0 auto 16px; transform:scale(1.5);">
+        <span></span><span></span><span></span>
+      </div>
+      <p style="font-size:15px; color:var(--text-soft); font-weight:500;">Loading session…</p>
+    </div>
+  </div>
+
+  <!-- ═══ Phase 3: Mind Map Checkpoint Stub (C3) ═══ -->
+  <div class="modal-overlay" id="mindmap-checkpoint-modal" hidden>
+    <div class="modal" style="max-width:560px;">
+      <div class="modal__icon-unified">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+      </div>
+      <h2 class="modal__title">Kido's Mind Map</h2>
+      <p class="modal__body" style="margin-bottom:16px;">Review what Kido learned. Correct any mistakes below.</p>
+      <div id="mindmap-nodes-container" style="display:flex; flex-direction:column; gap:12px; max-height:300px; overflow-y:auto; margin-bottom:16px;">
+        <!-- JS injects: one card per kido_memory with textarea -->
+      </div>
+      <div style="display:flex; gap:10px;">
+        <button class="btn btn--sage-green" id="btn-mindmap-skip" style="flex:1;">Looks Good!</button>
+        <button class="btn btn--unified-primary" id="btn-mindmap-submit" style="flex:1;">Submit Corrections</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Phase 3: Widget Stub Modal (C3) ═══ -->
+  <div class="modal-overlay" id="widget-modal" hidden>
+    <div class="modal" style="max-width:520px;">
+      <h2 class="modal__title" id="widget-modal-title">Interactive Widget</h2>
+      <pre id="widget-data-display" style="background:var(--bg-secondary,#f4f4f5); padding:12px; border-radius:8px; font-size:12px; max-height:200px; overflow:auto; margin-bottom:12px; white-space:pre-wrap;"></pre>
+      <textarea id="widget-input" rows="4" style="width:100%; padding:10px; border:1px solid var(--border-color,#e2e2e5); border-radius:8px; font-family:inherit; font-size:13px; resize:vertical;" placeholder="Enter your answer JSON here…"></textarea>
+      <div style="display:flex; gap:10px; margin-top:12px;">
+        <button class="btn btn--unified-secondary" id="btn-widget-cancel" style="flex:1;">Cancel</button>
+        <button class="btn btn--unified-primary" id="btn-widget-submit" style="flex:1;">Submit Answer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Phase 3: Session Complete Overlay ═══ -->
+  <div class="modal-overlay" id="session-complete-overlay" hidden>
+    <div class="modal" style="max-width:440px; text-align:center;">
+      <div class="modal__icon-unified" style="background:var(--state-mastered-bg,#ECFDF5); color:var(--state-mastered,#166534);">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+          <polyline points="22 4 12 14.01 9 11.01"></polyline>
+        </svg>
+      </div>
+      <h2 class="modal__title">Session Complete! 🎉</h2>
+      <p class="modal__body">You did an amazing job teaching Kido. View your detailed feedback report below.</p>
+      <button class="btn btn--unified-primary" id="btn-view-feedback" style="margin-top:16px; width:100%;">View Feedback Report</button>
+    </div>
+  </div>
+
   <!-- D3.js CDN -->
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <!-- PDF.js CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>
-    // Set the workerSrc for PDF.js
     if (typeof pdfjsLib !== 'undefined') {
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     }
   </script>
 
+  <!-- Decoupled utilities (no session logic) -->
   <script src="audioManager.js"></script>
   <script src="apiClient.js"></script>
   <script src="sessionStore.js"></script>
   <script src="pdfViewer.js"></script>
-  <script src="script2.js"></script>
   <script src="sessionSplitPane.js"></script>
+
+  <!-- Phase 3: Session Engine (replaces legacy script.js + script2.js) -->
+  <script type="module" src="session.js"></script>
+
+  <!-- C1: Lottie Animation Preservation — expose KidoLottie globally -->
   <script type="module">
     import { DotLottie } from 'https://cdn.jsdelivr.net/npm/@lottiefiles/dotlottie-web/+esm';
     const canvas = document.getElementById('kido-canvas');
-    new DotLottie({
-      canvas: canvas,
-      src: 'Idle.lottie',
-      loop: true,
-      autoplay: true,
-    });
+    if (canvas) {
+      const lottie = new DotLottie({
+        canvas: canvas,
+        src: 'Idle.lottie',
+        loop: true,
+        autoplay: true,
+      });
+      window.KidoLottie = lottie;
+    }
   </script>
 
 </body>

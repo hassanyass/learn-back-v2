@@ -47,14 +47,16 @@ async def upload_slides(
 
         if extension == ".pdf":
             pdf_path = input_path
+            storage_key = f"user_{user_id}/{Path(pdf_path).name}"
+            pdf_storage_url = document_service.upload_pdf_to_storage(
+                pdf_path=pdf_path,
+                storage_key=storage_key,
+            )
         else:
-            pdf_path = document_service.convert_pptx_to_pdf(input_path, temp_dir)
-
-        storage_key = f"user_{user_id}/{Path(pdf_path).name}"
-        pdf_storage_url = document_service.upload_pdf_to_storage(
-            pdf_path=pdf_path,
-            storage_key=storage_key,
-        )
+            # PPTX: Text extraction already done above via python-pptx.
+            # LibreOffice PDF conversion is not available on all systems.
+            # Use a placeholder URL; the PDF viewer will show a graceful fallback.
+            pdf_storage_url = f"placeholder://pptx-upload/{file.filename or 'slides'}"
 
     result = await ai_ingestion_service.ingest_and_segment(
         user_id=user_id,
