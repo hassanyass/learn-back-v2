@@ -241,6 +241,7 @@ async def session_websocket(websocket: WebSocket, session_id: int) -> None:
                         # Normal response (may include topic checkpoint)
                         response_data: dict[str, Any] = {
                             "kido_response": result["kido_response"],
+                            "evaluator_label": result.get("evaluator_label", ""),
                             "widget_type": result["widget_type"],
                             "advanced": result["advanced"],
                             "session_state": result["session_state"],

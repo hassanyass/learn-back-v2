@@ -66,7 +66,7 @@ class SessionService:
         self.kido = KidoService()
 
         # LLM config (reuses project conventions from AIIngestionService)
-        self.groq_model = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+        self.groq_model = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
         self.groq_url = os.getenv(
             "GROQ_CHAT_COMPLETIONS_URL",
             "https://api.groq.com/openai/v1/chat/completions",
@@ -261,6 +261,7 @@ class SessionService:
 
         return {
             "kido_response": kido_response,
+            "evaluator_label": evaluator_label,
             "widget_type": widget_type.upper(),
             "widget_data": widget_data,
             "session_state": state,
@@ -622,8 +623,8 @@ class SessionService:
 
     async def _get_segments(self, session: LearningSession) -> list[dict[str, Any]]:
         """Retrieve the segmented curriculum for this session's slide deck."""
-        stmt = select(SlideDeck).where(SlideDeck.user_id == session.user_id).order_by(SlideDeck.created_at.desc())
-        deck = (await self.db.execute(stmt)).scalar_one_or_none()
+        stmt = select(SlideDeck).where(SlideDeck.user_id == session.user_id).order_by(SlideDeck.created_at.desc()).limit(1)
+        deck = (await self.db.execute(stmt)).scalars().first()
         if deck is None or not deck.segmented_json:
             raise ValueError("No slide deck found for this session's user.")
         segments = deck.segmented_json.get("extracted_segments", [])

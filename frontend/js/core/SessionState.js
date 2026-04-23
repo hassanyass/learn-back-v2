@@ -73,9 +73,9 @@ export class SessionState {
       if (typeof ss.point_attempts === 'number') this.pointAttempts = ss.point_attempts;
     }
 
-    // Track widget type
-    if (data.widget_type) {
-      this.lastWidgetType = data.widget_type.toUpperCase();
+    // Track widget type (null-safe — backend may send null)
+    if (data.widget_type != null) {
+      this.lastWidgetType = String(data.widget_type).toUpperCase();
     }
     if (data.widget_data !== undefined) {
       this.lastWidgetData = data.widget_data;

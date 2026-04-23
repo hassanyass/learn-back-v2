@@ -123,49 +123,61 @@ import { dom } from './js/core/dom.js';
 
   // ── Normal Kido response ──
   ws.onKidoResponse = function (data) {
-    state.updateFromWsResponse(data);
+    try {
+      state.updateFromWsResponse(data);
 
-    // Determine evaluator label and knowledge type
-    var label = data.evaluator_label || 'waiting';
-    var knowledgeType = 'developing';
-    if (label === 'CORRECT' || label === 'correct') knowledgeType = 'mastered';
-    else if (label === 'INCORRECT' || label === 'incorrect' || label === 'misconception') knowledgeType = 'revising';
+      // Determine evaluator label and knowledge type
+      var label = (data.evaluator_label || data.label || 'waiting').toLowerCase();
+      var knowledgeType = 'developing';
+      if (label === 'correct') knowledgeType = 'mastered';
+      else if (label === 'incorrect' || label === 'misconception') knowledgeType = 'revising';
 
-    // Calculate BKT delta
-    var newBkt = state.getAggregatedBkt();
-    var oldBkt = ui._currentProgress || 0;
-    var delta = newBkt - oldBkt;
+      // Calculate BKT delta
+      var newBkt = state.getAggregatedBkt();
+      var oldBkt = ui._currentProgress || 0;
+      var delta = newBkt - oldBkt;
 
-    // Update all UI components
-    ui.appendKidoMessage(data.kido_response || "I'm thinking...").then(function () {
+      // Update all UI components
+      ui.appendKidoMessage(data.kido_response || "I'm thinking...").then(function () {
+        ui.setChatLockout(false);
+      });
+
+      ui.updateHud(label);
+      ui.updateBktProgress(newBkt);
+      ui.updateConceptCard({ text: data.kido_response || '', type: knowledgeType, delta: delta });
+      ui.setCubeState((data.widget_type || 'TEXT').toString());
+      ui.renderTopicList(state.getTopicTitles(), state.currentTopicIndex, []);
+    } catch (err) {
+      console.error('[Session] FATAL in onKidoResponse:', err, err.stack);
       ui.setChatLockout(false);
-    });
-
-    ui.updateHud(label);
-    ui.updateBktProgress(newBkt);
-    ui.updateConceptCard({ text: data.kido_response || '', type: knowledgeType, delta: delta });
-    ui.setCubeState(data.widget_type || 'TEXT');
-    ui.renderTopicList(state.getTopicTitles(), state.currentTopicIndex, []);
+    }
   };
 
   // ── Mind Map checkpoint ──
   ws.onMindMap = function (data) {
-    state.updateFromWsResponse(data);
-
-    ui.appendKidoMessage(data.kido_response || 'Check my Mind Map!').then(function () {
-      ui.showMindMapModal(data.mind_map_data || []);
-      ui.setChatLockout(true);
-    });
+    try {
+      state.updateFromWsResponse(data);
+      ui.appendKidoMessage(data.kido_response || 'Check my Mind Map!').then(function () {
+        ui.showMindMapModal(data.mind_map_data || []);
+        ui.setChatLockout(true);
+      });
+    } catch (err) {
+      console.error('[Session] FATAL in onMindMap:', err, err.stack);
+      ui.setChatLockout(false);
+    }
   };
 
   // ── Session complete ──
   ws.onSessionComplete = function (data) {
-    state.updateFromWsResponse(data);
-    state.markComplete();
-
-    ui.appendKidoMessage(data.kido_response || 'Session complete!').then(function () {
-      ui.showSessionCompleteOverlay(state.sessionId);
-    });
+    try {
+      state.updateFromWsResponse(data);
+      state.markComplete();
+      ui.appendKidoMessage(data.kido_response || 'Session complete!').then(function () {
+        ui.showSessionCompleteOverlay(state.sessionId);
+      });
+    } catch (err) {
+      console.error('[Session] FATAL in onSessionComplete:', err, err.stack);
+    }
   };
 
   // ── System hint ──
@@ -319,5 +331,25 @@ import { dom } from './js/core/dom.js';
   }
 
   console.log('[Session] Orchestrator initialized. Session:', sessionId);
+
+  // ── Right-panel collapse toggle ──
+  var btnCollapse = document.getElementById('btn-collapse-right');
+  if (btnCollapse) {
+    btnCollapse.addEventListener('click', function () {
+      var panel = document.getElementById('right-panel') || document.querySelector('.right-panel');
+      if (panel) panel.classList.toggle('collapsed');
+    });
+  }
+
+  // ── Hint button (sends hint request over WS) ──
+  var btnHint = document.getElementById('btn-hint') || document.getElementById('btn-request-hint');
+  if (btnHint) {
+    btnHint.addEventListener('click', function () {
+      if (!ws.isConnected) return;
+      ui.setChatLockout(true);
+      ui.updateHud('thinking');
+      ws.send({ type: 'chat', text: 'I need a hint' });
+    });
+  }
 
 })();
