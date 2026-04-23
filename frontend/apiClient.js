@@ -204,8 +204,11 @@
     var progressRaw = payload && payload.progress_score;
     var progressPercentRaw = payload && (payload.progress_percent || payload.progressPercent);
     var progressValue = progressPercentRaw != null ? toNumber(progressPercentRaw, 0) : toNumber(progressRaw, 0) * 100;
+    // Coerce session_id to string — backend returns an integer DB primary key
+    var rawId = payload && (payload.id || payload.session_id);
+    var sessionId = rawId != null ? String(rawId) : null;
     return {
-      sessionId: normalizeText(payload && (payload.id || payload.session_id), fallbackSessionId || null),
+      sessionId: normalizeText(sessionId, fallbackSessionId || null),
       status: normalizeText(payload && payload.status, 'IN_PROGRESS'),
       progressPercent: clamp(Math.round(progressValue), 0, 100),
       startedAt: normalizeText(payload && (payload.started_at || payload.startedAt), new Date().toISOString()),
@@ -228,8 +231,11 @@
   function normalizeSessionBootstrap(payload) {
     if (!payload) return null;
     var topics = Array.isArray(payload.topics) ? payload.topics : [];
+    // Coerce session_id to string — backend returns integer DB primary key
+    var rawId = payload.id || payload.session_id;
+    var sessionId = rawId != null ? String(rawId) : null;
     return {
-      sessionId: normalizeText(payload.session_id, null),
+      sessionId: normalizeText(sessionId, null),
       sessionTitle: normalizeText(payload.title || payload.session_title, 'Machine Learning'),
       status: normalizeText(payload.status, 'IN_PROGRESS'),
       progress: clamp(Math.round(toNumber(payload.progress_percent || payload.progressPercent || 0, 0)), 0, 100),
@@ -307,7 +313,7 @@
     },
 
     fetchSession: function (sessionId) {
-      return request('/api/session/' + encodeURIComponent(sessionId)).then(function (response) {
+      return request('/session/' + encodeURIComponent(sessionId)).then(function (response) {
         return normalizeSessionBootstrap(response);
       });
     },

@@ -667,9 +667,10 @@ async function handleStartSession() {
 
     localStorage.setItem('learnback_session_title', resolvedTitle);
 
-    // Only redirect once the session is confirmed created.
-    console.log("🚨 ABOUT TO REDIRECT (this should NOT happen early)");
-    window.location.href = 'index.html';
+    // Redirect to session interface with the real session ID.
+    const resolvedSessionId = sessionPayload.sessionId;
+    console.log("🚨 Redirecting to session.html with sessionId:", resolvedSessionId);
+    window.location.href = 'session.html?sessionId=' + encodeURIComponent(resolvedSessionId);
 }
 
 

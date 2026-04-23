@@ -14,7 +14,7 @@ from backend.prompts.segmentation_prompt import SEGMENTATION_SYSTEM_PROMPT
 class AIIngestionService:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
-        self.groq_model = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+        self.groq_model = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
         self.secondary_model = os.getenv("SECONDARY_LLM_MODEL", "openai/gpt-oss-20b")
         self.groq_url = os.getenv(
             "GROQ_CHAT_COMPLETIONS_URL",
@@ -37,11 +37,22 @@ class AIIngestionService:
         raw_text: str,
         pdf_storage_url: str,
     ) -> dict[str, Any]:
+        # Truncate raw text to stay within LLM context window limits.
+        # Groq's llama-3.1-8b-instant has ~8K output but the payload limit
+        # is based on total request size. ~12,000 words ≈ 48K tokens is safe.
+        MAX_WORDS = 6_000
+        words = raw_text.split()
+        if len(words) > MAX_WORDS:
+            truncated_text = " ".join(words[:MAX_WORDS])
+            truncated_text += f"\n\n[... truncated from {len(words)} words to {MAX_WORDS} words ...]"
+        else:
+            truncated_text = raw_text
+
         prompt = (
             f"{SEGMENTATION_SYSTEM_PROMPT}\n\n"
             f"Source filename: {source_filename}\n\n"
             "Raw lecture text follows:\n"
-            f"{raw_text}"
+            f"{truncated_text}"
         )
         llm_output = await self.llm_manager.call_with_fallback(prompt)
         segmentation_json = self._parse_segmentation_json(llm_output)

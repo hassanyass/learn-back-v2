@@ -74,6 +74,7 @@ async def create_session(
         select(SlideDeck)
         .where(SlideDeck.user_id == user_id)
         .order_by(SlideDeck.created_at.desc())
+        .limit(1)
     )
     deck = (await db.execute(stmt)).scalar_one_or_none()
     if not deck:
@@ -134,6 +135,44 @@ async def create_session(
         "status": session.status,
     }
 
+
+# ──────────────────────────────────────────────────────────────────────
+# HTTP: Get session state (REST bootstrap for session.js)
+# ──────────────────────────────────────────────────────────────────────
+
+@router.get("/session/{session_id}")
+async def get_session(
+    session_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Return the current session state for frontend hydration.
+
+    Called by session.js on page load to populate the UI before the
+    WebSocket connection is opened.
+    """
+    session = await db.get(LearningSession, session_id)
+    if not session or session.user_id != user_id:
+        raise HTTPException(status_code=404, detail="Session not found.")
+
+    state = session.session_state or {}
+
+    # Extract topic titles for the roadmap sidebar
+    topic_titles: list[str] = []
+    for t in state.get("topics", []):
+        topic_titles.append(t.get("topic_title", "Untitled"))
+
+    return {
+        "session_id": session.id,
+        "title": session.topic,
+        "session_title": session.topic,
+        "status": session.status,
+        "current_topic_index": state.get("current_topic_index", 0),
+        "topics": topic_titles,
+        "started_at": session.start_time.isoformat() if session.start_time else None,
+        "completed_at": session.end_time.isoformat() if session.end_time else None,
+        "session_state": state,
+    }
 
 # ──────────────────────────────────────────────────────────────────────
 # WebSocket endpoint (Phase 3D: JSON-typed payloads)

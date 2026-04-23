@@ -2,7 +2,7 @@ import os
 import tempfile
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, Query, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,6 +10,7 @@ from backend.core.db import get_db
 from backend.services.ai_ingestion_service import AIIngestionService
 from backend.services.auth_service import AuthService
 from backend.services.document_service import DocumentService
+from backend.core.llm_manager import LLMFallbackExhaustedError
 
 
 router = APIRouter(prefix="/ingestion", tags=["ingestion"])
@@ -58,10 +59,16 @@ async def upload_slides(
             # Use a placeholder URL; the PDF viewer will show a graceful fallback.
             pdf_storage_url = f"placeholder://pptx-upload/{file.filename or 'slides'}"
 
-    result = await ai_ingestion_service.ingest_and_segment(
-        user_id=user_id,
-        source_filename=file.filename or "uploaded_file",
-        raw_text=raw_text,
-        pdf_storage_url=pdf_storage_url,
-    )
+    try:
+        result = await ai_ingestion_service.ingest_and_segment(
+            user_id=user_id,
+            source_filename=file.filename or "uploaded_file",
+            raw_text=raw_text,
+            pdf_storage_url=pdf_storage_url,
+        )
+    except LLMFallbackExhaustedError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=f"AI processing failed: {exc}. Try uploading a smaller or text-lighter document.",
+        )
     return result
