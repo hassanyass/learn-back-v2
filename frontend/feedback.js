@@ -101,7 +101,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function resolveSessionId() {
     var params = new URLSearchParams(window.location.search);
-    var requestedId = params.get('id');
+    var requestedId = params.get('sessionId') || params.get('id');
     if (requestedId) return requestedId;
 
     if (window.SessionStore && typeof window.SessionStore.getSession === 'function') {

@@ -242,10 +242,127 @@
       topicIndex: Math.max(0, Math.round(toNumber(payload.current_topic_index || payload.currentTopicIndex || 0, 0))),
       topics: topics,
       documentId: normalizeText(payload.document_id, null),
-      pdfUrl: normalizeText(payload.pdf_url, null),
+      pdfUrl: normalizeText(payload.pdf_url, 'NO_DOCUMENT_AVAILABLE'),
       startedAt: normalizeText(payload.started_at || payload.startedAt, new Date().toISOString()),
       completedAt: normalizeText(payload.completed_at || payload.completedAt, null)
     };
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  // Error Normalizer — strips all technical internals from errors
+  // and returns a user-friendly { title, suggestion } object.
+  // ──────────────────────────────────────────────────────────────
+
+  var ERROR_TYPES = {
+    FILE_TOO_LARGE:       'FILE_TOO_LARGE',
+    UNSUPPORTED_CONTENT:  'UNSUPPORTED_CONTENT',
+    NETWORK_ERROR:        'NETWORK_ERROR',
+    AUTH_EXPIRED:         'AUTH_EXPIRED',
+    SERVER_ERROR:         'SERVER_ERROR',
+    AI_PROCESSING:        'AI_PROCESSING',
+    UNKNOWN:              'UNKNOWN'
+  };
+
+  var FRIENDLY_MESSAGES = {};
+  FRIENDLY_MESSAGES[ERROR_TYPES.FILE_TOO_LARGE] = {
+    title: 'Your file is too large to process.',
+    suggestion: 'Try reducing the file size below 50 MB, or remove unnecessary slides and images.'
+  };
+  FRIENDLY_MESSAGES[ERROR_TYPES.UNSUPPORTED_CONTENT] = {
+    title: "This file doesn't seem suitable for structured learning.",
+    suggestion: 'Try uploading lecture slides, notes, or study materials instead of novels or non-educational content.'
+  };
+  FRIENDLY_MESSAGES[ERROR_TYPES.NETWORK_ERROR] = {
+    title: 'Connection problem detected.',
+    suggestion: 'Check your internet connection and try again in a few moments.'
+  };
+  FRIENDLY_MESSAGES[ERROR_TYPES.AUTH_EXPIRED] = {
+    title: 'Your session has expired.',
+    suggestion: 'Please sign in again to continue.'
+  };
+  FRIENDLY_MESSAGES[ERROR_TYPES.SERVER_ERROR] = {
+    title: 'Something went wrong on our side.',
+    suggestion: 'Please try again shortly. If the problem persists, contact support.'
+  };
+  FRIENDLY_MESSAGES[ERROR_TYPES.AI_PROCESSING] = {
+    title: 'We had trouble analyzing your document.',
+    suggestion: 'Try uploading a smaller or simpler file with clear text content.'
+  };
+  FRIENDLY_MESSAGES[ERROR_TYPES.UNKNOWN] = {
+    title: 'An unexpected error occurred.',
+    suggestion: 'Please refresh the page and try again.'
+  };
+
+  /**
+   * Classify any error into a user-friendly category.
+   * @param {Error|ApiError} error
+   * @returns {{ type: string, title: string, suggestion: string }}
+   */
+  function normalizeUserError(error) {
+    // 1. Network / fetch failure (status === 0 or no status)
+    if (!error.status && !(error instanceof ApiError)) {
+      return Object.assign({ type: ERROR_TYPES.NETWORK_ERROR }, FRIENDLY_MESSAGES[ERROR_TYPES.NETWORK_ERROR]);
+    }
+    if (error instanceof ApiError && error.status === 0) {
+      return Object.assign({ type: ERROR_TYPES.NETWORK_ERROR }, FRIENDLY_MESSAGES[ERROR_TYPES.NETWORK_ERROR]);
+    }
+
+    // 2. Auth expired
+    if (error.status === 401) {
+      return Object.assign({ type: ERROR_TYPES.AUTH_EXPIRED }, FRIENDLY_MESSAGES[ERROR_TYPES.AUTH_EXPIRED]);
+    }
+
+    // 3. File too large
+    if (error.status === 413) {
+      return Object.assign({ type: ERROR_TYPES.FILE_TOO_LARGE }, FRIENDLY_MESSAGES[ERROR_TYPES.FILE_TOO_LARGE]);
+    }
+
+    // 4. Unprocessable — sub-classify by inspecting the detail string
+    if (error.status === 422) {
+      var rawDetail = '';
+      if (error.payload && error.payload.detail) {
+        rawDetail = typeof error.payload.detail === 'string'
+          ? error.payload.detail
+          : (error.payload.detail.error || JSON.stringify(error.payload.detail));
+      }
+      var rawLower = (rawDetail + ' ' + (error.message || '')).toLowerCase();
+
+      // AI / LLM failure patterns
+      if (rawLower.indexOf('llm') !== -1 || rawLower.indexOf('groq') !== -1 ||
+          rawLower.indexOf('openai') !== -1 || rawLower.indexOf('provider') !== -1 ||
+          rawLower.indexOf('exhausted') !== -1 || rawLower.indexOf('segmentation') !== -1 ||
+          rawLower.indexOf('parse') !== -1) {
+        return Object.assign({ type: ERROR_TYPES.AI_PROCESSING }, FRIENDLY_MESSAGES[ERROR_TYPES.AI_PROCESSING]);
+      }
+
+      // Content quality / empty / unsuitable
+      if (rawLower.indexOf('no extractable') !== -1 || rawLower.indexOf('insufficient') !== -1 ||
+          rawLower.indexOf('not suitable') !== -1 || rawLower.indexOf('no topics') !== -1 ||
+          rawLower.indexOf('empty') !== -1) {
+        return Object.assign({ type: ERROR_TYPES.UNSUPPORTED_CONTENT }, FRIENDLY_MESSAGES[ERROR_TYPES.UNSUPPORTED_CONTENT]);
+      }
+
+      // Corrupted file
+      if (rawLower.indexOf('corrupt') !== -1 || rawLower.indexOf('could not read') !== -1 ||
+          rawLower.indexOf('password') !== -1) {
+        return {
+          type: ERROR_TYPES.UNSUPPORTED_CONTENT,
+          title: 'We couldn\u2019t read this file.',
+          suggestion: 'The file may be corrupted or password-protected. Try a different copy.'
+        };
+      }
+
+      // Generic 422 fallback
+      return Object.assign({ type: ERROR_TYPES.AI_PROCESSING }, FRIENDLY_MESSAGES[ERROR_TYPES.AI_PROCESSING]);
+    }
+
+    // 5. Server error
+    if (error.status >= 500) {
+      return Object.assign({ type: ERROR_TYPES.SERVER_ERROR }, FRIENDLY_MESSAGES[ERROR_TYPES.SERVER_ERROR]);
+    }
+
+    // 6. Unknown
+    return Object.assign({ type: ERROR_TYPES.UNKNOWN }, FRIENDLY_MESSAGES[ERROR_TYPES.UNKNOWN]);
   }
 
   var LearnBackAPI = {
@@ -255,6 +372,7 @@
     isLoggedIn: isLoggedIn,
     logout: logout,
     request: request,
+    normalizeUserError: normalizeUserError,
 
     uploadLecture: function (formData) {
       return request('/ingestion/upload-slides', {
@@ -287,18 +405,10 @@
     // [REMOVED] skipToTopic — not in current backend WS spec.
 
     fetchSessionFeedback: function (sessionId, sessionTitle) {
-      return requestWithFallback([
-        function () {
-          return request('/api/session/' + encodeURIComponent(sessionId) + '/feedback').then(function (response) {
-            return normalizeFeedbackPayload(response, sessionId, sessionTitle);
-          });
-        },
-        function () {
-          return request('/api/feedback/session/' + encodeURIComponent(sessionId)).then(function (response) {
-            return normalizeFeedbackPayload(response, sessionId, sessionTitle);
-          });
-        }
-      ]);
+      // Fix 2: Correct endpoint — backend defines GET /session/{id}/feedback (no /api/ prefix).
+      return request('/session/' + encodeURIComponent(sessionId) + '/feedback').then(function (response) {
+        return normalizeFeedbackPayload(response, sessionId, sessionTitle);
+      });
     },
 
     fetchDashboardState: function () {

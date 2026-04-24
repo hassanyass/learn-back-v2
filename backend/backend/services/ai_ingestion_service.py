@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Any
 
 import httpx
+from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.core.llm_manager import LLMManager
@@ -54,8 +55,18 @@ class AIIngestionService:
             "Raw lecture text follows:\n"
             f"{truncated_text}"
         )
+
+        # Fix 6: Safe LLM wrapper — retry once on bad JSON, then raise 422.
         llm_output = await self.llm_manager.call_with_fallback(prompt)
-        segmentation_json = self._parse_segmentation_json(llm_output)
+        segmentation_json = await self._safe_parse_with_retry(prompt, llm_output)
+
+        # Fix 3: Validate schema before writing to DB.
+        self._validate_segmentation_schema(segmentation_json)
+
+        # Server-side enforcement: cap at 4 topics regardless of LLM output.
+        segments = segmentation_json.get("extracted_segments", [])
+        if len(segments) > 4:
+            segmentation_json["extracted_segments"] = segments[:4]
 
         deck = SlideDeck(
             user_id=user_id,
@@ -67,11 +78,69 @@ class AIIngestionService:
         )
         self.db.add(deck)
         await self.db.commit()
+        await self.db.refresh(deck)
 
+        # Fix 1: Return document_id so the frontend can chain to /session/create.
         return {
+            "document_id": deck.id,
             "pdf_storage_url": pdf_storage_url,
             "segmentation": segmentation_json,
         }
+
+    async def _safe_parse_with_retry(
+        self, prompt: str, first_output: str
+    ) -> dict[str, Any]:
+        """Fix 2+6: Try to parse the LLM JSON output.
+        On failure, retry the LLM call once with a stricter instruction,
+        then raise HTTP 422 — never HTTP 500.
+        """
+        try:
+            return self._parse_segmentation_json(first_output)
+        except (json.JSONDecodeError, ValueError):
+            # Retry once with an explicit JSON-only reminder appended.
+            retry_prompt = (
+                prompt
+                + "\n\nIMPORTANT: Your previous response was not valid JSON. "
+                "Return ONLY the raw JSON object. No markdown, no backticks, no prose."
+            )
+            try:
+                retry_output = await self.llm_manager.call_with_fallback(retry_prompt)
+                return self._parse_segmentation_json(retry_output)
+            except (json.JSONDecodeError, ValueError) as exc:
+                # Log the raw output server-side for debugging — never send to frontend.
+                import logging
+                logging.getLogger(__name__).error(
+                    "Segmentation JSON parse failed after retry. First 300 chars: %s",
+                    first_output[:300] if first_output else "(empty)",
+                )
+                raise HTTPException(
+                    status_code=422,
+                    detail="We had trouble analyzing your document. "
+                           "Try uploading a smaller or simpler file with clear text content.",
+                ) from exc
+
+    def _validate_segmentation_schema(self, parsed: dict[str, Any]) -> None:
+        """Fix 3: Raise HTTP 422 if required top-level or per-segment fields are missing."""
+        if "source_file" not in parsed or "extracted_segments" not in parsed:
+            raise HTTPException(
+                status_code=422,
+                detail="We had trouble analyzing your document. "
+                       "Try uploading a smaller or simpler file with clear text content.",
+            )
+        segments = parsed["extracted_segments"]
+        if not isinstance(segments, list) or len(segments) == 0:
+            raise HTTPException(
+                status_code=422,
+                detail="This document doesn't contain enough content for a learning session. "
+                       "Try uploading lecture slides or study materials with more text.",
+            )
+        for i, seg in enumerate(segments):
+            if "topic_title" not in seg or "extracted_concepts" not in seg:
+                raise HTTPException(
+                    status_code=422,
+                    detail="We had trouble analyzing your document. "
+                           "Please try uploading it again.",
+                )
 
     async def _call_groq(self, prompt: str, api_key: str) -> str:
         payload = {
@@ -101,10 +170,13 @@ class AIIngestionService:
 
     def _parse_segmentation_json(self, raw_output: str) -> dict[str, Any]:
         cleaned = raw_output.strip()
+        # Strip markdown code fences robustly (handles ```json ... ``` and ``` ... ```)
         if cleaned.startswith("```"):
-            cleaned = cleaned.strip("`")
-            cleaned = cleaned.replace("json", "", 1).strip()
-        parsed = json.loads(cleaned)
-        if "source_file" not in parsed or "extracted_segments" not in parsed:
-            raise ValueError("LLM response missing required segmentation schema fields.")
-        return parsed
+            lines = cleaned.splitlines()
+            # Drop first line (``` or ```json) and last line (```) if it closes the block
+            if lines[-1].strip() == "```":
+                lines = lines[1:-1]
+            else:
+                lines = lines[1:]
+            cleaned = "\n".join(lines).strip()
+        return json.loads(cleaned)

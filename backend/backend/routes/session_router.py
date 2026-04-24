@@ -170,6 +170,8 @@ async def get_session(
         "status": session.status,
         "current_topic_index": state.get("current_topic_index", 0),
         "topics": topic_titles,
+        "slide_deck_id": session.slide_deck_id,
+        "pdf_url": session.slide_deck.pdf_storage_url if session.slide_deck else None,
         "started_at": session.start_time.isoformat() if session.start_time else None,
         "completed_at": session.end_time.isoformat() if session.end_time else None,
         "session_state": state,

@@ -16,6 +16,9 @@ from backend.core.llm_manager import LLMFallbackExhaustedError
 router = APIRouter(prefix="/ingestion", tags=["ingestion"])
 bearer_scheme = HTTPBearer(auto_error=True)
 
+# Fix 5: Maximum upload size enforced on the backend (mirrors frontend 50 MB limit).
+MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024  # 50 MB
+
 
 async def get_current_user_id(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
@@ -36,15 +39,39 @@ async def upload_slides(
     document_service = DocumentService()
     ai_ingestion_service = AIIngestionService(db)
 
-    raw_text = await document_service.extract_raw_text(file)
+    # Fix 5: Server-side file size guard before any processing.
+    content = await file.read()
+    if len(content) > MAX_FILE_SIZE_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large. Maximum allowed size is 50 MB "
+                   f"(received {len(content) / 1024 / 1024:.1f} MB).",
+        )
+    # Rewind so downstream reads see full content.
+    await file.seek(0)
+
+    # Extract raw text — catches corrupted files (PdfReadError, BadZipFile) as 422.
+    try:
+        raw_text = await document_service.extract_raw_text(file)
+    except HTTPException:
+        raise  # Re-raise our own validation errors (400/422) unchanged.
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).error("File read failed: %s", exc)
+        raise HTTPException(
+            status_code=422,
+            detail="We couldn't read this file. "
+                   "It may be corrupted or password-protected. Please try a different file.",
+        ) from exc
+
     extension = Path(file.filename or "").suffix.lower()
 
     with tempfile.TemporaryDirectory() as temp_dir:
         input_path = os.path.join(temp_dir, file.filename or "slides_upload")
         await file.seek(0)
-        content = await file.read()
+        file_bytes = await file.read()
         with open(input_path, "wb") as fp:
-            fp.write(content)
+            fp.write(file_bytes)
 
         if extension == ".pdf":
             pdf_path = input_path
@@ -54,10 +81,11 @@ async def upload_slides(
                 storage_key=storage_key,
             )
         else:
-            # PPTX: Text extraction already done above via python-pptx.
-            # LibreOffice PDF conversion is not available on all systems.
-            # Use a placeholder URL; the PDF viewer will show a graceful fallback.
-            pdf_storage_url = f"placeholder://pptx-upload/{file.filename or 'slides'}"
+            # Fix 4: PPTX — LibreOffice conversion not available in dev environment.
+            # Use a consistent placeholder scheme so the column contract is never null
+            # and the PDF viewer can show a friendly fallback instead of a broken URL.
+            safe_name = Path(file.filename or "slides").stem
+            pdf_storage_url = f"placeholder://pptx/{user_id}/{safe_name}.pdf"
 
     try:
         result = await ai_ingestion_service.ingest_and_segment(
@@ -67,8 +95,13 @@ async def upload_slides(
             pdf_storage_url=pdf_storage_url,
         )
     except LLMFallbackExhaustedError as exc:
+        # Log the full technical detail server-side for debugging.
+        import logging
+        logging.getLogger(__name__).error("LLM fallback exhausted: %s", exc)
+        # Return a clean message — NEVER expose provider names, URLs, or HTTP codes.
         raise HTTPException(
             status_code=422,
-            detail=f"AI processing failed: {exc}. Try uploading a smaller or text-lighter document.",
+            detail="We had trouble analyzing your document. "
+                   "Try uploading a smaller or simpler file with clear text content.",
         )
     return result

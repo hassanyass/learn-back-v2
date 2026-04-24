@@ -65,6 +65,16 @@
           throw new Error("Invalid response from ingestion engine: Missing document_id");
         }
 
+        // 6b. Content validation — ensure segmentation produced usable topics.
+        const seg = uploadResponse.segmentation;
+        const segments = seg && seg.extracted_segments;
+        if (!segments || !Array.isArray(segments) || segments.length === 0) {
+          throw new Error(
+            "This document does not contain enough educational content for a structured learning session. " +
+            "Please upload lecture slides or study material."
+          );
+        }
+
         // 7. IMMEDIATELY call startSession
         const sessionResponse = await window.LearnBackAPI.startSession({ documentId: documentId });
         
@@ -89,9 +99,14 @@
         document.getElementById('upload-screen').style.display = '';
         submitBtn.style.display = '';
         
-        // Show error message
+        // Show user-friendly error message (via centralized normalizer)
         if (errorText) {
-          errorText.textContent = error.message || "Failed to process slides. Please try again.";
+          if (window.LearnBackAPI && window.LearnBackAPI.normalizeUserError) {
+            var friendly = window.LearnBackAPI.normalizeUserError(error);
+            errorText.textContent = friendly.title + ' ' + friendly.suggestion;
+          } else {
+            errorText.textContent = "Failed to process slides. Please try again.";
+          }
         }
         errorContainer.classList.remove('hidden');
       }

@@ -5,6 +5,29 @@
   // ── Constants ───────────────────────────────────────────────
   var API_BASE = 'http://127.0.0.1:8002';
 
+  // Sanitize auth errors — strip technical internals from user-facing messages.
+  function sanitizeAuthError(err) {
+    var msg = (err.message || '').toLowerCase();
+    if (msg.indexOf('email already') !== -1 || msg.indexOf('already registered') !== -1) {
+      return 'This email is already registered. Try signing in instead.';
+    }
+    if (msg.indexOf('invalid credentials') !== -1 || msg.indexOf('incorrect') !== -1 || msg.indexOf('not found') !== -1) {
+      return 'Incorrect email or password. Please try again.';
+    }
+    if (msg.indexOf('network') !== -1 || msg.indexOf('unable to reach') !== -1 || msg.indexOf('failed to fetch') !== -1) {
+      return 'Connection problem. Check your internet and try again.';
+    }
+    if (err.status === 500 || msg.indexOf('internal') !== -1) {
+      return 'Something went wrong on our side. Please try again shortly.';
+    }
+    // For Pydantic or other validation errors, keep the message but truncate if too technical
+    if (msg.indexOf('value is not') !== -1 || msg.indexOf('field required') !== -1) {
+      return 'Please check your details and try again.';
+    }
+    // Safe default — use message but cap length
+    return err.message && err.message.length < 120 ? err.message : 'Something went wrong. Please try again.';
+  }
+
   var TOKEN_KEY = 'learnback_token';
   var USER_KEY = 'learnback_user';
   var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -173,7 +196,7 @@
           console.error("Login fetch error:", err);
           var loginErrorText = document.getElementById('login-error-text');
           var loginError = document.getElementById('login-error');
-          if (loginErrorText) loginErrorText.textContent = err.message;
+          if (loginErrorText) loginErrorText.textContent = sanitizeAuthError(err);
           if (loginError) loginError.classList.add('visible');
         } finally {
           setLoading(loginSubmit, false);
@@ -234,7 +257,7 @@
           var registerErrorText = document.getElementById('register-error-text');
           var registerError = document.getElementById('register-error');
           if (registerSuccess) registerSuccess.classList.remove('visible');
-          if (registerErrorText) registerErrorText.textContent = err.message;
+          if (registerErrorText) registerErrorText.textContent = sanitizeAuthError(err);
           if (registerError) registerError.classList.add('visible');
         } finally {
           setLoading(registerSubmit, false);

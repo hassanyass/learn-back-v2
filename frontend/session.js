@@ -94,6 +94,21 @@ import { dom } from './js/core/dom.js';
     return;
   }
 
+  // ── 4b. SESSION VALIDATION — Require topics before proceeding ──
+  if (!state.topics || state.topics.length === 0) {
+    console.error('[Session] No topics found in session state. Cannot start session.');
+    ui.hideLoading();
+    if (dom.chatMessages) {
+      dom.chatMessages.innerHTML =
+        '<div style="text-align:center; padding:60px; color:var(--plum, #925E78);">' +
+        '<p style="font-size:18px; font-weight:600; margin-bottom:12px;">This session could not be initialized properly.</p>' +
+        '<p style="font-size:14px; opacity:0.7; margin-bottom:24px;">No topics were found. Please re-upload your slides.</p>' +
+        '<a href="upload_slides.html" style="display:inline-block; padding:10px 24px; background:var(--plum, #925E78); color:#fff; border-radius:8px; text-decoration:none; font-weight:500;">Re-upload Slides</a>' +
+        '</div>';
+    }
+    return;
+  }
+
   // ═══════════════════════════════════════════════════════════
   // 5. POPULATE UI FROM REST DATA (before WS opens)
   // ═══════════════════════════════════════════════════════════
@@ -103,6 +118,47 @@ import { dom } from './js/core/dom.js';
   ui.updateBktProgress(state.getAggregatedBkt());
   ui.updateHud('waiting');
   ui.updateConceptCard({ text: "I'm ready to learn! Explain the topic to me.", type: 'waiting', delta: 0 });
+
+  // ── 5b. SLIDE DECK VIEWER — Initialize PDF from bootstrap ──
+  (function initSlideViewer() {
+    var pdfUrl = state.pdfUrl;
+    var hasRealPdf = pdfUrl && pdfUrl !== 'NO_DOCUMENT_AVAILABLE'
+        && pdfUrl.indexOf('placeholder://') !== 0;
+
+    // Wire "View Slides" button
+    if (dom.btnOpenSlides) {
+      if (hasRealPdf) {
+        dom.btnOpenSlides.addEventListener('click', function () {
+          if (dom.slideDeckOverlay) dom.slideDeckOverlay.removeAttribute('hidden');
+          // Lazy-load PDF on first open
+          if (window.LearnBackPDF && !dom.btnOpenSlides._pdfLoaded) {
+            window.LearnBackPDF.open(pdfUrl);
+            dom.btnOpenSlides._pdfLoaded = true;
+          }
+        });
+      } else {
+        // No PDF available — disable button with tooltip
+        dom.btnOpenSlides.disabled = true;
+        dom.btnOpenSlides.title = 'Slide deck is not available for preview';
+        dom.btnOpenSlides.style.opacity = '0.4';
+        dom.btnOpenSlides.style.cursor = 'default';
+      }
+    }
+
+    // Wire "Close Slides" button
+    if (dom.btnCloseSlides) {
+      dom.btnCloseSlides.addEventListener('click', function () {
+        if (dom.slideDeckOverlay) dom.slideDeckOverlay.setAttribute('hidden', '');
+      });
+    }
+
+    // If slide placeholder element exists, show status message
+    if (dom.pdfPlaceholder) {
+      dom.pdfPlaceholder.textContent = hasRealPdf
+        ? 'Click "View Slides" to open your uploaded deck.'
+        : 'Slide deck is not available for preview.';
+    }
+  })();
 
   // ═══════════════════════════════════════════════════════════
   // 6. WEBSOCKET — Connect and wire callbacks

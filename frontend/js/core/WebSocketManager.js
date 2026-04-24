@@ -36,7 +36,15 @@ export class WebSocketManager {
       ? '127.0.0.1:8002'
       : window.location.host;
     var protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    return protocol + '://' + wsHost + '/ws/session/' + this.sessionId;
+    var base = protocol + '://' + wsHost + '/ws/session/' + this.sessionId;
+
+    // Attach JWT for backend authentication (session_router requires ?token=).
+    var token = '';
+    try { token = window.localStorage.getItem('learnback_token') || ''; } catch (_) { /* ignore */ }
+    if (token) {
+      base += '?token=' + encodeURIComponent(token);
+    }
+    return base;
   }
 
   /** Open the WebSocket connection. */
