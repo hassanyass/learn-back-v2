@@ -1,11 +1,15 @@
+import logging
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
+from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.models.core import LearningSession, UserMilestone
 from backend.schemas.api_schemas import CategorizedSessions, DashboardResponse
+
+logger = logging.getLogger(__name__)
 
 
 class DashboardService:
@@ -21,7 +25,13 @@ class DashboardService:
         self.db = db
 
     async def get_dashboard(self, user_id: int, user_timezone: str) -> DashboardResponse:
-        timezone_info = ZoneInfo(user_timezone)
+        try:
+            timezone_info = ZoneInfo(user_timezone)
+        except (KeyError, Exception):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid timezone: {user_timezone}",
+            )
         stmt = select(LearningSession).where(LearningSession.user_id == user_id)
         sessions = list((await self.db.execute(stmt)).scalars().all())
 

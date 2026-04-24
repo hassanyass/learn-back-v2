@@ -120,6 +120,14 @@
     return payload;
   }
 
+  async function apiGet(path, token) {
+    var headers = { 'Accept': 'application/json' };
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+    var response = await fetch(API_BASE + path, { method: 'GET', headers: headers });
+    if (!response.ok) return null;
+    return response.json().catch(function () { return null; });
+  }
+
   // ── Listeners wrapped in DOMContentLoaded ───────────────
   document.addEventListener("DOMContentLoaded", () => {
     console.warn("🟢 DOM fully loaded and parsed (auth)");
@@ -153,7 +161,13 @@
         try {
           console.warn("🟢 Login Button Clicked! Sending request...");
           var data = await apiPost('/auth/login', { email: email, password: password });
-          storeAuth(data.access_token, { user_id: data.user_id, username: data.username });
+
+          // Fetch real user profile using the freshly issued token
+          var me = await apiGet('/auth/me', data.access_token);
+          storeAuth(data.access_token, {
+            user_id: me && me.user_id ? me.user_id : null,
+            username: me && me.username ? me.username : null
+          });
           window.location.href = 'dashboard.html';
         } catch (err) {
           console.error("Login fetch error:", err);
@@ -203,7 +217,13 @@
           if (registerSuccess) registerSuccess.classList.add('visible');
 
           var loginData = await apiPost('/auth/login', { email: email, password: password });
-          storeAuth(loginData.access_token, { user_id: loginData.user_id, username: loginData.username });
+
+          // Fetch real user profile using the freshly issued token
+          var me = await apiGet('/auth/me', loginData.access_token);
+          storeAuth(loginData.access_token, {
+            user_id: me && me.user_id ? me.user_id : null,
+            username: me && me.username ? me.username : null
+          });
 
           setTimeout(function () {
             window.location.href = 'dashboard.html';

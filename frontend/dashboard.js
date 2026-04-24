@@ -315,72 +315,6 @@
     renderSessionCards();
   }
 
-  function showUserManual() {
-    if (document.getElementById('user-manual-overlay')) return;
-
-    var overlay = document.createElement('div');
-    overlay.id = 'user-manual-overlay';
-    overlay.style.cssText = [
-      'position:fixed',
-      'inset:0',
-      'background:rgba(0,0,0,0.55)',
-      'display:flex',
-      'align-items:center',
-      'justify-content:center',
-      'z-index:9999',
-      'padding:16px'
-    ].join(';');
-
-    var modal = document.createElement('div');
-    modal.style.cssText = [
-      'width:min(560px,100%)',
-      'background:#ffffff',
-      'border-radius:12px',
-      'padding:24px',
-      'box-shadow:0 20px 60px rgba(0,0,0,0.25)'
-    ].join(';');
-
-    var title = document.createElement('h2');
-    title.textContent = 'User Manual';
-    title.style.margin = '0 0 12px 0';
-
-    var text = document.createElement('p');
-    text.textContent = 'Welcome to LearnBack. This dashboard tracks your sessions, mastery progress, and milestones. Use "Start session" to begin your first guided lesson.';
-    text.style.margin = '0 0 20px 0';
-    text.style.lineHeight = '1.5';
-
-    var button = document.createElement('button');
-    button.type = 'button';
-    button.textContent = 'Got it!';
-    button.style.cssText = [
-      'border:none',
-      'border-radius:8px',
-      'padding:10px 16px',
-      'cursor:pointer',
-      'background:#1f6feb',
-      'color:#fff',
-      'font-weight:600'
-    ].join(';');
-
-    button.addEventListener('click', async function () {
-      if (window.LearnBackAPI && typeof window.LearnBackAPI.request === 'function') {
-        var response = await window.LearnBackAPI.request('/api/auth/onboarding_complete', {
-          method: 'PATCH'
-        });
-        if (response && response._error) {
-          console.warn('Failed to mark onboarding complete:', response.message);
-          return;
-        }
-      }
-      overlay.remove();
-    });
-
-    modal.appendChild(title);
-    modal.appendChild(text);
-    modal.appendChild(button);
-    overlay.appendChild(modal);
-    document.body.appendChild(overlay);
-  }
 
   function wireFilters() {
     var pills = document.querySelectorAll('[data-filter]');
@@ -458,6 +392,34 @@
     if (window.LearnBackAPI && typeof window.LearnBackAPI.fetchDashboardState === 'function') {
       try {
         var remote = await window.LearnBackAPI.fetchDashboardState();
+
+        // Backend returns a flat DashboardResponse; map it to the internal shape.
+        if (remote && typeof remote.total_time_hours === 'number') {
+          var storedUser = (window.LearnBackAPI.getStoredUser && window.LearnBackAPI.getStoredUser()) || {};
+          var firstName = (storedUser.username || 'Teacher').split(' ')[0] || 'Teacher';
+
+          var cat = remote.categorized_sessions || {};
+          return {
+            user: {
+              firstName: firstName,
+              streak: remote.current_streak_days || 0,
+              totalHours: remote.total_time_hours || 0,
+              masteryPct: Math.round(remote.average_mastery_percentage || 0),
+              activeDates: []
+            },
+            badges: (remote.unlocked_milestones || []).map(function (code) {
+              return { id: code, name: code, unlocked: true };
+            }),
+            sessions: [],
+            categorized: {
+              mastered: cat.mastered || 0,
+              needs_review: cat.needs_review || 0,
+              in_progress: cat.in_progress || 0
+            }
+          };
+        }
+
+        // Legacy: if backend ever returns the { user, sessions } shape directly
         if (remote && remote.user && Array.isArray(remote.sessions)) {
           return remote;
         }
@@ -497,9 +459,7 @@
         initWelcome();
       }
 
-      if (me && me.has_seen_walkthrough === false) {
-        showUserManual();
-      }
+      // Walkthrough logic removed — will be re-implemented in a later phase.
     } catch (error) {
       // 401 is handled by apiClient.js (auto-redirect)
       // For other errors, don't block the dashboard

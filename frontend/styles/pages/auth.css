@@ -306,6 +306,12 @@
   display: flex;
 }
 
+.auth-success-banner svg {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+}
+
 /* ── View Visibility ───────────────────────────────────────── */
 .auth-view { display: none; }
 .auth-view.is-active { display: block; }

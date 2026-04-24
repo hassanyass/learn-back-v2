@@ -3,7 +3,8 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.core.db import get_db
-from backend.schemas.api_schemas import TokenResponse
+from backend.routes.deps import get_current_user_id
+from backend.schemas.api_schemas import TokenResponse, UserResponse
 from backend.services.auth_service import AuthService
 
 
@@ -41,3 +42,35 @@ async def login_user(payload: LoginRequest, db: AsyncSession = Depends(get_db)) 
         password=payload.password,
     )
     return TokenResponse(access_token=access_token)
+
+
+@router.get("/me", response_model=UserResponse)
+async def get_me(
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+) -> UserResponse:
+    """Return the authenticated user's profile."""
+    auth_service = AuthService(db)
+    user = await auth_service.get_user_by_id(user_id)
+    return UserResponse(
+        user_id=user.id,
+        email=user.email,
+        username=user.username,
+        has_seen_walkthrough=user.has_seen_walkthrough,
+    )
+
+
+@router.patch("/onboarding_complete", response_model=UserResponse)
+async def mark_onboarding_complete(
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+) -> UserResponse:
+    """Mark the user's walkthrough as seen."""
+    auth_service = AuthService(db)
+    user = await auth_service.mark_onboarding_complete(user_id)
+    return UserResponse(
+        user_id=user.id,
+        email=user.email,
+        username=user.username,
+        has_seen_walkthrough=user.has_seen_walkthrough,
+    )

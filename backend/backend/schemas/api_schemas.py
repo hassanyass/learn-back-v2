@@ -16,6 +16,13 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
 
 
+class UserResponse(BaseModel):
+    user_id: int
+    email: str
+    username: str
+    has_seen_walkthrough: bool
+
+
 class CategorizedSessions(BaseModel):
     mastered: int = 0
     needs_review: int = 0

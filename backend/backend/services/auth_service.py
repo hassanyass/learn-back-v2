@@ -13,7 +13,12 @@ from backend.models.core import User
 class AuthService:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
-        self.jwt_secret = os.getenv("JWT_SECRET_KEY") or os.getenv("JWT_SECRET", "change-me-in-production")
+        self.jwt_secret = os.getenv("JWT_SECRET_KEY") or os.getenv("JWT_SECRET")
+        if not self.jwt_secret:
+            raise RuntimeError(
+                "JWT_SECRET_KEY (or JWT_SECRET) is not set. "
+                "Configure it in the environment."
+            )
         self.jwt_algorithm = os.getenv("JWT_ALGORITHM", "HS256")
         self.jwt_exp_minutes = int(os.getenv("JWT_EXP_MINUTES", "60"))
 
@@ -82,4 +87,29 @@ class AuthService:
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token subject.",
             )
-        return int(user_id)
+        try:
+            return int(user_id)
+        except (ValueError, TypeError) as exc:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Malformed token subject.",
+            ) from exc
+
+    async def get_user_by_id(self, user_id: int) -> User:
+        """Fetch a user by primary key. Raises 404 if not found."""
+        stmt = select(User).where(User.id == user_id)
+        user = (await self.db.execute(stmt)).scalar_one_or_none()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found.",
+            )
+        return user
+
+    async def mark_onboarding_complete(self, user_id: int) -> User:
+        """Set has_seen_walkthrough = True for the given user."""
+        user = await self.get_user_by_id(user_id)
+        user.has_seen_walkthrough = True
+        await self.db.commit()
+        await self.db.refresh(user)
+        return user
