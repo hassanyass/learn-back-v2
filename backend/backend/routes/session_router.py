@@ -26,8 +26,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.core.db import get_db
 from backend.models.core import LearningSession, SlideDeck
-from backend.schemas.api_schemas import SessionCreateRequest
+from backend.schemas.api_schemas import (
+    ChatPayload,
+    MindMapPayload,
+    SessionCreateRequest,
+    WidgetSubmitPayload,
+)
+from pydantic import ValidationError
 from backend.services.auth_service import AuthService
+from backend.services.bkt_service import BKTService
 from backend.services.session_service import SessionService
 
 logger = logging.getLogger(__name__)
@@ -90,16 +97,22 @@ async def create_session(
 
     # Extract segments from the AI-generated curriculum
     segments = deck.segmented_json.get("extracted_segments", [])
-    topic = segments[0]["topic_title"] if segments else "Untitled Topic"
+    if not segments:
+        raise HTTPException(
+            status_code=422,
+            detail="This slide deck has no segmented content. Please re-upload.",
+        )
+    topic = segments[0].get("topic_title", "Untitled Topic")
 
     # ── Build the nested session_state from segments ──────────────────
+    bkt = BKTService()
     topics: list[dict[str, Any]] = []
     for seg in segments:
         points: list[dict[str, Any]] = []
         for concept in seg.get("extracted_concepts", []):
             points.append({
                 "point_title": concept,
-                "bkt_score": 0.3,       # BKT prior (p_init)
+                "bkt_score": bkt.initial_probability(),
                 "status": "pending",     # pending → in_progress → completed
                 "misconceptions": [],
                 "kido_memory": None,     # {"title": "...", "summary": "..."} on completion
@@ -135,10 +148,15 @@ async def create_session(
     await db.commit()
     await db.refresh(session)
 
+    current_topic = topics[0] if topics else {}
+    current_point = current_topic.get("points", [{}])[0] if current_topic else {}
+
     return {
         "session_id": session.id,
-        "topic": session.topic,
-        "status": session.status,
+        "session_status": "active",
+        "current_topic": current_topic,
+        "current_point": current_point,
+        "kido_message": "Let's begin!"
     }
 
 
@@ -221,6 +239,12 @@ async def session_websocket(websocket: WebSocket, session_id: int) -> None:
             await websocket.close(code=1008)
             return
 
+        # Reject duplicate connections to the same session
+        if session_id in _active_connections:
+            await websocket.close(code=1008)
+            logger.warning("Duplicate WS connection rejected for session %s", session_id)
+            return
+
         await websocket.accept()
         _active_connections[session_id] = websocket
         logger.info("WebSocket connected for session %s (user %s)", session_id, user_id)
@@ -245,7 +269,15 @@ async def session_websocket(websocket: WebSocket, session_id: int) -> None:
 
                 try:
                     if msg_type == "chat":
-                        user_text = payload.get("text", "").strip()
+                        try:
+                            validated = ChatPayload(**payload)
+                        except ValidationError as ve:
+                            await websocket.send_json({
+                                "type": "error",
+                                "detail": f"Invalid message: {ve.errors()[0]['msg']}",
+                            })
+                            continue
+                        user_text = validated.text.strip()
                         if not user_text:
                             continue
 
@@ -287,7 +319,15 @@ async def session_websocket(websocket: WebSocket, session_id: int) -> None:
                         })
 
                     elif msg_type == "mind_map_submit":
-                        corrections = payload.get("corrections", {})
+                        try:
+                            validated_mm = MindMapPayload(**payload)
+                        except ValidationError as ve:
+                            await websocket.send_json({
+                                "type": "error",
+                                "detail": f"Invalid mind map submission: {ve.errors()[0]['msg']}",
+                            })
+                            continue
+                        corrections = validated_mm.corrections
 
                         result = await service.process_mind_map(
                             session_id=session_id,
@@ -316,7 +356,15 @@ async def session_websocket(websocket: WebSocket, session_id: int) -> None:
                         })
 
                     elif msg_type == "widget_submit":
-                        submitted_data = payload.get("submitted_data", {})
+                        try:
+                            validated_ws = WidgetSubmitPayload(**payload)
+                        except ValidationError as ve:
+                            await websocket.send_json({
+                                "type": "error",
+                                "detail": f"Invalid widget submission: {ve.errors()[0]['msg']}",
+                            })
+                            continue
+                        submitted_data = validated_ws.submitted_data
 
                         result = await service.process_widget_submit(
                             session_id=session_id,
@@ -411,3 +459,61 @@ async def request_hint(
             logger.warning("Failed to broadcast hint to WebSocket for session %s", session_id)
 
     return hint_result
+
+
+# ──────────────────────────────────────────────────────────────────────
+# HTTP: Skip Topic (JWT-protected)
+# ──────────────────────────────────────────────────────────────────────
+
+@router.post("/session/{session_id}/skip-topic")
+async def skip_topic(
+    session_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Skip the current topic — transport only, logic in SessionService."""
+    session = await db.get(LearningSession, session_id)
+    if not session or session.user_id != user_id:
+        raise HTTPException(status_code=404, detail="Session not found.")
+
+    service = SessionService(db)
+    return await service.skip_topic(session_id)
+
+
+# ──────────────────────────────────────────────────────────────────────
+# HTTP: Get Mind Map snapshot (JWT-protected, read-only)
+# ──────────────────────────────────────────────────────────────────────
+
+@router.get("/session/{session_id}/mind-map")
+async def get_mind_map(
+    session_id: int,
+    topic_index: int | None = None,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Fetch the mind map snapshot — transport only, logic in SessionService."""
+    session = await db.get(LearningSession, session_id)
+    if not session or session.user_id != user_id:
+        raise HTTPException(status_code=404, detail="Session not found.")
+
+    service = SessionService(db)
+    return await service.get_mind_map(session_id, topic_index=topic_index)
+
+
+# ──────────────────────────────────────────────────────────────────────
+# HTTP: Get Widget State (JWT-protected, read-only)
+# ──────────────────────────────────────────────────────────────────────
+
+@router.get("/session/{session_id}/widget-state")
+async def get_widget_state(
+    session_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Return widget lock state — transport only, logic in SessionService."""
+    session = await db.get(LearningSession, session_id)
+    if not session or session.user_id != user_id:
+        raise HTTPException(status_code=404, detail="Session not found.")
+
+    service = SessionService(db)
+    return await service.get_widget_state(session_id)

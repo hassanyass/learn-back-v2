@@ -12,6 +12,7 @@ All session-state mutations happen here.  Routers are thin transport.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -33,6 +34,23 @@ logger = logging.getLogger(__name__)
 
 MAX_ATTEMPTS_PER_POINT: int = 5
 OVERALL_BKT_COMPLETION_THRESHOLD: float = 0.95
+
+# ──────────────────────────────────────────────────────────────────────
+# Concurrency: Per-session mutual exclusion lock registry
+# ──────────────────────────────────────────────────────────────────────
+
+_session_locks: dict[int, asyncio.Lock] = {}
+
+
+def _get_session_lock(session_id: int) -> asyncio.Lock:
+    """Return the asyncio.Lock for a given session_id, creating it if needed.
+
+    This guarantees that only ONE operation per session can execute at a time,
+    preventing read-modify-write race conditions under async concurrency.
+    """
+    if session_id not in _session_locks:
+        _session_locks[session_id] = asyncio.Lock()
+    return _session_locks[session_id]
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -97,6 +115,13 @@ class SessionService:
             topic_checkpoint (bool)  – True if we hit a mind map checkpoint
             mind_map_data    (list)  – kido_memory entries for the current topic
         """
+        async with _get_session_lock(session_id):
+            return await self._process_user_message_locked(session_id, user_text)
+
+    async def _process_user_message_locked(
+        self, session_id: int, user_text: str,
+    ) -> dict[str, Any]:
+        """Inner implementation — always runs under session lock."""
         session = await self._get_session(session_id)
         state = self._ensure_state(session)
         segments = await self._get_segments(session)
@@ -114,19 +139,26 @@ class SessionService:
             user_text=user_text,
         )
 
-        # --- 3. BKT Update (per-point) ---
+        # --- 3. Validate evaluator label (deterministic) ---
+        VALID_LABELS = {"CORRECT", "INCORRECT", "NEEDS_INFO", "IRRELEVANT"}
+        label = evaluator_output.get("label", "NEEDS_INFO").upper().strip()
+        if label not in VALID_LABELS:
+            logger.warning("Unknown evaluator label '%s'; defaulting to NEEDS_INFO", label)
+            label = "NEEDS_INFO"
+
+        # --- 3b. BKT Update (deterministic from label, NOT from LLM) ---
         ti = state["current_topic_index"]
         pi = state["current_point_index"]
         point_node = self._get_point_node(state, ti, pi)
         prev_score = point_node["bkt_score"] if point_node else self.bkt.initial_probability()
-        bkt_direction = evaluator_output.get("bkt_shift_direction", 0)
-        new_score = self.bkt.update(prev_score, int(bkt_direction))
+        bkt_direction = 1 if label == "CORRECT" else 0
+        new_score = self.bkt.update(prev_score, bkt_direction)
         if point_node:
             point_node["bkt_score"] = new_score
 
-        # --- 3b. Track misconceptions live (nested inside point) ---
+        # --- 3c. Track misconceptions live (nested inside point) ---
         detected_misconception = evaluator_output.get("detected_misconception")
-        if detected_misconception and evaluator_output.get("label") == "INCORRECT" and point_node:
+        if detected_misconception and label == "INCORRECT" and point_node:
             point_node["misconceptions"].append({
                 "misconception": detected_misconception,
                 "timestamp": datetime.utcnow().isoformat(),
@@ -137,8 +169,9 @@ class SessionService:
         identified_metaphors = evaluator_output.get("identified_metaphors", "")
         kido_learned_so_far = [learned_summary] if learned_summary else []
 
-        # --- 5. Increment attempt counter ---
-        state["point_attempts"] += 1
+        # --- 5. Increment attempt counter (only on INCORRECT/NEEDS_INFO) ---
+        if label in ("INCORRECT", "NEEDS_INFO"):
+            state["point_attempts"] += 1
 
         # --- 6. Limit Check (Python-enforced) ---
         advanced = False
@@ -150,9 +183,23 @@ class SessionService:
         if state["point_attempts"] >= MAX_ATTEMPTS_PER_POINT or self.bkt.is_mastered(new_score):
             advanced = True
 
-            # Mark current point as completed
+            # Mark current point as completed + populate kido_memory
             if point_node:
                 point_node["status"] = "completed"
+                # Populate kido_memory from evaluator output
+                mem_title = evaluator_output.get("memory_title")
+                mem_summary = evaluator_output.get("memory_summary")
+                if mem_title and mem_summary:
+                    point_node["kido_memory"] = {
+                        "title": mem_title,
+                        "summary": mem_summary,
+                    }
+                elif not point_node.get("kido_memory"):
+                    # Fallback: use learned_summary from evaluator
+                    point_node["kido_memory"] = {
+                        "title": current_point or "Unknown",
+                        "summary": evaluator_output.get("kido_learned_summary", ""),
+                    }
 
             state["point_attempts"] = 0
             state["current_point_index"] += 1
@@ -232,7 +279,7 @@ class SessionService:
             )
 
         # --- 7. Call Kido ---
-        evaluator_label = evaluator_output.get("label", "NEEDS_INFO")
+        evaluator_label = label  # Use the validated label, not raw LLM output
         widget_type = evaluator_output.get("widget_type", "TEXT")
 
         kido_result = await self.kido.generate_response(
@@ -240,6 +287,10 @@ class SessionService:
             evaluator_label=evaluator_label,
             user_message=user_text,
             current_point=current_point or "Unknown Point",
+            instruction_for_kido=instruction_for_kido,
+            identified_metaphors=identified_metaphors,
+            conversation_history=conversation_history,
+            kido_learned_summary=learned_summary,
         )
         kido_response = kido_result.get("kido_response", "")
         widget_type = kido_result.get("widget_type", widget_type.lower())
@@ -288,6 +339,13 @@ class SessionService:
             session_state    (dict)
             session_complete (bool)
         """
+        async with _get_session_lock(session_id):
+            return await self._process_mind_map_locked(session_id, corrections)
+
+    async def _process_mind_map_locked(
+        self, session_id: int, corrections: dict[str, str],
+    ) -> dict[str, Any]:
+        """Inner implementation — always runs under session lock."""
         session = await self._get_session(session_id)
         state = self._ensure_state(session)
         segments = await self._get_segments(session)
@@ -329,11 +387,18 @@ class SessionService:
             next_point_title = next_topic["points"][0]["point_title"] if next_topic.get("points") else "the first point"
 
             # Call Kido to introduce the new topic
+            conversation_history = await self._build_conversation_history(session_id)
+            instruction = f"Acknowledge the mind map review is done, and enthusiastically introduce the next topic: {next_topic_title}."
+            
             kido_result = await self.kido.generate_response(
                 session_state=state,
                 evaluator_label="CORRECT",
                 user_message="(Mind map reviewed — moving to next topic)",
                 current_point=next_point_title,
+                instruction_for_kido=instruction,
+                identified_metaphors="",
+                conversation_history=conversation_history,
+                kido_learned_summary="",
                 force_transition=True,
                 next_point=next_point_title,
             )
@@ -374,6 +439,13 @@ class SessionService:
             kido_response, widget_type, session_state, advanced,
             session_complete, evaluation_label
         """
+        async with _get_session_lock(session_id):
+            return await self._process_widget_submit_locked(session_id, submitted_data)
+
+    async def _process_widget_submit_locked(
+        self, session_id: int, submitted_data: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Inner implementation — always runs under session lock."""
         session = await self._get_session(session_id)
         state = self._ensure_state(session)
         segments = await self._get_segments(session)
@@ -425,11 +497,23 @@ class SessionService:
 
         # --- 4. Call Kido for reaction ---
         current_point = self._resolve_current_point(state, segments) or "this point"
+        conversation_history = await self._build_conversation_history(session_id)
+        
+        instruction = (
+            "Celebrate! The student successfully sorted or ordered the widget task correctly."
+            if label == "CORRECT" else
+            "Act confused! The student made a mistake on the widget task. Encourage them to try again."
+        )
+
         kido_result = await self.kido.generate_response(
             session_state=state,
             evaluator_label=label,
             user_message=f"(Widget submission: {label})",
             current_point=current_point,
+            instruction_for_kido=instruction,
+            identified_metaphors="",
+            conversation_history=conversation_history,
+            kido_learned_summary="",
         )
         kido_response = kido_result.get("kido_response", "")
         kido_widget_type = kido_result.get("widget_type", "text").upper()
@@ -460,6 +544,11 @@ class SessionService:
 
         Returns dict with keys: hint_text, widget_type.
         """
+        async with _get_session_lock(session_id):
+            return await self._generate_hint_locked(session_id)
+
+    async def _generate_hint_locked(self, session_id: int) -> dict[str, Any]:
+        """Inner implementation — always runs under session lock."""
         session = await self._get_session(session_id)
         state = self._ensure_state(session)
         segments = await self._get_segments(session)
@@ -486,6 +575,151 @@ class SessionService:
         await self._persist_message(session_id, "system", hint_text, widget_type="TEXT")
 
         return {"hint_text": hint_text, "widget_type": "TEXT"}
+
+    # ------------------------------------------------------------------
+    # Public API: Skip Topic
+    # ------------------------------------------------------------------
+
+    async def skip_topic(self, session_id: int) -> dict[str, Any]:
+        """Skip the current topic, generating a mind map snapshot first.
+
+        Returns dict with keys:
+            mind_map_generated  (bool)
+            new_topic_index     (int)
+            session_complete    (bool)
+            mind_map_data       (list)
+            session_state       (dict)
+        """
+        async with _get_session_lock(session_id):
+            return await self._skip_topic_locked(session_id)
+
+    async def _skip_topic_locked(self, session_id: int) -> dict[str, Any]:
+        """Inner implementation — always runs under session lock."""
+        session = await self._get_session(session_id)
+        state = self._ensure_state(session)
+
+        ti = state["current_topic_index"]
+        topics = state.get("topics", [])
+
+        # --- 1. Generate mind map snapshot BEFORE skip ---
+        mind_map_data = []
+        if ti < len(topics):
+            topic_node = topics[ti]
+            points = topic_node.get("points", [])
+            if not points:
+                # Empty topic — safe fallback
+                mind_map_data = []
+            else:
+                mind_map_data = [
+                    p.get("kido_memory") or {"title": p["point_title"], "summary": ""}
+                    for p in points
+                ]
+
+            # Mark all remaining points in this topic as "skipped"
+            for p in points:
+                if p.get("status") != "completed":
+                    p["status"] = "skipped"
+
+        # --- 2. Advance topic index ---
+        state["current_topic_index"] += 1
+        state["current_point_index"] = 0
+        state["point_attempts"] = 0
+
+        new_ti = state["current_topic_index"]
+        session_complete = new_ti >= len(topics)
+
+        if session_complete:
+            session.status = "completed"
+            session.end_time = datetime.utcnow()
+        else:
+            # Mark next topic's first point as in_progress
+            next_topic = topics[new_ti]
+            if next_topic.get("points"):
+                next_topic["points"][0]["status"] = "in_progress"
+
+        # --- 3. Flush state ---
+        session.session_state = deepcopy(state)
+        session.bkt_score = self._aggregate_bkt(state)
+        await self.db.commit()
+
+        return {
+            "mind_map_generated": True,
+            "new_topic_index": new_ti,
+            "session_complete": session_complete,
+            "mind_map_data": mind_map_data,
+            "session_state": state,
+        }
+
+    # ------------------------------------------------------------------
+    # Public API: Get Mind Map (read-only snapshot)
+    # ------------------------------------------------------------------
+
+    async def get_mind_map(self, session_id: int, topic_index: int | None = None) -> dict[str, Any]:
+        """Return the mind map snapshot for a given topic.
+
+        Pure read — no LLM calls, no state mutation.
+
+        Returns dict with keys:
+            mind_map   (dict with topic_title and nodes)
+        """
+        session = await self._get_session(session_id)
+        state = self._ensure_state(session)
+
+        topics = state.get("topics", [])
+        ti = topic_index if topic_index is not None else state.get("current_topic_index", 0)
+
+        if ti >= len(topics) or not topics:
+            return {"mind_map": "EMPTY_SAFE_FALLBACK"}
+
+        topic_node = topics[ti]
+        points = topic_node.get("points", [])
+
+        if not points:
+            return {"mind_map": "EMPTY_SAFE_FALLBACK"}
+
+        nodes = []
+        for p in points:
+            memory = p.get("kido_memory") or {}
+            nodes.append({
+                "point": p.get("point_title", ""),
+                "kido_sentence": memory.get("summary", ""),
+                "status": "correct" if p.get("bkt_score", 0) >= MASTERY_THRESHOLD else (
+                    "incorrect" if p.get("status") == "completed" else "partial"
+                ),
+            })
+
+        return {
+            "mind_map": {
+                "topic_title": topic_node.get("topic_title", "Untitled"),
+                "nodes": nodes,
+            }
+        }
+
+    # ------------------------------------------------------------------
+    # Public API: Get Widget State (lock check)
+    # ------------------------------------------------------------------
+
+    async def get_widget_state(self, session_id: int) -> dict[str, Any]:
+        """Return the current widget lock state.
+
+        Widget is 'active' ONLY if the last Kido message contains widget_data.
+        Otherwise it is 'locked'.
+
+        Pure read — no state mutation.
+        """
+        last_kido = await self._get_last_kido_message(session_id)
+
+        if not last_kido or not last_kido.widget_data:
+            return {"widget_status": "locked", "widget_payload": None}
+
+        return {
+            "widget_status": "active",
+            "widget_payload": {
+                "type": (last_kido.widget_type or "TEXT").lower(),
+                "schema": last_kido.widget_data,
+                "state": {},
+            },
+        }
 
     # ------------------------------------------------------------------
     # LLM Call Wrappers
@@ -762,13 +996,35 @@ class SessionService:
 
     @staticmethod
     def _parse_json(raw: str) -> dict[str, Any]:
-        """Strip markdown fences and parse JSON."""
+        """Strip markdown fences and parse JSON.
+
+        Handles: ```json ... ```, embedded JSON in prose, and raw JSON.
+        """
         cleaned = raw.strip()
+
+        # Handle markdown code fences (line-by-line detection)
         if cleaned.startswith("```"):
-            cleaned = cleaned.strip("`")
-            if cleaned.startswith("json"):
-                cleaned = cleaned[4:]
-            cleaned = cleaned.strip()
+            lines = cleaned.split("\n")
+            inner_lines: list[str] = []
+            started = False
+            for line in lines:
+                if not started:
+                    if line.strip().startswith("```"):
+                        started = True
+                        continue
+                elif line.strip() == "```":
+                    break
+                else:
+                    inner_lines.append(line)
+            cleaned = "\n".join(inner_lines).strip()
+
+        # Try to find JSON object in the response if not pure JSON
+        if not cleaned.startswith("{"):
+            brace_start = cleaned.find("{")
+            brace_end = cleaned.rfind("}")
+            if brace_start != -1 and brace_end > brace_start:
+                cleaned = cleaned[brace_start:brace_end + 1]
+
         return json.loads(cleaned)
 
     @staticmethod

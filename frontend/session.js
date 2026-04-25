@@ -14,6 +14,7 @@ import { SessionState } from './js/core/SessionState.js';
 import { WebSocketManager } from './js/core/WebSocketManager.js';
 import { UIRenderer } from './js/core/UIRenderer.js';
 import { dom } from './js/core/dom.js';
+import { UIStateManager } from './js/core/UIStateManager.js';
 
 (async function () {
   'use strict';
@@ -75,6 +76,7 @@ import { dom } from './js/core/dom.js';
   // ═══════════════════════════════════════════════════════════
 
   var ui = new UIRenderer(dom);
+  var uiManager = new UIStateManager(dom);
   ui.showLoading();
   ui.setChatLockout(true);
 
@@ -333,9 +335,20 @@ import { dom } from './js/core/dom.js';
 
   // ── Cube Button (opens widget modal) ──
   if (dom.btnRequestGraph) {
-    dom.btnRequestGraph.addEventListener('click', function () {
+    dom.btnRequestGraph.addEventListener('click', async function () {
       if (!state.lastWidgetData || state.lastWidgetType === 'TEXT') return;
-      ui.showWidgetModal(state.lastWidgetType, state.lastWidgetData);
+      try {
+        ui.setChatLockout(true);
+        ui.updateHud('thinking');
+        var response = await window.LearnBackAPI.fetchWidgetState(state.sessionId);
+        ui.showWidgetModal(response.widget_type || state.lastWidgetType, response.widget_data || state.lastWidgetData);
+      } catch (err) {
+        console.error('[Session] fetchWidgetState failed:', err);
+        ui.showWidgetModal(state.lastWidgetType, state.lastWidgetData);
+      } finally {
+        ui.setChatLockout(false);
+        ui.updateHud('waiting');
+      }
     });
   }
 
@@ -399,23 +412,126 @@ import { dom } from './js/core/dom.js';
 
   console.log('[Session] Orchestrator initialized. Session:', sessionId);
 
+  
   // ── Right-panel collapse toggle ──
-  var btnCollapse = document.getElementById('btn-collapse-right');
-  if (btnCollapse) {
-    btnCollapse.addEventListener('click', function () {
+  var btnCollapseRight = document.getElementById('btn-collapse-right');
+  if (btnCollapseRight) {
+    btnCollapseRight.addEventListener('click', function () {
       var panel = document.getElementById('right-panel') || document.querySelector('.right-panel');
       if (panel) panel.classList.toggle('collapsed');
+      uiManager.setRightPanelView('status');
+    });
+  }
+  
+  var btnCollapseLeft = document.getElementById('btn-collapse-left');
+  if (btnCollapseLeft) {
+    btnCollapseLeft.addEventListener('click', function () {
+      uiManager.setRightPanelView('status');
     });
   }
 
-  // ── Hint button (sends hint request over WS) ──
-  var btnHint = document.getElementById('btn-hint') || document.getElementById('btn-request-hint');
-  if (btnHint) {
-    btnHint.addEventListener('click', function () {
-      if (!ws.isConnected) return;
-      ui.setChatLockout(true);
-      ui.updateHud('thinking');
-      ws.send({ type: 'chat', text: 'I need a hint' });
+  // ── Panel Switch Buttons ──
+  var btnKidoLearned = document.getElementById('btn-kido-learned');
+  if (btnKidoLearned) {
+    btnKidoLearned.addEventListener('click', function() { uiManager.setRightPanelView('kwl'); });
+  }
+
+  var btnMisconceptions = document.getElementById('btn-misconceptions');
+  if (btnMisconceptions) {
+    btnMisconceptions.addEventListener('click', function() { uiManager.setRightPanelView('misconceptions'); });
+  }
+
+  // ── Back Buttons ──
+  var backKwl = document.getElementById('btn-back-kwl');
+  if (backKwl) backKwl.addEventListener('click', function() { uiManager.setRightPanelView('status'); });
+  
+  var backMisc = document.getElementById('btn-back-misconceptions');
+  if (backMisc) backMisc.addEventListener('click', function() { uiManager.setRightPanelView('status'); });
+
+  var backStatus = document.getElementById('btn-back-status');
+  if (backStatus) backStatus.addEventListener('click', function() { uiManager.setRightPanelView('status'); });
+
+  // ── KWL & Misconception Card Expand (Delegated) ──
+  function toggleCardExpand(e) {
+    var card = e.target.closest('.thought-card');
+    if (card) {
+      card.classList.toggle('expanded');
+    }
+  }
+  var kwlStream = document.getElementById('kwl-stream');
+  if (kwlStream) kwlStream.addEventListener('click', toggleCardExpand);
+  
+  var miscStream = document.getElementById('misconceptions-stream');
+  if (miscStream) miscStream.addEventListener('click', toggleCardExpand);
+
+  // ── New Mind Map Button ──
+  var btnTriggerMindmap = document.getElementById('btn-trigger-mindmap');
+  if (btnTriggerMindmap) {
+    btnTriggerMindmap.addEventListener('click', async function() {
+      try {
+        ui.setChatLockout(true);
+        ui.updateHud('thinking');
+        var response = await window.LearnBackAPI.fetchMindMap(state.sessionId);
+        ui.showMindMapModal(response.mind_map_data || []);
+      } catch (err) {
+        console.error('[Session] fetchMindMap error:', err);
+        ui.appendKidoMessage("I couldn't generate my mind map right now.");
+      } finally {
+        ui.updateHud('waiting');
+      }
+    });
+  }
+
+  // ── Skip Topic Flow ──
+  var pendingSkipIndex = null;
+  var topicList = document.getElementById('topic-list');
+  if (topicList) {
+    topicList.addEventListener('click', function(e) {
+      var card = e.target.closest('.topic-card[data-action="skip_topic"]');
+      if (card) {
+        var targetIndex = parseInt(card.getAttribute('data-target-index'), 10);
+        if (!isNaN(targetIndex)) {
+          pendingSkipIndex = targetIndex;
+          var modal = document.getElementById('modal-skip-topic');
+          if (modal) modal.removeAttribute('hidden');
+        }
+      }
+    });
+  }
+
+  var btnCancelSkip = document.getElementById('btn-modal-cancel-skip');
+  if (btnCancelSkip) {
+    btnCancelSkip.addEventListener('click', function() {
+      var modal = document.getElementById('modal-skip-topic');
+      if (modal) modal.setAttribute('hidden', '');
+      pendingSkipIndex = null;
+    });
+  }
+
+  var btnConfirmSkip = document.getElementById('btn-modal-confirm-skip');
+  if (btnConfirmSkip) {
+    btnConfirmSkip.addEventListener('click', async function() {
+      var modal = document.getElementById('modal-skip-topic');
+      if (modal) modal.setAttribute('hidden', '');
+
+      try {
+        ui.setChatLockout(true);
+        ui.updateHud('thinking');
+        
+        // 1. Fetch mind map snapshot and show
+        var response = await window.LearnBackAPI.fetchMindMap(state.sessionId);
+        ui.showMindMapModal(response.mind_map_data || []);
+
+        // 2. Perform the skip via HTTP POST
+        var skipResponse = await window.LearnBackAPI.skipTopic(state.sessionId);
+        if (skipResponse && skipResponse.session_state) {
+          state.updateFromWsResponse({ session_state: skipResponse.session_state });
+          ui.renderTopicList(state.getTopicTitles(), state.currentTopicIndex, []);
+        }
+
+      } catch (err) {
+        console.error('[Session] skipTopic flow failed:', err);
+      }
     });
   }
 

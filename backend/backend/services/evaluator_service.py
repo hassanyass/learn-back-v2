@@ -31,11 +31,12 @@ MAX_POINT_ATTEMPTS: int = 5
 
 
 class EvaluatorService:
-    """Grades user messages and mutates session_state accordingly.
+    """Pure scoring service for student messages and widget submissions.
 
-    This service does NOT advance indices — it only marks the current
-    point as completed and returns a flag.  The Orchestrator handles
-    topic/point index advancement.
+    This service applies BKT updates and difficulty adjustments but does
+    NOT make advancement decisions, set point status, or mutate attempt
+    counters.  All progression decisions are the sole responsibility of
+    the Decision Engine (SessionService).
     """
 
     def __init__(self) -> None:
@@ -64,93 +65,16 @@ class EvaluatorService:
         self,
         session_state: dict[str, Any],
         user_message: str,
-    ) -> tuple[dict[str, Any], str, bool]:
-        """Grade the user's message and apply state mutations.
-
-        Parameters
-        ----------
-        session_state : dict
-            The full nested session_state JSONB (will be mutated in-place
-            and also returned as a deep copy).
-        user_message : str
-            The student's latest message text.
-
-        Returns
-        -------
-        tuple of (updated_state, evaluation_label, point_completed)
-            - updated_state: the mutated session_state dict
-            - evaluation_label: one of CORRECT|INCORRECT|NEEDS_INFO|IRRELEVANT
-            - point_completed: True if the point should be marked done
+    ) -> tuple[dict[str, Any], str, dict[str, Any]]:
+        """DEPRECATED: evaluate_message is dead code and has been hard-disabled.
+        
+        The orchestrator now uses SessionService._call_evaluator() directly to 
+        manage session state mutations deterministically.
         """
-        state = session_state  # mutate in place
-        ti = state["current_topic_index"]
-        pi = state["current_point_index"]
-
-        # ── Resolve topic and point titles ────────────────────────────
-        topics = state.get("topics", [])
-        if ti >= len(topics):
-            return state, "IRRELEVANT", False
-
-        topic_node = topics[ti]
-        topic_title = topic_node.get("topic_title", "Unknown Topic")
-        points = topic_node.get("points", [])
-
-        if pi >= len(points):
-            return state, "IRRELEVANT", False
-
-        point_node = points[pi]
-        point_title = point_node.get("point_title", "Unknown Point")
-
-        # ── Call Evaluator LLM ────────────────────────────────────────
-        evaluator_output = await self._call_evaluator_llm(
-            topic_title=topic_title,
-            point_title=point_title,
-            user_message=user_message,
+        raise NotImplementedError(
+            "evaluate_message is disabled for architectural safety. It contained "
+            "unsafe misconception mutation logic and is no longer used by the chat pipeline."
         )
-
-        label = evaluator_output.get("label", "NEEDS_INFO")
-        detected_misconception = evaluator_output.get("detected_misconception")
-        memory_title = evaluator_output.get("memory_title")
-        memory_summary = evaluator_output.get("memory_summary")
-
-        # ── Apply BKT Math & State Mutations ──────────────────────────
-        prev_bkt = point_node.get("bkt_score", self.bkt.initial_probability())
-
-        if label == "CORRECT":
-            point_node["bkt_score"] = self.bkt.update(prev_bkt, 1)
-            state["current_difficulty"] = min(3, state.get("current_difficulty", 1) + 1)
-
-        elif label == "INCORRECT":
-            state["point_attempts"] = state.get("point_attempts", 0) + 1
-            point_node["bkt_score"] = self.bkt.update(prev_bkt, 0)
-            state["current_difficulty"] = max(1, state.get("current_difficulty", 1) - 1)
-
-        elif label == "NEEDS_INFO":
-            state["point_attempts"] = state.get("point_attempts", 0) + 1
-
-        # IRRELEVANT: no changes to attempts or BKT
-
-        # ── Apply Misconceptions ──────────────────────────────────────
-        if detected_misconception:
-            point_node.setdefault("misconceptions", []).append(detected_misconception)
-
-        # ── Check Completion ──────────────────────────────────────────
-        current_bkt = point_node["bkt_score"]
-        attempts = state.get("point_attempts", 0)
-        point_completed = False
-
-        if current_bkt >= MASTERY_THRESHOLD or attempts >= MAX_POINT_ATTEMPTS or label == "CORRECT":
-            point_node["status"] = "completed"
-            point_completed = True
-
-            # Save kido_memory if the LLM produced one
-            if memory_title and memory_summary:
-                point_node["kido_memory"] = {
-                    "title": memory_title,
-                    "summary": memory_summary,
-                }
-
-        return state, label, point_completed
 
     def evaluate_mind_map(
         self,
@@ -210,14 +134,14 @@ class EvaluatorService:
     ) -> tuple[dict[str, Any], str, bool]:
         """Grade a widget submission using pure Python logic (no LLM).
 
-        Strict binary evaluation:
-          - PERFECT MATCH → CORRECT (bkt +0.60, status=completed, difficulty+1)
-          - ANY MISMATCH  → INCORRECT (attempts+1, bkt -0.10, difficulty-1)
+        Pure scoring only — returns the label and whether the answer was
+        correct. Does NOT mutate point status, point_attempts, or make
+        any completion decisions. Those are handled by the Decision Engine.
 
         Parameters
         ----------
         session_state : dict
-            The full nested session_state JSONB (mutated in-place).
+            The full nested session_state JSONB (mutated in-place for BKT/difficulty only).
         expected_data : dict
             The original widget_data generated by Kido.
         submitted_data : dict
@@ -228,6 +152,7 @@ class EvaluatorService:
         Returns
         -------
         tuple of (updated_state, label, point_completed)
+            point_completed is determined by BKT threshold / max attempts.
         """
         state = session_state
         ti = state["current_topic_index"]
@@ -277,25 +202,25 @@ class EvaluatorService:
             # Unknown widget type — treat as incorrect
             is_correct = False
 
-        # ── Apply BKT Math ────────────────────────────────────────────
-        point_completed = False
-
+        # ── Apply BKT + Difficulty (pure scoring, no status/attempts) ─
         if is_correct:
             label = "CORRECT"
             point_node["bkt_score"] = self.bkt.update(prev_bkt, 1)
             state["current_difficulty"] = min(3, state.get("current_difficulty", 1) + 1)
-            point_node["status"] = "completed"
-            point_completed = True
         else:
             label = "INCORRECT"
-            state["point_attempts"] = state.get("point_attempts", 0) + 1
             point_node["bkt_score"] = self.bkt.update(prev_bkt, 0)
             state["current_difficulty"] = max(1, state.get("current_difficulty", 1) - 1)
 
-            # Check if max attempts reached
-            if state["point_attempts"] >= MAX_POINT_ATTEMPTS:
-                point_node["status"] = "completed"
-                point_completed = True
+        # ── Completion decision by Decision Engine rules ──────────────
+        current_bkt = point_node["bkt_score"]
+        attempts = state.get("point_attempts", 0)
+        # Only increment attempts for INCORRECT (Decision Engine rule)
+        if not is_correct:
+            state["point_attempts"] = attempts + 1
+            attempts += 1
+
+        point_completed = (current_bkt >= MASTERY_THRESHOLD) or (attempts >= MAX_POINT_ATTEMPTS)
 
         return state, label, point_completed
 

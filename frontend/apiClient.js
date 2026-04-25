@@ -414,6 +414,26 @@
 
     fetchConceptMisconceptions: function (conceptId) {
       return request('/api/concepts/' + encodeURIComponent(conceptId) + '/misconceptions');
+    },
+
+    fetchMindMap: function (sessionId) {
+      return request('/session/' + encodeURIComponent(sessionId) + '/mind-map');
+    },
+
+    fetchHint: function (sessionId) {
+      return request('/session/' + encodeURIComponent(sessionId) + '/hint', {
+        method: 'POST'
+      });
+    },
+
+    skipTopic: function (sessionId) {
+      return request('/session/' + encodeURIComponent(sessionId) + '/skip-topic', {
+        method: 'POST'
+      });
+    },
+
+    fetchWidgetState: function (sessionId) {
+      return request('/session/' + encodeURIComponent(sessionId) + '/widget-state');
     }
   };
 

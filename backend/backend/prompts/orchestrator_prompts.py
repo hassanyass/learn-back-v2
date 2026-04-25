@@ -32,7 +32,9 @@ You must return ONLY a JSON object with these exact keys:
   "instruction_for_kido": "A clear directive telling Kido how to respond. Include what to say, tone, and any follow-up question Kido should ask.",
   "widget_type": "TEXT|PROCESS|COMPARISON|MATH",
   "identified_metaphors": "Any analogy, metaphor, or real-world comparison the student used. Empty string if none.",
-  "detected_misconception": "A concise description of the factual error or misconception the student expressed. null if no misconception."
+  "detected_misconception": "A concise description of the factual error or misconception the student expressed. null if no misconception.",
+  "memory_title": "1-2 words summarizing the core concept the user taught (e.g., 'Turing Test', 'Binary Search'). null if IRRELEVANT.",
+  "memory_summary": "1 short sentence (max 20 words) summarizing what Kido learned from this explanation. null if IRRELEVANT."
 }
 
 ## Label Definitions
@@ -58,6 +60,15 @@ You must return ONLY a JSON object with these exact keys:
 - Set to a concise description when the label is INCORRECT and the student
   expressed a clear factual error or conceptual misunderstanding.
 - Set to null for CORRECT, NEEDS_INFO, or IRRELEVANT labels.
+
+## memory_title & memory_summary
+- Generate these when the student has provided ANY substantive explanation
+  (even if INCORRECT or NEEDS_INFO) — these capture what the AI learned.
+- memory_title: 1-2 words only. This becomes a node label in the Mind Map UI.
+- memory_summary: 1 short sentence (max 20 words). Summarizes what the student
+  actually said, including any metaphors or analogies they used.
+- Set BOTH to null only if the message is IRRELEVANT (off-topic, greetings).
+
 
 ## Rules
 1. Evaluate ONLY the CURRENT POINT. Ignore future points.

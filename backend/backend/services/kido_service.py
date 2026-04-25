@@ -64,6 +64,10 @@ class KidoService:
         evaluator_label: str,
         user_message: str,
         current_point: str,
+        instruction_for_kido: str = "",
+        identified_metaphors: str = "",
+        conversation_history: str = "",
+        kido_learned_summary: str = "",
         force_transition: bool = False,
         next_point: str | None = None,
     ) -> dict[str, Any]:
@@ -104,6 +108,14 @@ class KidoService:
         sections.append(f"## Current Point Being Discussed\n{current_point}")
         sections.append(f"## Evaluator Label\n{evaluator_label}")
         sections.append(f"## Difficulty Level\n{difficulty_label}")
+        if instruction_for_kido:
+            sections.append(f"## Instruction for Kido\n{instruction_for_kido}")
+        if identified_metaphors:
+            sections.append(f"## Student's Metaphors\n{identified_metaphors}")
+        if kido_learned_summary:
+            sections.append(f"## What Kido Learned\n{kido_learned_summary}")
+        if conversation_history:
+            sections.append(f"## Conversation History\n{conversation_history}")
         sections.append(f"## Student's Message\n{user_message}")
 
         # Inject transition directive if needed
