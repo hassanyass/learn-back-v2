@@ -127,8 +127,10 @@ export class SessionState {
     this.topics.forEach(function (topic) {
       if (!Array.isArray(topic.points)) return;
       topic.points.forEach(function (point) {
-        totalScore += (typeof point.bkt_score === 'number' ? point.bkt_score : 0.3);
-        totalPoints++;
+        if (point.status === 'completed' || point.status === 'in_progress') {
+          totalScore += (typeof point.bkt_score === 'number' ? point.bkt_score : 0.3);
+          totalPoints++;
+        }
       });
     });
 
