@@ -116,7 +116,7 @@ import { UIStateManager } from './js/core/UIStateManager.js';
   // ═══════════════════════════════════════════════════════════
 
   ui.updateSessionTitle(state.sessionTitle);
-  ui.renderTopicList(state.getTopicTitles(), state.currentTopicIndex, []);
+  ui.renderTopicList(state.getTopicTitles(), state.currentTopicIndex, state.skippedIndices || []);
   ui.updateBktProgress(state.getAggregatedBkt());
   ui.updateHud('waiting');
   ui.updateConceptCard({ text: "I'm ready to learn! Explain the topic to me.", type: 'waiting', delta: 0 });
@@ -215,7 +215,7 @@ import { UIStateManager } from './js/core/UIStateManager.js';
       ui.updateBktProgress(newBkt);
       ui.updateConceptCard({ text: data.kido_response || '', type: knowledgeType, delta: delta });
       ui.setCubeState((data.widget_type || 'TEXT').toString());
-      ui.renderTopicList(state.getTopicTitles(), state.currentTopicIndex, []);
+      ui.renderTopicList(state.getTopicTitles(), state.currentTopicIndex, state.skippedIndices || []);
     } catch (err) {
       console.error('[Session] FATAL in onKidoResponse:', err, err.stack);
       ui.setChatLockout(false);
@@ -251,7 +251,10 @@ import { UIStateManager } from './js/core/UIStateManager.js';
 
   // ── System hint ──
   ws.onSystemHint = function (data) {
-    ui.appendHintMessage(data.hint_text || data.kido_response || '');
+    ui.appendHintMessage(data.hint_text).then(function () {
+      ui.setChatLockout(false);
+      ui.updateHud('waiting');
+    });
   };
 
   // ── WS error ──
@@ -336,15 +339,19 @@ import { UIStateManager } from './js/core/UIStateManager.js';
   // ── Cube Button (opens widget modal) ──
   if (dom.btnRequestGraph) {
     dom.btnRequestGraph.addEventListener('click', async function () {
-      if (!state.lastWidgetData || state.lastWidgetType === 'TEXT') return;
       try {
         ui.setChatLockout(true);
         ui.updateHud('thinking');
         var response = await window.LearnBackAPI.fetchWidgetState(state.sessionId);
-        ui.showWidgetModal(response.widget_type || state.lastWidgetType, response.widget_data || state.lastWidgetData);
+        
+        if (response.widget_status !== 'ready') {
+           ui.appendKidoMessage("There is no interactive widget available right now.");
+           return;
+        }
+        
+        ui.showWidgetModal(response.widget_type, response.widget_data);
       } catch (err) {
         console.error('[Session] fetchWidgetState failed:', err);
-        ui.showWidgetModal(state.lastWidgetType, state.lastWidgetData);
       } finally {
         ui.setChatLockout(false);
         ui.updateHud('waiting');
@@ -410,6 +417,24 @@ import { UIStateManager } from './js/core/UIStateManager.js';
     });
   }
 
+  // ── Hint Button (triggers HTTP fetchHint) ──
+  var btnHint = document.getElementById('btn-spark');
+  if (btnHint) {
+    btnHint.addEventListener('click', async function () {
+      if (!ws.isConnected) return;
+      try {
+        ui.setChatLockout(true);
+        ui.updateHud('thinking');
+        await window.LearnBackAPI.fetchHint(state.sessionId);
+      } catch (err) {
+        console.error('[Session] fetchHint failed:', err);
+        ui.appendHintMessage("I couldn't think of a hint right now. Let's keep trying!");
+        ui.setChatLockout(false);
+        ui.updateHud('waiting');
+      }
+    });
+  }
+
   console.log('[Session] Orchestrator initialized. Session:', sessionId);
 
   
@@ -417,8 +442,8 @@ import { UIStateManager } from './js/core/UIStateManager.js';
   var btnCollapseRight = document.getElementById('btn-collapse-right');
   if (btnCollapseRight) {
     btnCollapseRight.addEventListener('click', function () {
-      var panel = document.getElementById('right-panel') || document.querySelector('.right-panel');
-      if (panel) panel.classList.toggle('collapsed');
+      var panel = document.getElementById('right-panel');
+      if (panel) panel.classList.toggle('is-collapsed');
       uiManager.setRightPanelView('status');
     });
   }
@@ -426,7 +451,8 @@ import { UIStateManager } from './js/core/UIStateManager.js';
   var btnCollapseLeft = document.getElementById('btn-collapse-left');
   if (btnCollapseLeft) {
     btnCollapseLeft.addEventListener('click', function () {
-      uiManager.setRightPanelView('status');
+      var panel = document.getElementById('ai-panel');
+      if (panel) panel.classList.toggle('is-collapsed');
     });
   }
 
@@ -472,7 +498,7 @@ import { UIStateManager } from './js/core/UIStateManager.js';
         ui.setChatLockout(true);
         ui.updateHud('thinking');
         var response = await window.LearnBackAPI.fetchMindMap(state.sessionId);
-        ui.showMindMapModal(response.mind_map_data || []);
+        ui.showMindMapModal(response.mind_map_data);
       } catch (err) {
         console.error('[Session] fetchMindMap error:', err);
         ui.appendKidoMessage("I couldn't generate my mind map right now.");
@@ -520,13 +546,13 @@ import { UIStateManager } from './js/core/UIStateManager.js';
         
         // 1. Fetch mind map snapshot and show
         var response = await window.LearnBackAPI.fetchMindMap(state.sessionId);
-        ui.showMindMapModal(response.mind_map_data || []);
+        ui.showMindMapModal(response.mind_map_data);
 
         // 2. Perform the skip via HTTP POST
         var skipResponse = await window.LearnBackAPI.skipTopic(state.sessionId);
         if (skipResponse && skipResponse.session_state) {
           state.updateFromWsResponse({ session_state: skipResponse.session_state });
-          ui.renderTopicList(state.getTopicTitles(), state.currentTopicIndex, []);
+          ui.renderTopicList(state.getTopicTitles(), state.currentTopicIndex, state.skippedIndices);
         }
 
       } catch (err) {

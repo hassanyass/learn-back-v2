@@ -33,8 +33,8 @@ export class UIRenderer {
    * @param {number|string} msgId - Unique message ID
    * @returns {HTMLElement} The message wrapper element
    */
-  _makeMsg(text, sender, msgId) {
-    var isHint = sender === 'ai' && text.startsWith('__HINT__');
+  _makeMsg(text, sender, msgId, options) {
+    var isHint = options && options.isHint === true;
     var rawText = isHint ? text.replace('__HINT__', '') : text;
     var senderLabel = sender === 'user' ? 'You' : 'Kido';
 
@@ -98,7 +98,7 @@ export class UIRenderer {
    * @param {number|string} [msgId]
    * @returns {HTMLElement} The appended message element
    */
-  _addMessage(text, sender, msgId) {
+  _addMessage(text, sender, msgId, options) {
     var dom = this.dom;
 
     // Hide welcome screen on first message
@@ -106,7 +106,7 @@ export class UIRenderer {
       dom.chatWelcome.style.display = 'none';
     }
 
-    var mainMsg = this._makeMsg(text, sender, msgId);
+    var mainMsg = this._makeMsg(text, sender, msgId, options);
     if (dom.chatMessages) {
       dom.chatMessages.appendChild(mainMsg);
       requestAnimationFrame(function () {
@@ -148,7 +148,7 @@ export class UIRenderer {
    */
   appendHintMessage(text) {
     var id = this._messageCount++;
-    var msgEl = this._addMessage('...', 'ai', '__HINT__' + id);
+    var msgEl = this._addMessage('...', 'ai', '__HINT__' + id, { isHint: true });
     var hintText = msgEl.querySelector('.hint-note__text');
     if (!hintText) return Promise.resolve();
     return this.typeMessage(hintText, text);
@@ -575,26 +575,36 @@ export class UIRenderer {
 
     container.innerHTML = '';
 
-    (mindMapData || []).forEach(function (node) {
-      var card = document.createElement('div');
-      card.style.cssText = 'background:var(--bg-secondary,#f9fafb); border:1px solid var(--border-color,#e5e7eb); border-radius:10px; padding:12px;';
+    var data = mindMapData || {};
+    var nodes = data.nodes || [];
 
-      var label = document.createElement('label');
-      label.style.cssText = 'display:block; font-weight:600; font-size:13px; margin-bottom:6px; color:var(--text-primary,#1a1f36);';
-      label.textContent = node.title || 'Untitled';
+    if (nodes.length === 0) {
+      container.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-tertiary);">No mind map data available.</div>';
+    } else {
+      nodes.forEach(function (node) {
+        var card = document.createElement('div');
+        card.style.cssText = 'background:var(--bg-secondary,#f9fafb); border:1px solid var(--border-color,#e5e7eb); border-radius:10px; padding:12px; margin-bottom:12px;';
 
-      var textarea = document.createElement('textarea');
-      textarea.className = 'mindmap-correction';
-      textarea.setAttribute('data-point-title', node.title || '');
-      textarea.rows = 2;
-      textarea.style.cssText = 'width:100%; padding:8px; border:1px solid var(--border-color,#e2e2e5); border-radius:6px; font-family:inherit; font-size:13px; resize:vertical;';
-      textarea.value = node.summary || '';
-      textarea.placeholder = 'Correct Kido\'s understanding here...';
+        var label = document.createElement('label');
+        label.style.cssText = 'display:block; font-weight:600; font-size:13px; margin-bottom:6px; color:var(--text-primary,#1a1f36);';
+        // TODO: REMOVE AFTER DTO STANDARDIZATION (remove node.title fallback)
+        label.textContent = node.point || node.title || 'Untitled';
 
-      card.appendChild(label);
-      card.appendChild(textarea);
-      container.appendChild(card);
-    });
+        var textarea = document.createElement('textarea');
+        textarea.className = 'mindmap-correction';
+        // TODO: REMOVE AFTER DTO STANDARDIZATION (remove node.title fallback)
+        textarea.setAttribute('data-point-title', node.point || node.title || '');
+        textarea.rows = 2;
+        textarea.style.cssText = 'width:100%; padding:8px; border:1px solid var(--border-color,#e2e2e5); border-radius:6px; font-family:inherit; font-size:13px; resize:vertical;';
+        // TODO: REMOVE AFTER DTO STANDARDIZATION (remove node.summary fallback)
+        textarea.value = node.kido_sentence || node.summary || '';
+        textarea.placeholder = 'Correct Kido\'s understanding here...';
+
+        card.appendChild(label);
+        card.appendChild(textarea);
+        container.appendChild(card);
+      });
+    }
 
     if (dom.mindmapCheckpointModal) dom.mindmapCheckpointModal.removeAttribute('hidden');
   }
@@ -630,9 +640,42 @@ export class UIRenderer {
     if (dom.widgetModalTitle) {
       dom.widgetModalTitle.textContent = (widgetType || 'Widget').toUpperCase() + ' Widget';
     }
-    if (dom.widgetDataDisplay) {
-      dom.widgetDataDisplay.textContent = JSON.stringify(widgetData || {}, null, 2);
+    
+    var display = dom.widgetDataDisplay;
+    if (display) {
+      display.innerHTML = '';
+      display.style.cssText = 'background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin-bottom: 12px; font-family: inherit; font-size: 13px; white-space: normal;';
+      
+      var data = widgetData || {};
+      
+      if (Object.keys(data).length === 0) {
+         display.innerHTML = '<span style="color:var(--text-tertiary);">No schema provided.</span>';
+      } else {
+         var html = '<strong>Schema Requirements:</strong><ul style="margin-top: 8px; padding-left: 20px; color: var(--text-secondary);">';
+         
+         if (Array.isArray(data.steps)) {
+            data.steps.forEach(function(s) {
+               html += '<li>' + s + '</li>';
+            });
+         } else if (Array.isArray(data.categories)) {
+            data.categories.forEach(function(c) {
+               html += '<li>Category: ' + c + '</li>';
+            });
+            if (Array.isArray(data.attributes)) {
+               data.attributes.forEach(function(a) {
+                  html += '<li>Item: ' + (a.text || a) + '</li>';
+               });
+            }
+         } else {
+            Object.keys(data).forEach(function(key) {
+               html += '<li><strong>' + key + '</strong>: Structured Data</li>';
+            });
+         }
+         html += '</ul>';
+         display.innerHTML = html;
+      }
     }
+    
     if (dom.widgetInput) dom.widgetInput.value = '';
     if (dom.widgetModal) dom.widgetModal.removeAttribute('hidden');
   }
@@ -713,19 +756,19 @@ UIRenderer.HUD_ICONS = {
 
 /** HUD state configuration */
 UIRenderer.HUD_STATES = {
-  correct:      { text: 'Correct',          icon: UIRenderer.HUD_ICONS.correct,    anim: 'pop' },
-  incorrect:    { text: 'Incorrect',         icon: UIRenderer.HUD_ICONS.incorrect,  anim: 'shake' },
+  correct: { text: 'Correct', icon: UIRenderer.HUD_ICONS.correct, anim: 'pop' },
+  incorrect: { text: 'Incorrect', icon: UIRenderer.HUD_ICONS.incorrect, anim: 'shake' },
   needs_detail: { text: 'NEEDS MORE DETAIL', icon: UIRenderer.HUD_ICONS.irrelevant, anim: null },
-  irrelevant:   { text: 'OUT OF SCOPE',      icon: UIRenderer.HUD_ICONS.irrelevant, anim: null },
-  thinking:     { text: 'THINKING...',       icon: UIRenderer.HUD_ICONS.thinking,   anim: 'pulse' },
-  waiting:      { text: 'READY TO LEARN',    icon: UIRenderer.HUD_ICONS.waiting,    anim: null }
+  irrelevant: { text: 'OUT OF SCOPE', icon: UIRenderer.HUD_ICONS.irrelevant, anim: null },
+  thinking: { text: 'THINKING...', icon: UIRenderer.HUD_ICONS.thinking, anim: 'pulse' },
+  waiting: { text: 'READY TO LEARN', icon: UIRenderer.HUD_ICONS.waiting, anim: null }
 };
 
 /** Concept Card badge configuration */
 UIRenderer.BADGE_CONFIG = {
-  mastered:   { text: 'Correct',          icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;"><polyline points="20 6 9 17 4 12"></polyline></svg>' },
-  developing: { text: 'Needs Detail',     icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>' },
-  revising:   { text: 'Incorrect',        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>' },
-  thinking:   { text: 'THINKING',         icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;"><line x1="4" y1="12" x2="20" y2="12" stroke-dasharray="4 4"><animate attributeName="stroke-dashoffset" from="8" to="0" dur="1s" repeatCount="indefinite" /></line></svg>' },
-  waiting:    { text: 'WAITING FOR INPUT', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>' }
+  mastered: { text: 'Correct', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;"><polyline points="20 6 9 17 4 12"></polyline></svg>' },
+  developing: { text: 'Needs Detail', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>' },
+  revising: { text: 'Incorrect', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>' },
+  thinking: { text: 'THINKING', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;"><line x1="4" y1="12" x2="20" y2="12" stroke-dasharray="4 4"><animate attributeName="stroke-dashoffset" from="8" to="0" dur="1s" repeatCount="indefinite" /></line></svg>' },
+  waiting: { text: 'WAITING FOR INPUT', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>' }
 };

@@ -255,13 +255,13 @@
   }
 
   var ERROR_TYPES = {
-    FILE_TOO_LARGE:       'FILE_TOO_LARGE',
-    UNSUPPORTED_CONTENT:  'UNSUPPORTED_CONTENT',
-    NETWORK_ERROR:        'NETWORK_ERROR',
-    AUTH_EXPIRED:         'AUTH_EXPIRED',
-    SERVER_ERROR:         'SERVER_ERROR',
-    AI_PROCESSING:        'AI_PROCESSING',
-    UNKNOWN:              'UNKNOWN'
+    FILE_TOO_LARGE: 'FILE_TOO_LARGE',
+    UNSUPPORTED_CONTENT: 'UNSUPPORTED_CONTENT',
+    NETWORK_ERROR: 'NETWORK_ERROR',
+    AUTH_EXPIRED: 'AUTH_EXPIRED',
+    SERVER_ERROR: 'SERVER_ERROR',
+    AI_PROCESSING: 'AI_PROCESSING',
+    UNKNOWN: 'UNKNOWN'
   };
 
   var FRIENDLY_MESSAGES = {};
@@ -320,20 +320,20 @@
       var rawLower = (rawDetail + ' ' + (error.message || '')).toLowerCase();
 
       if (rawLower.indexOf('llm') !== -1 || rawLower.indexOf('groq') !== -1 ||
-          rawLower.indexOf('openai') !== -1 || rawLower.indexOf('provider') !== -1 ||
-          rawLower.indexOf('exhausted') !== -1 || rawLower.indexOf('segmentation') !== -1 ||
-          rawLower.indexOf('parse') !== -1) {
+        rawLower.indexOf('openai') !== -1 || rawLower.indexOf('provider') !== -1 ||
+        rawLower.indexOf('exhausted') !== -1 || rawLower.indexOf('segmentation') !== -1 ||
+        rawLower.indexOf('parse') !== -1) {
         return Object.assign({ type: ERROR_TYPES.AI_PROCESSING }, FRIENDLY_MESSAGES[ERROR_TYPES.AI_PROCESSING]);
       }
 
       if (rawLower.indexOf('no extractable') !== -1 || rawLower.indexOf('insufficient') !== -1 ||
-          rawLower.indexOf('not suitable') !== -1 || rawLower.indexOf('no topics') !== -1 ||
-          rawLower.indexOf('empty') !== -1) {
+        rawLower.indexOf('not suitable') !== -1 || rawLower.indexOf('no topics') !== -1 ||
+        rawLower.indexOf('empty') !== -1) {
         return Object.assign({ type: ERROR_TYPES.UNSUPPORTED_CONTENT }, FRIENDLY_MESSAGES[ERROR_TYPES.UNSUPPORTED_CONTENT]);
       }
 
       if (rawLower.indexOf('corrupt') !== -1 || rawLower.indexOf('could not read') !== -1 ||
-          rawLower.indexOf('password') !== -1) {
+        rawLower.indexOf('password') !== -1) {
         return {
           type: ERROR_TYPES.UNSUPPORTED_CONTENT,
           title: 'We couldn’t read this file.',
@@ -420,12 +420,6 @@
       return request('/session/' + encodeURIComponent(sessionId) + '/mind-map');
     },
 
-    fetchHint: function (sessionId) {
-      return request('/session/' + encodeURIComponent(sessionId) + '/hint', {
-        method: 'POST'
-      });
-    },
-
     skipTopic: function (sessionId) {
       return request('/session/' + encodeURIComponent(sessionId) + '/skip-topic', {
         method: 'POST'
@@ -434,6 +428,12 @@
 
     fetchWidgetState: function (sessionId) {
       return request('/session/' + encodeURIComponent(sessionId) + '/widget-state');
+    },
+
+    fetchHint: function (sessionId) {
+      return request('/session/' + encodeURIComponent(sessionId) + '/hint', {
+        method: 'POST'
+      });
     }
   };
 

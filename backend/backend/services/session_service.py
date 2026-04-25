@@ -216,10 +216,7 @@ class SessionService:
             if all_points_done and topic_node:
                 # ── TOPIC CHECKPOINT: Mind Map pause ──
                 topic_checkpoint = True
-                mind_map_data = [
-                    p.get("kido_memory") or {"title": p["point_title"], "summary": ""}
-                    for p in topic_node.get("points", [])
-                ]
+                mind_map_data = self._build_mind_map_dto(state, ti)
 
                 # Force Kido to announce the Mind Map
                 kido_response_text = (
@@ -601,20 +598,17 @@ class SessionService:
         ti = state["current_topic_index"]
         topics = state.get("topics", [])
 
+        if "skipped_indices" not in state:
+            state["skipped_indices"] = []
+        if ti not in state["skipped_indices"]:
+            state["skipped_indices"].append(ti)
+
         # --- 1. Generate mind map snapshot BEFORE skip ---
-        mind_map_data = []
+        mind_map_data = self._build_mind_map_dto(state, ti)
+
         if ti < len(topics):
             topic_node = topics[ti]
             points = topic_node.get("points", [])
-            if not points:
-                # Empty topic — safe fallback
-                mind_map_data = []
-            else:
-                mind_map_data = [
-                    p.get("kido_memory") or {"title": p["point_title"], "summary": ""}
-                    for p in points
-                ]
-
             # Mark all remaining points in this topic as "skipped"
             for p in points:
                 if p.get("status") != "completed":
@@ -660,22 +654,28 @@ class SessionService:
         Pure read — no LLM calls, no state mutation.
 
         Returns dict with keys:
-            mind_map   (dict with topic_title and nodes)
+            mind_map_data   (dict with topic_title and nodes)
         """
         session = await self._get_session(session_id)
         state = self._ensure_state(session)
 
+        return {
+            "mind_map_data": self._build_mind_map_dto(state, topic_index)
+        }
+
+    def _build_mind_map_dto(self, state: dict[str, Any], topic_index: int | None = None) -> dict[str, Any]:
+        """Canonical builder for mind_map_data DTO."""
         topics = state.get("topics", [])
         ti = topic_index if topic_index is not None else state.get("current_topic_index", 0)
 
         if ti >= len(topics) or not topics:
-            return {"mind_map": "EMPTY_SAFE_FALLBACK"}
+            return {"nodes": []}
 
         topic_node = topics[ti]
         points = topic_node.get("points", [])
 
         if not points:
-            return {"mind_map": "EMPTY_SAFE_FALLBACK"}
+            return {"nodes": []}
 
         nodes = []
         for p in points:
@@ -689,10 +689,8 @@ class SessionService:
             })
 
         return {
-            "mind_map": {
-                "topic_title": topic_node.get("topic_title", "Untitled"),
-                "nodes": nodes,
-            }
+            "topic_title": topic_node.get("topic_title", "Untitled"),
+            "nodes": nodes,
         }
 
     # ------------------------------------------------------------------
@@ -710,15 +708,12 @@ class SessionService:
         last_kido = await self._get_last_kido_message(session_id)
 
         if not last_kido or not last_kido.widget_data:
-            return {"widget_status": "locked", "widget_payload": None}
+            return {"widget_status": "locked", "widget_type": None, "widget_data": None}
 
         return {
-            "widget_status": "active",
-            "widget_payload": {
-                "type": (last_kido.widget_type or "TEXT").lower(),
-                "schema": last_kido.widget_data,
-                "state": {},
-            },
+            "widget_status": "ready",
+            "widget_type": (last_kido.widget_type or "TEXT").lower(),
+            "widget_data": last_kido.widget_data,
         }
 
     # ------------------------------------------------------------------

@@ -31,6 +31,7 @@ export class SessionState {
     this.currentTopicIndex = rawState.current_topic_index || bootstrap.topicIndex || 0;
     this.currentPointIndex = rawState.current_point_index || 0;
     this.pointAttempts = rawState.point_attempts || 0;
+    this.skippedIndices = rawState.skipped_indices || [];
 
     // If topics came as flat string array from REST (legacy), convert
     if (this.topics.length === 0 && Array.isArray(bootstrap.topics)) {
@@ -42,10 +43,6 @@ export class SessionState {
         };
       });
     }
-
-    // ── Widget state (from latest WS response) ──
-    this.lastWidgetType = 'TEXT';
-    this.lastWidgetData = null;
 
     // ── Mind map checkpoint state ──
     this.isMindMapPending = false;
@@ -74,14 +71,7 @@ export class SessionState {
       if (typeof ss.current_topic_index === 'number') this.currentTopicIndex = ss.current_topic_index;
       if (typeof ss.current_point_index === 'number') this.currentPointIndex = ss.current_point_index;
       if (typeof ss.point_attempts === 'number') this.pointAttempts = ss.point_attempts;
-    }
-
-    // Track widget type (null-safe — backend may send null)
-    if (data.widget_type != null) {
-      this.lastWidgetType = String(data.widget_type).toUpperCase();
-    }
-    if (data.widget_data !== undefined) {
-      this.lastWidgetData = data.widget_data;
+      if (Array.isArray(ss.skipped_indices)) this.skippedIndices = ss.skipped_indices;
     }
 
     // Mind map checkpoint

@@ -132,6 +132,7 @@ async def create_session(
         "point_attempts": 0,
         "current_difficulty": 1,
         "topics": topics,
+        "skipped_indices": [],
     }
 
     # Create the learning session with the full state machine
@@ -311,7 +312,7 @@ async def session_websocket(websocket: WebSocket, session_id: int) -> None:
                         # Include checkpoint data if present
                         if result.get("topic_checkpoint"):
                             response_data["topic_checkpoint"] = True
-                            response_data["mind_map_data"] = result.get("mind_map_data", [])
+                            response_data["mind_map_data"] = result.get("mind_map_data", {})
 
                         await websocket.send_json({
                             "type": "kido_response",
