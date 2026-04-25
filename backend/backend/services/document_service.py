@@ -1,37 +1,50 @@
 import io
 import os
-import subprocess
 from pathlib import Path
+
+from supabase import create_client
 
 from fastapi import HTTPException, UploadFile, status
 from PyPDF2 import PdfReader
-from pptx import Presentation
 
 
 class DocumentService:
-    ALLOWED_EXTENSIONS = {".pdf", ".pptx"}
+    ALLOWED_EXTENSIONS = {".pdf"}
+
+    def __init__(self):
+        self.supabase = create_client(
+            os.getenv("SUPABASE_URL", ""),
+            os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+        )
 
     def validate_upload(self, upload_file: UploadFile) -> str:
-        suffix = Path(upload_file.filename or "").suffix.lower()
+        return self.validate_filename(upload_file.filename or "")
+
+    def validate_filename(self, filename: str) -> str:
+        suffix = Path(filename).suffix.lower()
         if suffix not in self.ALLOWED_EXTENSIONS:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Only PDF and PPTX files are supported.",
+                detail="Only PDF files are supported.",
             )
         return suffix
 
     async def extract_raw_text(self, upload_file: UploadFile) -> str:
-        extension = self.validate_upload(upload_file)
         content = await upload_file.read()
+        return self.extract_raw_text_from_bytes(
+            filename=upload_file.filename or "",
+            content=content,
+        )
+
+    def extract_raw_text_from_bytes(self, filename: str, content: bytes) -> str:
+        extension = self.validate_filename(filename)
         if not content:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Uploaded file is empty.",
             )
 
-        if extension == ".pdf":
-            return self._extract_pdf_text(content)
-        return self._extract_pptx_text(content)
+        return self._extract_pdf_text(content)
 
     def _extract_pdf_text(self, content: bytes) -> str:
         reader = PdfReader(io.BytesIO(content))
@@ -44,44 +57,60 @@ class DocumentService:
             )
         return text
 
-    def _extract_pptx_text(self, content: bytes) -> str:
-        prs = Presentation(io.BytesIO(content))
-        lines: list[str] = []
-        for slide in prs.slides:
-            for shape in slide.shapes:
-                if hasattr(shape, "text") and shape.text:
-                    lines.append(shape.text.strip())
-        text = "\n".join(filter(None, lines)).strip()
-        if not text:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="No extractable text found in PPTX.",
+    def upload_pdf_to_storage(self, pdf_bytes: bytes, storage_key: str) -> str:
+        """
+        Uploads PDF bytes to Supabase Storage and returns a validated public URL.
+        Raises RuntimeError on any failure — caller decides whether to abort or degrade.
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+
+        if not pdf_bytes:
+            raise RuntimeError("PDF bytes are required for storage upload.")
+        if not pdf_bytes.startswith(b"%PDF"):
+            raise RuntimeError("The uploaded file does not contain a valid PDF header.")
+
+        bucket = self.supabase.storage.from_("slides")
+
+        try:
+            upload_response = bucket.upload(
+                path=storage_key,
+                file=pdf_bytes,
+                file_options={"content-type": "application/pdf"},
             )
-        return text
+        except Exception as exc:
+            raise RuntimeError(f"Supabase upload call failed: {exc}") from exc
 
-    def convert_pptx_to_pdf(self, input_pptx_path: str, output_dir: str) -> str:
-        """
-        Stub for server-side PPTX->PDF conversion.
-        Requires LibreOffice in runtime image.
-        """
-        command = [
-            "libreoffice",
-            "--headless",
-            "--convert-to",
-            "pdf",
-            "--outdir",
-            output_dir,
-            input_pptx_path,
-        ]
-        subprocess.run(command, check=True)
-        output_pdf = Path(output_dir) / f"{Path(input_pptx_path).stem}.pdf"
-        return str(output_pdf)
+        if not upload_response:
+            raise RuntimeError("Supabase upload returned an empty/null response.")
 
-    def upload_pdf_to_storage(self, pdf_path: str, storage_key: str) -> str:
-        """
-        Stub for Supabase Storage upload.
-        Replace with official Supabase client integration.
-        """
-        if not os.path.exists(pdf_path):
-            raise FileNotFoundError(f"PDF file not found: {pdf_path}")
-        return f"https://example.supabase.co/storage/v1/object/public/slides/{storage_key}"
+        # Check for error in response (SDK may surface errors as attributes or dict keys).
+        resp_error = (
+            getattr(upload_response, "error", None)
+            or (upload_response.get("error") if isinstance(upload_response, dict) else None)
+        )
+        if resp_error:
+            raise RuntimeError(f"Supabase upload returned an error: {resp_error}")
+
+        # Verify the uploaded path matches what we requested.
+        # The SDK may return path as an attribute or as a dict key.
+        uploaded_path = (
+            getattr(upload_response, "path", None)
+            or getattr(upload_response, "full_path", None)
+            or (upload_response.get("path") if isinstance(upload_response, dict) else None)
+            or (upload_response.get("Key") if isinstance(upload_response, dict) else None)
+        )
+        if uploaded_path and uploaded_path != storage_key and not uploaded_path.endswith(storage_key):
+            logger.warning(
+                "Supabase upload path mismatch: expected=%s, got=%s (type=%s)",
+                storage_key, uploaded_path, type(upload_response).__name__,
+            )
+
+        # Build and validate public URL.
+        public_url = bucket.get_public_url(storage_key)
+        if not isinstance(public_url, str) or not public_url.startswith(("http://", "https://")):
+            raise RuntimeError("Supabase did not return a valid public URL for the uploaded PDF.")
+
+        logger.info("PDF uploaded to Supabase: key=%s, url=%s", storage_key, public_url)
+        return public_url
+

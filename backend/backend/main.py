@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from backend.routes.auth_router import router as auth_router
 from backend.routes.dashboard_router import router as dashboard_router
@@ -9,6 +10,7 @@ from backend.routes.session_router import router as session_router
 
 
 app = FastAPI(title="LearnBack Backend")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # CORS — allow the frontend (served from file:// or dev server) to reach the API
 app.add_middleware(

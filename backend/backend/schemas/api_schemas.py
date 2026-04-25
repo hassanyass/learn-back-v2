@@ -37,6 +37,10 @@ class DashboardResponse(BaseModel):
     categorized_sessions: CategorizedSessions = Field(default_factory=CategorizedSessions)
 
 
+class SessionCreateRequest(BaseModel):
+    document_id: int = Field(..., ge=1)
+
+
 # ──────────────────────────────────────────────────────────────────────
 # WebSocket Payload Schemas (Phase 3D)
 # ──────────────────────────────────────────────────────────────────────

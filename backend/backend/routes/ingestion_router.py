@@ -1,22 +1,20 @@
-import os
-import tempfile
 from pathlib import Path
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.core.db import get_db
+from backend.core.llm_manager import LLMFallbackExhaustedError
 from backend.services.ai_ingestion_service import AIIngestionService
 from backend.services.auth_service import AuthService
 from backend.services.document_service import DocumentService
-from backend.core.llm_manager import LLMFallbackExhaustedError
 
 
 router = APIRouter(prefix="/ingestion", tags=["ingestion"])
 bearer_scheme = HTTPBearer(auto_error=True)
 
-# Fix 5: Maximum upload size enforced on the backend (mirrors frontend 50 MB limit).
 MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024  # 50 MB
 
 
@@ -39,22 +37,24 @@ async def upload_slides(
     document_service = DocumentService()
     ai_ingestion_service = AIIngestionService(db)
 
-    # Fix 5: Server-side file size guard before any processing.
-    content = await file.read()
-    if len(content) > MAX_FILE_SIZE_BYTES:
+    file_bytes = await file.read()
+    if len(file_bytes) > MAX_FILE_SIZE_BYTES:
         raise HTTPException(
             status_code=413,
             detail=f"File too large. Maximum allowed size is 50 MB "
-                   f"(received {len(content) / 1024 / 1024:.1f} MB).",
+                   f"(received {len(file_bytes) / 1024 / 1024:.1f} MB).",
         )
-    # Rewind so downstream reads see full content.
-    await file.seek(0)
 
-    # Extract raw text — catches corrupted files (PdfReadError, BadZipFile) as 422.
+    filename = file.filename or "uploaded_file"
+    extension = Path(filename).suffix.lower()
+
     try:
-        raw_text = await document_service.extract_raw_text(file)
+        raw_text = document_service.extract_raw_text_from_bytes(
+            filename=filename,
+            content=file_bytes,
+        )
     except HTTPException:
-        raise  # Re-raise our own validation errors (400/422) unchanged.
+        raise
     except Exception as exc:
         import logging
         logging.getLogger(__name__).error("File read failed: %s", exc)
@@ -64,44 +64,49 @@ async def upload_slides(
                    "It may be corrupted or password-protected. Please try a different file.",
         ) from exc
 
-    extension = Path(file.filename or "").suffix.lower()
+    file_type = "pdf"
+    pdf_storage_url: str | None = None
+    has_preview = False
+    upload_status = "READY"
+    upload_error_message: str | None = None
 
-    with tempfile.TemporaryDirectory() as temp_dir:
-        input_path = os.path.join(temp_dir, file.filename or "slides_upload")
-        await file.seek(0)
-        file_bytes = await file.read()
-        with open(input_path, "wb") as fp:
-            fp.write(file_bytes)
-
-        if extension == ".pdf":
-            pdf_path = input_path
-            storage_key = f"user_{user_id}/{Path(pdf_path).name}"
-            pdf_storage_url = document_service.upload_pdf_to_storage(
-                pdf_path=pdf_path,
-                storage_key=storage_key,
-            )
-        else:
-            # Fix 4: PPTX — LibreOffice conversion not available in dev environment.
-            # Use a consistent placeholder scheme so the column contract is never null
-            # and the PDF viewer can show a friendly fallback instead of a broken URL.
-            safe_name = Path(file.filename or "slides").stem
-            pdf_storage_url = f"placeholder://pptx/{user_id}/{safe_name}.pdf"
+    storage_key = f"user_{user_id}/{uuid4().hex}_{Path(filename).name}"
+    try:
+        pdf_storage_url = document_service.upload_pdf_to_storage(
+            pdf_bytes=file_bytes,
+            storage_key=storage_key,
+        )
+        has_preview = True
+        import logging
+        logging.getLogger(__name__).info(
+            "PDF upload succeeded: user=%s, key=%s", user_id, storage_key,
+        )
+    except Exception as exc:
+        import logging
+        upload_status = "UPLOAD_FAILED"
+        upload_error_message = str(exc)
+        logging.getLogger(__name__).error(
+            "PDF storage upload failed: user=%s, key=%s, error=%s",
+            user_id, storage_key, exc,
+        )
 
     try:
         result = await ai_ingestion_service.ingest_and_segment(
             user_id=user_id,
-            source_filename=file.filename or "uploaded_file",
+            source_filename=filename,
             raw_text=raw_text,
             pdf_storage_url=pdf_storage_url,
+            file_type=file_type,
+            has_preview=has_preview,
+            upload_status=upload_status,
+            error_message=upload_error_message,
         )
     except LLMFallbackExhaustedError as exc:
-        # Log the full technical detail server-side for debugging.
         import logging
         logging.getLogger(__name__).error("LLM fallback exhausted: %s", exc)
-        # Return a clean message — NEVER expose provider names, URLs, or HTTP codes.
         raise HTTPException(
             status_code=422,
             detail="We had trouble analyzing your document. "
                    "Try uploading a smaller or simpler file with clear text content.",
-        )
+        ) from exc
     return result

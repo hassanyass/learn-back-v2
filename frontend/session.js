@@ -122,8 +122,18 @@ import { dom } from './js/core/dom.js';
   // ── 5b. SLIDE DECK VIEWER — Initialize PDF from bootstrap ──
   (function initSlideViewer() {
     var pdfUrl = state.pdfUrl;
-    var hasRealPdf = pdfUrl && pdfUrl !== 'NO_DOCUMENT_AVAILABLE'
-        && pdfUrl.indexOf('placeholder://') !== 0;
+    var fileType = state.fileType || null;
+    var hasPreview = state.hasPreview === true;
+    var deckStatus = state.deckStatus || null;
+    var hasRealPdf = hasPreview
+        && fileType === 'pdf'
+        && typeof pdfUrl === 'string'
+        && /^https?:\/\//i.test(pdfUrl);
+    var fallbackMessage = 'Learning Session Ready\nSlide deck preview is not available.';
+
+    if (!hasRealPdf && deckStatus === 'UPLOAD_FAILED') {
+      fallbackMessage = 'Learning Session Ready\nUpload failed, but learning session is still available.';
+    }
 
     // Wire "View Slides" button
     if (dom.btnOpenSlides) {
@@ -156,7 +166,8 @@ import { dom } from './js/core/dom.js';
     if (dom.pdfPlaceholder) {
       dom.pdfPlaceholder.textContent = hasRealPdf
         ? 'Click "View Slides" to open your uploaded deck.'
-        : 'Slide deck is not available for preview.';
+        : fallbackMessage;
+      dom.pdfPlaceholder.style.whiteSpace = 'pre-line';
     }
   })();
 

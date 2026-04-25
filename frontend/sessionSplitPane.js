@@ -121,7 +121,7 @@
   }
 
   function openSlidesPane() {
-    var pdfUrl = localStorage.getItem('learnback_pdf_url') || 'sample.pdf';
+    var pdfUrl = localStorage.getItem('learnback_pdf_url') || null;
 
     chatPanel.classList.add('slides-open');
     slidePane.style.display = 'flex';
@@ -138,7 +138,8 @@
       setSplitColumns(metrics.totalWidth * 0.48);
     });
 
-    if (window.LearnBackPDF && typeof window.LearnBackPDF.open === 'function') {
+    if (pdfUrl && /^https?:\/\//i.test(pdfUrl) &&
+        window.LearnBackPDF && typeof window.LearnBackPDF.open === 'function') {
       window.LearnBackPDF.open(pdfUrl);
     }
   }

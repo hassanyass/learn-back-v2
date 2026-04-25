@@ -19,6 +19,7 @@ import httpx
 
 from backend.core.llm_manager import LLMManager
 from backend.prompts.evaluator_prompts import EVALUATOR_SYSTEM_PROMPT
+from backend.services.bkt_service import BKTService, MASTERY_THRESHOLD
 
 logger = logging.getLogger(__name__)
 
@@ -26,10 +27,7 @@ logger = logging.getLogger(__name__)
 # Constants
 # ──────────────────────────────────────────────────────────────────────
 
-BKT_MASTERY_THRESHOLD: float = 0.85
-MAX_POINT_ATTEMPTS: int = 3
-BKT_CORRECT_INCREMENT: float = 0.60
-BKT_INCORRECT_DECREMENT: float = 0.10
+MAX_POINT_ATTEMPTS: int = 5
 
 
 class EvaluatorService:
@@ -56,6 +54,7 @@ class EvaluatorService:
             secondary_call=self._call_secondary,
             secondary_name="secondary",
         )
+        self.bkt = BKTService()
 
     # ------------------------------------------------------------------
     # Public API
@@ -109,21 +108,21 @@ class EvaluatorService:
             user_message=user_message,
         )
 
-        label = evaluator_output.get("evaluation_label", "NEEDS_INFO")
+        label = evaluator_output.get("label", "NEEDS_INFO")
         detected_misconception = evaluator_output.get("detected_misconception")
         memory_title = evaluator_output.get("memory_title")
         memory_summary = evaluator_output.get("memory_summary")
 
         # ── Apply BKT Math & State Mutations ──────────────────────────
-        prev_bkt = point_node.get("bkt_score", 0.3)
+        prev_bkt = point_node.get("bkt_score", self.bkt.initial_probability())
 
         if label == "CORRECT":
-            point_node["bkt_score"] = min(1.0, prev_bkt + BKT_CORRECT_INCREMENT)
+            point_node["bkt_score"] = self.bkt.update(prev_bkt, 1)
             state["current_difficulty"] = min(3, state.get("current_difficulty", 1) + 1)
 
         elif label == "INCORRECT":
             state["point_attempts"] = state.get("point_attempts", 0) + 1
-            point_node["bkt_score"] = max(0.0, prev_bkt - BKT_INCORRECT_DECREMENT)
+            point_node["bkt_score"] = self.bkt.update(prev_bkt, 0)
             state["current_difficulty"] = max(1, state.get("current_difficulty", 1) - 1)
 
         elif label == "NEEDS_INFO":
@@ -140,7 +139,7 @@ class EvaluatorService:
         attempts = state.get("point_attempts", 0)
         point_completed = False
 
-        if current_bkt >= BKT_MASTERY_THRESHOLD or attempts >= MAX_POINT_ATTEMPTS or label == "CORRECT":
+        if current_bkt >= MASTERY_THRESHOLD or attempts >= MAX_POINT_ATTEMPTS or label == "CORRECT":
             point_node["status"] = "completed"
             point_completed = True
 
@@ -243,7 +242,7 @@ class EvaluatorService:
             return state, "IRRELEVANT", False
 
         point_node = points[pi]
-        prev_bkt = point_node.get("bkt_score", 0.3)
+        prev_bkt = point_node.get("bkt_score", self.bkt.initial_probability())
 
         # ── Determine correctness ────────────────────────────────────
         is_correct = False
@@ -283,14 +282,14 @@ class EvaluatorService:
 
         if is_correct:
             label = "CORRECT"
-            point_node["bkt_score"] = min(1.0, prev_bkt + BKT_CORRECT_INCREMENT)
+            point_node["bkt_score"] = self.bkt.update(prev_bkt, 1)
             state["current_difficulty"] = min(3, state.get("current_difficulty", 1) + 1)
             point_node["status"] = "completed"
             point_completed = True
         else:
             label = "INCORRECT"
             state["point_attempts"] = state.get("point_attempts", 0) + 1
-            point_node["bkt_score"] = max(0.0, prev_bkt - BKT_INCORRECT_DECREMENT)
+            point_node["bkt_score"] = self.bkt.update(prev_bkt, 0)
             state["current_difficulty"] = max(1, state.get("current_difficulty", 1) - 1)
 
             # Check if max attempts reached
@@ -325,7 +324,7 @@ class EvaluatorService:
         except (json.JSONDecodeError, ValueError) as exc:
             logger.warning("Evaluator returned non-JSON; falling back. Raw: %s", raw[:300])
             return {
-                "evaluation_label": "NEEDS_INFO",
+                "label": "NEEDS_INFO",
                 "detected_misconception": None,
                 "memory_title": None,
                 "memory_summary": None,

@@ -137,6 +137,10 @@ window.LearnBackPDF = (function() {
 
   return {
     open: async (pdfUrl) => {
+        if (!pdfUrl || typeof pdfUrl !== 'string' || !/^https?:\/\//i.test(pdfUrl)) {
+          console.warn("PDF viewer skipped: invalid URL");
+          return;
+        }
         container = document.getElementById('pdf-viewer-container');
         renderLayer = document.getElementById('pdf-render-layer');
         if (!container || !renderLayer) return;

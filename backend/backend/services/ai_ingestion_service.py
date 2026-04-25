@@ -36,8 +36,17 @@ class AIIngestionService:
         user_id: int,
         source_filename: str,
         raw_text: str,
-        pdf_storage_url: str,
+        pdf_storage_url: str | None,
+        file_type: str,
+        has_preview: bool,
+        upload_status: str = "READY",
+        error_message: str | None = None,
     ) -> dict[str, Any]:
+        if pdf_storage_url is not None and (
+            not isinstance(pdf_storage_url, str) or not pdf_storage_url.startswith(("http://", "https://"))
+        ):
+            raise ValueError("SlideDeck.pdf_storage_url must be null or a real HTTP(S) storage URL before DB commit.")
+
         # Truncate raw text to stay within LLM context window limits.
         # Groq's llama-3.1-8b-instant has ~8K output but the payload limit
         # is based on total request size. ~12,000 words ≈ 48K tokens is safe.
@@ -72,6 +81,10 @@ class AIIngestionService:
             user_id=user_id,
             original_filename=source_filename,
             pdf_storage_url=pdf_storage_url,
+            file_type=file_type,
+            has_preview=has_preview,
+            status=upload_status,
+            error_message=error_message,
             raw_extracted_text=raw_text,
             segmented_json=segmentation_json,
             created_at=datetime.utcnow(),
@@ -84,6 +97,10 @@ class AIIngestionService:
         return {
             "document_id": deck.id,
             "pdf_storage_url": pdf_storage_url,
+            "pdf_url": pdf_storage_url,
+            "file_type": deck.file_type,
+            "has_preview": deck.has_preview,
+            "status": deck.status,
             "segmentation": segmentation_json,
         }
 

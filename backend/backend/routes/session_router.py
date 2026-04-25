@@ -26,6 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.core.db import get_db
 from backend.models.core import LearningSession, SlideDeck
+from backend.schemas.api_schemas import SessionCreateRequest
 from backend.services.auth_service import AuthService
 from backend.services.session_service import SessionService
 
@@ -60,27 +61,31 @@ _active_connections: dict[int, WebSocket] = {}
 
 @router.post("/session/create")
 async def create_session(
+    payload: SessionCreateRequest,
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
-    """Create a new learning session for the user's latest slide deck.
+    """Create a new learning session for the requested slide deck.
 
     Initialises session_state as a complete map of the lesson, built from
     the SlideDeck's segmented_json.  Every topic and every point within it
     gets its own BKT score, misconceptions list, and kido_memory slot.
     """
-    # Get the user's latest slide deck
+    # Bind the session to the explicit document_id from the frontend so we
+    # never silently switch to a different SlideDeck by created_at ordering.
     stmt = (
         select(SlideDeck)
-        .where(SlideDeck.user_id == user_id)
-        .order_by(SlideDeck.created_at.desc())
+        .where(
+            SlideDeck.id == payload.document_id,
+            SlideDeck.user_id == user_id,
+        )
         .limit(1)
     )
     deck = (await db.execute(stmt)).scalar_one_or_none()
     if not deck:
         raise HTTPException(
             status_code=404,
-            detail="No slide deck found. Upload slides first.",
+            detail="Slide deck not found for the provided document_id.",
         )
 
     # Extract segments from the AI-generated curriculum
@@ -172,6 +177,9 @@ async def get_session(
         "topics": topic_titles,
         "slide_deck_id": session.slide_deck_id,
         "pdf_url": session.slide_deck.pdf_storage_url if session.slide_deck else None,
+        "file_type": session.slide_deck.file_type if session.slide_deck else None,
+        "has_preview": session.slide_deck.has_preview if session.slide_deck else False,
+        "deck_status": session.slide_deck.status if session.slide_deck else None,
         "started_at": session.start_time.isoformat() if session.start_time else None,
         "completed_at": session.end_time.isoformat() if session.end_time else None,
         "session_state": state,
@@ -336,15 +344,24 @@ async def session_websocket(websocket: WebSocket, session_id: int) -> None:
 
                 except ValueError as exc:
                     logger.warning("Session error: %s", exc)
+                    await db.rollback()
                     await websocket.send_json({
                         "type": "error",
-                        "detail": str(exc),
+                        "detail": "Invalid request or session state.",
                     })
                 except RuntimeError as exc:
                     logger.error("LLM exhaustion: %s", exc)
+                    await db.rollback()
                     await websocket.send_json({
                         "type": "error",
                         "detail": "All AI providers are currently unavailable. Please try again shortly.",
+                    })
+                except Exception as exc:
+                    logger.error("Unexpected error in WS loop: %s", exc)
+                    await db.rollback()
+                    await websocket.send_json({
+                        "type": "error",
+                        "detail": "An unexpected server error occurred.",
                     })
 
         except WebSocketDisconnect:

@@ -2,17 +2,16 @@
 
 ## File Intake Rules
 
-- Supported uploads: PDF and PPTX only.
-- Raw text extraction:
-  - PDF via `PyPDF2`
-  - PPTX via `python-pptx`
-- PPTX->PDF conversion path is defined via LibreOffice headless subprocess.
+- Supported uploads: PDF only.
+- Raw text extraction via `PyPDF2`.
+- Non-PDF files are rejected at validation with HTTP 400.
 
 ## Storage Rule
 
-- Final PDF artifact must be uploaded to Supabase Storage.
-- Backend returns a public URL for frontend rendering.
-- Current upload method is a stub and must be replaced with real Supabase client calls before production.
+- PDF is uploaded to Supabase Storage (`slides` bucket).
+- Backend returns a validated public URL for frontend PDF viewer rendering.
+- Upload uses `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` environment variables.
+- If Supabase upload fails, the session is still created but the PDF viewer is disabled (graceful degradation).
 
 ## Anti-Cheat Baseline
 
@@ -38,3 +37,4 @@ No markdown/prose allowed in model output.
   - Groq primary
   - secondary provider fallback
   - key rotation on 429
+

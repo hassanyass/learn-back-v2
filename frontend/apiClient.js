@@ -7,7 +7,6 @@
     user: 'learnback_user'
   };
 
-  // Nuke toxic cache on load to prevent zombie ports
   try {
     window.localStorage.removeItem('learnback_api_base_url');
   } catch (_) { /* ignore */ }
@@ -37,6 +36,18 @@
     return trimmed ? trimmed : fallback;
   }
 
+  function normalizeNullableText(value, fallback) {
+    if (value == null) return fallback;
+    return normalizeText(value, fallback);
+  }
+
+  function normalizeBoolean(value, fallback) {
+    if (typeof value === 'boolean') return value;
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return fallback;
+  }
+
   function normalizeApiBaseUrl(raw) {
     var value = normalizeText(raw, DEFAULTS.apiBaseUrl);
     return value.replace(/\/+$/, '');
@@ -60,11 +71,9 @@
 
   function getApiBaseUrl() {
     var hostname = window.location.hostname;
-    // If we are testing locally, point to your FastAPI port
     if (hostname === "127.0.0.1" || hostname === "localhost") {
-      return 'http://127.0.0.1:8002'; 
+      return 'http://127.0.0.1:8002';
     }
-    // When we deploy to Vercel/Netlify later, it will automatically use this:
     return 'https://your-future-production-backend.com';
   }
 
@@ -158,13 +167,11 @@
     var payload = await parseResponseBody(response);
 
     if (!response.ok) {
-      // Redirect to login on auth failures
       if (response.status === 401) {
         try {
           window.localStorage.removeItem(STORAGE_KEYS.token);
           window.localStorage.removeItem(STORAGE_KEYS.user);
         } catch (_) { /* ignore */ }
-        // Only redirect if we're NOT already on the auth page
         if (window.location.pathname.indexOf('auth.html') === -1) {
           window.location.href = 'auth.html';
           return;
@@ -204,7 +211,6 @@
     var progressRaw = payload && payload.progress_score;
     var progressPercentRaw = payload && (payload.progress_percent || payload.progressPercent);
     var progressValue = progressPercentRaw != null ? toNumber(progressPercentRaw, 0) : toNumber(progressRaw, 0) * 100;
-    // Coerce session_id to string — backend returns an integer DB primary key
     var rawId = payload && (payload.id || payload.session_id);
     var sessionId = rawId != null ? String(rawId) : null;
     return {
@@ -215,8 +221,6 @@
       title: normalizeText(payload && (payload.title || payload.session_title), null)
     };
   }
-
-  // [REMOVED] normalizeChatResponse — chat now flows over WebSocket, not REST.
 
   function normalizeFeedbackPayload(payload, sessionId, sessionTitle) {
     var topics = Array.isArray(payload && payload.topics) ? payload.topics : [];
@@ -231,7 +235,6 @@
   function normalizeSessionBootstrap(payload) {
     if (!payload) return null;
     var topics = Array.isArray(payload.topics) ? payload.topics : [];
-    // Coerce session_id to string — backend returns integer DB primary key
     var rawId = payload.id || payload.session_id;
     var sessionId = rawId != null ? String(rawId) : null;
     return {
@@ -242,16 +245,14 @@
       topicIndex: Math.max(0, Math.round(toNumber(payload.current_topic_index || payload.currentTopicIndex || 0, 0))),
       topics: topics,
       documentId: normalizeText(payload.document_id, null),
-      pdfUrl: normalizeText(payload.pdf_url, 'NO_DOCUMENT_AVAILABLE'),
+      pdfUrl: normalizeNullableText(payload.pdf_url, null),
+      fileType: normalizeText(payload.file_type || payload.fileType, null),
+      hasPreview: normalizeBoolean(payload.has_preview, false),
+      deckStatus: normalizeText(payload.deck_status || payload.deckStatus, null),
       startedAt: normalizeText(payload.started_at || payload.startedAt, new Date().toISOString()),
       completedAt: normalizeText(payload.completed_at || payload.completedAt, null)
     };
   }
-
-  // ──────────────────────────────────────────────────────────────
-  // Error Normalizer — strips all technical internals from errors
-  // and returns a user-friendly { title, suggestion } object.
-  // ──────────────────────────────────────────────────────────────
 
   var ERROR_TYPES = {
     FILE_TOO_LARGE:       'FILE_TOO_LARGE',
@@ -293,13 +294,7 @@
     suggestion: 'Please refresh the page and try again.'
   };
 
-  /**
-   * Classify any error into a user-friendly category.
-   * @param {Error|ApiError} error
-   * @returns {{ type: string, title: string, suggestion: string }}
-   */
   function normalizeUserError(error) {
-    // 1. Network / fetch failure (status === 0 or no status)
     if (!error.status && !(error instanceof ApiError)) {
       return Object.assign({ type: ERROR_TYPES.NETWORK_ERROR }, FRIENDLY_MESSAGES[ERROR_TYPES.NETWORK_ERROR]);
     }
@@ -307,17 +302,14 @@
       return Object.assign({ type: ERROR_TYPES.NETWORK_ERROR }, FRIENDLY_MESSAGES[ERROR_TYPES.NETWORK_ERROR]);
     }
 
-    // 2. Auth expired
     if (error.status === 401) {
       return Object.assign({ type: ERROR_TYPES.AUTH_EXPIRED }, FRIENDLY_MESSAGES[ERROR_TYPES.AUTH_EXPIRED]);
     }
 
-    // 3. File too large
     if (error.status === 413) {
       return Object.assign({ type: ERROR_TYPES.FILE_TOO_LARGE }, FRIENDLY_MESSAGES[ERROR_TYPES.FILE_TOO_LARGE]);
     }
 
-    // 4. Unprocessable — sub-classify by inspecting the detail string
     if (error.status === 422) {
       var rawDetail = '';
       if (error.payload && error.payload.detail) {
@@ -327,7 +319,6 @@
       }
       var rawLower = (rawDetail + ' ' + (error.message || '')).toLowerCase();
 
-      // AI / LLM failure patterns
       if (rawLower.indexOf('llm') !== -1 || rawLower.indexOf('groq') !== -1 ||
           rawLower.indexOf('openai') !== -1 || rawLower.indexOf('provider') !== -1 ||
           rawLower.indexOf('exhausted') !== -1 || rawLower.indexOf('segmentation') !== -1 ||
@@ -335,33 +326,28 @@
         return Object.assign({ type: ERROR_TYPES.AI_PROCESSING }, FRIENDLY_MESSAGES[ERROR_TYPES.AI_PROCESSING]);
       }
 
-      // Content quality / empty / unsuitable
       if (rawLower.indexOf('no extractable') !== -1 || rawLower.indexOf('insufficient') !== -1 ||
           rawLower.indexOf('not suitable') !== -1 || rawLower.indexOf('no topics') !== -1 ||
           rawLower.indexOf('empty') !== -1) {
         return Object.assign({ type: ERROR_TYPES.UNSUPPORTED_CONTENT }, FRIENDLY_MESSAGES[ERROR_TYPES.UNSUPPORTED_CONTENT]);
       }
 
-      // Corrupted file
       if (rawLower.indexOf('corrupt') !== -1 || rawLower.indexOf('could not read') !== -1 ||
           rawLower.indexOf('password') !== -1) {
         return {
           type: ERROR_TYPES.UNSUPPORTED_CONTENT,
-          title: 'We couldn\u2019t read this file.',
+          title: 'We couldn’t read this file.',
           suggestion: 'The file may be corrupted or password-protected. Try a different copy.'
         };
       }
 
-      // Generic 422 fallback
       return Object.assign({ type: ERROR_TYPES.AI_PROCESSING }, FRIENDLY_MESSAGES[ERROR_TYPES.AI_PROCESSING]);
     }
 
-    // 5. Server error
     if (error.status >= 500) {
       return Object.assign({ type: ERROR_TYPES.SERVER_ERROR }, FRIENDLY_MESSAGES[ERROR_TYPES.SERVER_ERROR]);
     }
 
-    // 6. Unknown
     return Object.assign({ type: ERROR_TYPES.UNKNOWN }, FRIENDLY_MESSAGES[ERROR_TYPES.UNKNOWN]);
   }
 
@@ -386,7 +372,6 @@
         document_id: payload && payload.documentId ? payload.documentId : null
       });
 
-      // Fix 4: Log what we're sending so we can diagnose backend rejections
       console.log('[LearnBackAPI] startSession payload:', {
         document_id: payload && payload.documentId ? payload.documentId : null
       });
@@ -400,12 +385,7 @@
       });
     },
 
-    // [REMOVED] sendChatMessage — chat now flows over WebSocket.
-    // [REMOVED] finalizeSession — WS close code 1000 handles session end.
-    // [REMOVED] skipToTopic — not in current backend WS spec.
-
     fetchSessionFeedback: function (sessionId, sessionTitle) {
-      // Fix 2: Correct endpoint — backend defines GET /session/{id}/feedback (no /api/ prefix).
       return request('/session/' + encodeURIComponent(sessionId) + '/feedback').then(function (response) {
         return normalizeFeedbackPayload(response, sessionId, sessionTitle);
       });

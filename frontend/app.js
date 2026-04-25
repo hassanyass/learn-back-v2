@@ -1,6 +1,6 @@
 /**
  * LearnBack - Upload Slides Application
- * Connects to FastAPI backend for PDF/PPTX processing
+ * Connects to FastAPI backend for PDF processing
  * Authentication: JWT via apiClient.js (Bearer token)
  */
 
@@ -20,7 +20,7 @@ if (window.LearnBackAPI && typeof window.LearnBackAPI.isLoggedIn === 'function' 
 // Configuration
 // ============================================
 const CONFIG = {
-    validExtensions: ['pdf', 'pptx'],
+    validExtensions: ['pdf'],
     maxFileSize: 50 * 1024 * 1024, // 50MB
     minFileSize: 50 * 1024, // 50KB
     maxFiles: 1,
@@ -173,7 +173,7 @@ function handleFileSelection(fileList) {
     const extension = getFileExtension(file.name);
 
     if (!CONFIG.validExtensions.includes(extension)) {
-        showError('Invalid file type', 'Please upload a valid file (PDF or PPTX).');
+        showError('Invalid file type', 'Please upload a PDF file.');
         return;
     }
 
@@ -250,9 +250,7 @@ function renderFileList() {
     container.classList.add('visible');
     const file = AppState.uploadedFileData;
 
-    const iconPath = file.type === 'pdf'
-        ? 'Components/Upload-slides-icons/icon-pdf.svg'
-        : 'Components/Upload-slides-icons/icon-ppt.svg';
+    const iconPath = 'Components/Upload-slides-icons/icon-pdf.svg';
 
     list.innerHTML = `
         <li class="file-item">
@@ -324,11 +322,7 @@ async function startProcessing() {
     }
     const uploadType = AppState.uploadedFileData?.type || getFileExtension(AppState.uploadedFile?.name || '');
     if (elements.processingMessage) {
-        if (uploadType === 'pptx') {
-            elements.processingMessage.textContent = 'Uploading & converting PPTX to PDF (this can take a minute)...';
-        } else {
-            elements.processingMessage.textContent = 'Uploading to server...';
-        }
+        elements.processingMessage.textContent = 'Uploading to server...';
     }
 
     // Start progress animation
@@ -337,7 +331,6 @@ async function startProcessing() {
 
     let progress = 0;
     const progressInterval = setInterval(() => {
-        // Fast ramp up to 90%, then slow creep so longer PPTX conversions don't look "stuck".
         if (progress < 90) progress += 1;
         else if (progress < 98) progress += 0.2;
         progressFill.style.width = `${Math.min(progress, 98)}%`;

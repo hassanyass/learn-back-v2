@@ -25,7 +25,7 @@ of that specific concept. You are NOT part of the conversation — you only grad
 You must return ONLY a JSON object with these exact keys:
 
 {
-  "evaluation_label": "CORRECT|INCORRECT|NEEDS_INFO|IRRELEVANT",
+  "label": "CORRECT|INCORRECT|NEEDS_INFO|IRRELEVANT",
   "detected_misconception": "A concise description of the factual error or conceptual misunderstanding the student expressed. null if no misconception.",
   "memory_title": "1-2 words summarizing the core concept the user taught (e.g., 'Turing Test', 'Symbolic Logic'). null if the explanation was insufficient to form a memory.",
   "memory_summary": "1 short sentence summarizing what the AI learner should remember from the user's explanation. null if the explanation was insufficient."

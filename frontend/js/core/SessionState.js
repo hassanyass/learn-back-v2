@@ -17,6 +17,9 @@ export class SessionState {
     this.status = bootstrap.status || 'IN_PROGRESS';
     this.documentId = bootstrap.documentId || null;
     this.pdfUrl = bootstrap.pdfUrl || null;
+    this.fileType = bootstrap.fileType || null;
+    this.hasPreview = bootstrap.hasPreview === true;
+    this.deckStatus = bootstrap.deckStatus || null;
     this.startedAt = bootstrap.startedAt || null;
     this.completedAt = bootstrap.completedAt || null;
 

@@ -9,7 +9,7 @@
 ## 1. Pipeline Overview
 
 ```
-Frontend (upload_slides.js)
+Frontend (app.js)
   │
   │  POST /ingestion/upload-slides  (Bearer token + FormData)
   │
@@ -18,13 +18,11 @@ ingestion_router.py
   │
   ├── [1] File size guard (50 MB max)          → 413 if exceeded
   ├── [2] document_service.extract_raw_text()  → 400/422 on bad files
-  │        ├── validate_upload() → .pdf / .pptx only
-  │        ├── PDF  → PyPDF2.PdfReader
-  │        └── PPTX → python-pptx Presentation
+  │        ├── validate_upload() → .pdf only
+  │        └── PDF  → PyPDF2.PdfReader
   │
-  ├── [3] Save to temp dir for storage stub
-  │        ├── PDF  → upload_pdf_to_storage() (stub URL)
-  │        └── PPTX → placeholder://pptx/{user_id}/{name}.pdf
+  ├── [3] upload_pdf_to_storage() → Supabase Storage
+  │        └── Returns validated public URL (or graceful degradation)
   │
   └── [4] ai_ingestion_service.ingest_and_segment()
            ├── Truncate to 6,000 words
@@ -101,14 +99,14 @@ return {
 
 ---
 
-### Fix 4 — PPTX Placeholder Consistency (IMPORTANT)
+### Fix 4 — PDF-Only Enforcement (Replaced PPTX Placeholder)
 
-**File**: `ingestion_router.py`
+**File**: `ingestion_router.py`, `document_service.py`
 
-**Before**: `placeholder://pptx-upload/{filename}` — inconsistent format.
+**Before**: PPTX uploads were accepted but produced sessions without PDF viewer.
 
-**After**: `placeholder://pptx/{user_id}/{stem}.pdf` — includes user scope
-and consistent `.pdf` extension for column contract.
+**After**: Only `.pdf` files are accepted. PPTX uploads return HTTP 400.
+All PPTX extraction code and `python-pptx` dependency removed.
 
 ---
 
@@ -195,14 +193,14 @@ Frontend expected `document_id` → threw error → session never created.
 
 | Scenario | Status Code | Message | Fixed? |
 |----------|-------------|---------|--------|
-| Wrong file type (.docx, .txt) | 400 | "Only PDF and PPTX files are supported." | ✅ Pre-existing |
+| Wrong file type (.pptx, .docx, .txt) | 400 | "Only PDF files are supported." | ✅ Updated |
 | Empty file | 400 | "Uploaded file is empty." | ✅ Pre-existing |
-| File > 50 MB | 413 | "File too large..." | ✅ **NEW** |
-| No extractable text | 422 | "No extractable text found..." | ✅ Pre-existing |
-| Corrupted PDF/PPTX | 422 | "Could not read file content..." | ✅ **NEW** |
-| LLM returns invalid JSON | 422 | "Failed to parse AI segmentation..." | ✅ **NEW** |
-| LLM missing schema keys | 422 | "Missing required fields..." | ✅ **NEW** |
-| All LLM providers fail | 422 | "AI processing failed..." | ✅ Pre-existing |
+| File > 50 MB | 413 | "File too large..." | ✅ Pre-existing |
+| No extractable text | 422 | "No extractable text found in PDF." | ✅ Pre-existing |
+| Corrupted PDF | 422 | "We couldn't read this file..." | ✅ Pre-existing |
+| LLM returns invalid JSON | 422 | "We had trouble analyzing your document..." | ✅ Pre-existing |
+| LLM missing schema keys | 422 | "We had trouble analyzing your document..." | ✅ Pre-existing |
+| All LLM providers fail | 422 | "We had trouble analyzing your document..." | ✅ Pre-existing |
 | Missing auth token | 403 | "Not authenticated" | ✅ Pre-existing |
 | Invalid auth token | 401 | "Invalid or expired token." | ✅ Pre-existing |
 
@@ -236,9 +234,7 @@ Frontend expected `document_id` → threw error → session never created.
 
 | Risk | Severity | Notes |
 |------|----------|-------|
-| `pdf_storage_url` is a stub (not real Supabase) | 🟡 Medium | PDF viewer will show fallback — no visual slides during session |
-| `GET /session/{id}` does not return `pdf_url` | 🟡 Medium | Frontend `normalizeSessionBootstrap()` sets `pdfUrl: null` |
-| PPTX → PDF conversion (LibreOffice) not wired | 🟡 Low | Text extraction works; only visual rendering is missing |
+| Supabase upload may fail silently | 🟡 Medium | Session still created; PDF viewer disabled with fallback message |
 | File read twice into memory | 🟡 Low | Mitigated by 50 MB cap; acceptable for 30-user testing |
 | `source_filename` injected raw into LLM prompt | 🟡 Low | LLM output is JSON-validated; prompt injection risk is theoretical |
 
@@ -248,8 +244,10 @@ Frontend expected `document_id` → threw error → session never created.
 
 | File | Changes |
 |------|---------|
-| `services/ai_ingestion_service.py` | Added `document_id` to return, `_safe_parse_with_retry()`, `_validate_segmentation_schema()`, 4-topic cap, robust markdown fence stripping |
-| `routes/ingestion_router.py` | Added 50 MB file size guard (HTTP 413), corrupted file try/except (HTTP 422), consistent PPTX placeholder URL |
+| `services/document_service.py` | Removed PPTX support: deleted `_extract_pptx_text()`, removed `python-pptx` import, restricted `ALLOWED_EXTENSIONS` to PDF only |
+| `routes/ingestion_router.py` | Removed PPTX branching: hardcoded `file_type="pdf"`, made Supabase upload unconditional |
+| `services/ai_ingestion_service.py` | `document_id` return, `_safe_parse_with_retry()`, `_validate_segmentation_schema()`, 4-topic cap |
+| `requirements.txt` | Removed `python-pptx`, `aspose.slides`, `comtypes`, `pymupdf`; deduplicated `PyPDF2` |
 
 ---
 
