@@ -43,6 +43,12 @@ export const dom = {
   kwlEmpty: document.getElementById('kwl-empty'),
   kwlCountBadge: document.getElementById('kwl-count-badge'),
 
+  // Misconceptions View
+  misconceptionsView: document.getElementById('misconceptions-view'),
+  misconceptionsList: document.getElementById('misconceptions-list'),
+  misconceptionsEmpty: document.getElementById('misconceptions-empty'),
+  misconceptionsBadge: document.getElementById('misconceptions-badge'),
+
   // Panel buttons
   btnCollapseLeft: document.getElementById('btn-collapse-left'),
   btnCollapseRight: document.getElementById('btn-collapse-right'),

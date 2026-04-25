@@ -194,6 +194,7 @@ import { UIStateManager } from './js/core/UIStateManager.js';
   ws.onKidoResponse = function (data) {
     try {
       state.updateFromWsResponse(data);
+      ui.renderMisconceptions(state);
 
       // Determine evaluator label and knowledge type
       var label = (data.evaluator_label || data.label || 'waiting').toLowerCase();

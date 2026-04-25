@@ -541,6 +541,63 @@ export class UIRenderer {
   }
 
   /**
+   * Render the misconceptions list in the right panel.
+   * @param {SessionState} state 
+   */
+  renderMisconceptions(state) {
+    var dom = this.dom;
+    if (!dom.misconceptionsList || !dom.misconceptionsEmpty) return;
+
+    var allMisc = [];
+    if (state && Array.isArray(state.topics)) {
+      state.topics.forEach(function (topic) {
+        if (!Array.isArray(topic.points)) return;
+        topic.points.forEach(function (point) {
+          if (Array.isArray(point.misconceptions)) {
+            point.misconceptions.forEach(function (m) {
+              if (m && m.misconception) allMisc.push(m.misconception);
+            });
+          }
+        });
+      });
+    }
+
+    dom.misconceptionsList.innerHTML = '';
+
+    if (dom.misconceptionsBadge) {
+      dom.misconceptionsBadge.textContent = allMisc.length;
+      if (allMisc.length > 0) {
+        dom.misconceptionsBadge.removeAttribute('hidden');
+      } else {
+        dom.misconceptionsBadge.setAttribute('hidden', '');
+      }
+    }
+
+    if (allMisc.length === 0) {
+      dom.misconceptionsEmpty.style.display = 'flex';
+      dom.misconceptionsList.style.display = 'none';
+    } else {
+      dom.misconceptionsEmpty.style.display = 'none';
+      dom.misconceptionsList.style.display = 'block';
+
+      allMisc.forEach(function (text) {
+        var div = document.createElement('div');
+        div.className = 'thought-stream__item';
+        div.style.padding = '12px 16px';
+        div.style.background = 'rgba(239, 68, 68, 0.06)';
+        div.style.border = '1px solid rgba(239, 68, 68, 0.35)';
+        div.style.borderRadius = '12px';
+        div.style.marginBottom = '12px';
+        div.style.fontSize = '0.92rem';
+        div.style.lineHeight = '1.6';
+        div.style.color = '#b91c1c';
+        div.textContent = text;
+        dom.misconceptionsList.appendChild(div);
+      });
+    }
+  }
+
+  /**
    * Set the Cube (Knowledge Graph) button state based on widget_type.
    * Disabled for TEXT, glowing for PROCESS/COMPARISON.
    *
