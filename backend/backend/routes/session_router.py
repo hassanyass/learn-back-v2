@@ -107,13 +107,16 @@ async def create_session(
     # ── Build the nested session_state from segments ──────────────────
     bkt = BKTService()
     topics: list[dict[str, Any]] = []
-    for seg in segments:
+    for t_idx, seg in enumerate(segments):
         points: list[dict[str, Any]] = []
-        for concept in seg.get("extracted_concepts", []):
+        for p_idx, concept in enumerate(seg.get("extracted_concepts", [])):
             points.append({
+                "id": f"topic_{t_idx}_point_{p_idx}",
                 "point_title": concept,
                 "bkt_score": bkt.initial_probability(),
                 "status": "pending",     # pending → in_progress → completed
+                "is_visited": False,
+                "is_correct": None,
                 "misconceptions": [],
                 "kido_memory": None,     # {"title": "...", "summary": "..."} on completion
             })
@@ -122,9 +125,10 @@ async def create_session(
             "points": points,
         })
 
-    # Set the very first point to in_progress
+    # Set the very first point to in_progress and visited
     if topics and topics[0]["points"]:
         topics[0]["points"][0]["status"] = "in_progress"
+        topics[0]["points"][0]["is_visited"] = True
 
     session_state: dict[str, Any] = {
         "current_topic_index": 0,
@@ -133,6 +137,7 @@ async def create_session(
         "current_difficulty": 1,
         "topics": topics,
         "skipped_indices": [],
+        "correction_events": [],
     }
 
     # Create the learning session with the full state machine
@@ -313,6 +318,22 @@ async def session_websocket(websocket: WebSocket, session_id: int) -> None:
                         if result.get("topic_checkpoint"):
                             response_data["topic_checkpoint"] = True
                             response_data["mind_map_data"] = result.get("mind_map_data", {})
+
+                        # STEP 2 — EMIT KWL DURING NORMAL FLOW
+                        if result.get("advanced"):
+                            state_obj = result["session_state"]
+                            ti = state_obj.get("current_topic_index", 0)
+                            pi = state_obj.get("current_point_index", 0)
+                            try:
+                                # The point that was just completed is at pi - 1
+                                point_node = state_obj["topics"][ti]["points"][pi - 1]
+                                if "kido_memory" in point_node:
+                                    response_data["kwl_update"] = {
+                                        "title": point_node["kido_memory"]["title"],
+                                        "summary": point_node["kido_memory"]["summary"]
+                                    }
+                            except (IndexError, KeyError):
+                                pass
 
                         await websocket.send_json({
                             "type": "kido_response",

@@ -186,6 +186,8 @@ class SessionService:
             # Mark current point as completed + populate kido_memory
             if point_node:
                 point_node["status"] = "completed"
+                point_node["is_correct"] = (label == "CORRECT")
+                
                 # Populate kido_memory from evaluator output
                 mem_title = evaluator_output.get("memory_title")
                 mem_summary = evaluator_output.get("memory_summary")
@@ -209,40 +211,21 @@ class SessionService:
             all_points_done = False
             if topic_node:
                 all_points_done = all(
-                    p.get("status") == "completed"
+                    p.get("status") in ("completed", "skipped")
                     for p in topic_node.get("points", [])
                 )
 
             if all_points_done and topic_node:
-                # ── TOPIC CHECKPOINT: Mind Map pause ──
-                topic_checkpoint = True
-                mind_map_data = self._build_mind_map_dto(state, ti)
-
-                # Force Kido to announce the Mind Map
-                kido_response_text = (
-                    "Wow, I learned so much about this topic! 🎉 "
-                    "Here is what I learned — check my Mind Map and let me "
-                    "know if I got anything wrong!"
+                # ── COMPLETION_ELIGIBLE (REVIEW MODE) ──
+                # We no longer hard-lock the session or return early.
+                # Just instruct Kido to invite the user to review the Mind Map.
+                instruction_for_kido += (
+                    "\n\nIMPORTANT: We have finished all points in this topic! 🎉 "
+                    "Tell the student you learned a lot and invite them to view your 'Mind Map' "
+                    "using the button to see your notes. Let them know they can correct "
+                    "your notes or proceed to the next topic whenever they are ready."
                 )
-                widget_type = "mind_map"
 
-                # Persist Kido message
-                await self._persist_message(session_id, "kido", kido_response_text, widget_type=widget_type)
-
-                # Flush state (don't advance topic yet — wait for mind_map_submit)
-                session.session_state = deepcopy(state)
-                session.bkt_score = self._aggregate_bkt(state)
-                await self.db.commit()
-
-                return {
-                    "kido_response": kido_response_text,
-                    "widget_type": widget_type,
-                    "session_state": state,
-                    "advanced": advanced,
-                    "session_complete": False,
-                    "topic_checkpoint": True,
-                    "mind_map_data": mind_map_data,
-                }
 
             else:
                 # Normal point advancement (within same topic)
@@ -251,6 +234,7 @@ class SessionService:
                     new_node = self._get_point_node(state, state["current_topic_index"], state["current_point_index"])
                     if new_node:
                         new_node["status"] = "in_progress"
+                        new_node["is_visited"] = True
                     instruction_for_kido += (
                         f"\n\nIMPORTANT: Acknowledge the end of this point gracefully "
                         f"and ask about the next point: \"{next_point}\"."
@@ -347,8 +331,39 @@ class SessionService:
         state = self._ensure_state(session)
         segments = await self._get_segments(session)
 
-        # --- 1. Apply BKT bonuses via Evaluator ---
-        self.evaluator.evaluate_mind_map(state, corrections)
+        import uuid
+        from datetime import datetime
+        
+        # --- 1. Append Immutable Correction Events ---
+        new_events = []
+        for title, text in corrections.items():
+            node_id = None
+            # Find the node ID by title across all topics (since mind map can show all)
+            for topic in state.get("topics", []):
+                for p in topic.get("points", []):
+                    if p.get("point_title") == title:
+                        node_id = p.get("id")
+                        break
+                if node_id:
+                    break
+            
+            if node_id and text.strip():
+                evt = {
+                    "event_id": f"corr_{uuid.uuid4().hex[:8]}",
+                    "node_id": node_id,
+                    "correction_text": text.strip(),
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "impact_type": "OVERRIDE",
+                    "bkt_delta": 0.05
+                }
+                new_events.append(evt)
+        
+        if "correction_events" not in state:
+            state["correction_events"] = []
+        state["correction_events"].extend(new_events)
+
+        # --- 2. Apply BKT bonuses via Evaluator using Event Log ---
+        self.evaluator.evaluate_mind_map(state, new_events)
 
         # --- 2. Advance to next topic ---
         state["current_topic_index"] += 1

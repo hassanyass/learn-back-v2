@@ -598,6 +598,51 @@ export class UIRenderer {
   }
 
   /**
+   * Render the KWL (What Kido Learned) tab list.
+   * @param {Array<{title: string, summary: string}>} list
+   */
+  updateKWLTab(list) {
+    var dom = this.dom;
+    if (!dom.kwlList || !dom.kwlEmpty) return;
+
+    dom.kwlList.innerHTML = '';
+    
+    if (dom.kwlCountBadge) {
+      dom.kwlCountBadge.textContent = list.length;
+      if (list.length > 0) {
+        dom.kwlCountBadge.removeAttribute('hidden');
+      } else {
+        dom.kwlCountBadge.setAttribute('hidden', '');
+      }
+    }
+
+    if (list.length === 0) {
+      dom.kwlEmpty.style.display = 'flex';
+      dom.kwlList.style.display = 'none';
+    } else {
+      dom.kwlEmpty.style.display = 'none';
+      dom.kwlList.style.display = 'block';
+
+      list.forEach(function (item) {
+        var card = document.createElement('div');
+        card.style.cssText = 'background:var(--bg-secondary,#f9fafb); border:1px solid var(--border-color,#e5e7eb); border-radius:10px; padding:12px; margin-bottom:12px;';
+
+        var title = document.createElement('div');
+        title.style.cssText = 'font-weight:600; font-size:13px; margin-bottom:6px; color:var(--text-primary,#1a1f36);';
+        title.textContent = item.title || 'Untitled';
+
+        var summary = document.createElement('div');
+        summary.style.cssText = 'font-size:12px; color:var(--text-secondary,#4b5563); line-height:1.4;';
+        summary.textContent = item.summary || 'No summary available.';
+
+        card.appendChild(title);
+        card.appendChild(summary);
+        dom.kwlList.appendChild(card);
+      });
+    }
+  }
+
+  /**
    * Set the Cube (Knowledge Graph) button state based on widget_type.
    * Disabled for TEXT, glowing for PROCESS/COMPARISON.
    *

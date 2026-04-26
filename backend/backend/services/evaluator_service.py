@@ -79,49 +79,42 @@ class EvaluatorService:
     def evaluate_mind_map(
         self,
         session_state: dict[str, Any],
-        corrections: dict[str, str],
+        correction_events: list[dict[str, Any]],
     ) -> dict[str, Any]:
-        """Apply BKT bonuses for user corrections on the Mind Map.
+        """Apply BKT bonuses for user corrections on the Mind Map using the event log.
 
-        For every correction the user makes, add +0.05 BKT to that point.
-        Mark the current topic as 'reviewed'.
+        For every correction event, apply the specified bkt_delta to that point,
+        and update the kido_memory.
 
         Parameters
         ----------
         session_state : dict
             The full nested session_state JSONB (mutated in-place).
-        corrections : dict
-            Map of point_title → corrected_summary.
+        correction_events : list
+            List of immutable correction events to process.
 
         Returns
         -------
         dict : The updated session_state.
         """
-        BKT_CORRECTION_BONUS = 0.05
-
         state = session_state
-        ti = state["current_topic_index"]
         topics = state.get("topics", [])
 
-        if ti >= len(topics):
-            return state
-
-        topic_node = topics[ti]
-        points = topic_node.get("points", [])
-
-        # Apply BKT bonus for each correction
-        for point in points:
-            pt_title = point.get("point_title", "")
-            if pt_title in corrections:
-                point["bkt_score"] = min(1.0, point.get("bkt_score", 0.3) + BKT_CORRECTION_BONUS)
-                # Update kido_memory with the corrected summary
-                point["kido_memory"] = {
-                    "title": point.get("kido_memory", {}).get("title", pt_title) if point.get("kido_memory") else pt_title,
-                    "summary": corrections[pt_title],
-                }
-
-        # Mark the topic as reviewed
-        topic_node["reviewed"] = True
+        for event in correction_events:
+            node_id = event["node_id"]
+            delta = event.get("bkt_delta", 0.05)
+            text = event["correction_text"]
+            
+            # Find the target point by node_id
+            for topic in topics:
+                for point in topic.get("points", []):
+                    if point.get("id") == node_id:
+                        point["bkt_score"] = min(1.0, point.get("bkt_score", 0.3) + delta)
+                        point["kido_memory"] = {
+                            "title": point.get("kido_memory", {}).get("title", point.get("point_title", "")) if point.get("kido_memory") else point.get("point_title", ""),
+                            "summary": text,
+                        }
+                        break
 
         return state
 

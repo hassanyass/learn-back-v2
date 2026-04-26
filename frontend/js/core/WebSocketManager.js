@@ -158,6 +158,12 @@ export class WebSocketManager {
 
     switch (payload.type) {
       case 'kido_response':
+        if (payload.data && payload.data.kwl_update) {
+          if (typeof this.onKWLUpdate === 'function') {
+            this.onKWLUpdate(payload.data.kwl_update);
+          }
+        }
+        
         if (payload.data && payload.data.topic_checkpoint) {
           // Topic checkpoint → Mind Map flow
           if (typeof this.onMindMap === 'function') {

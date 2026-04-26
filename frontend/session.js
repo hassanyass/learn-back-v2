@@ -223,6 +223,16 @@ import { UIStateManager } from './js/core/UIStateManager.js';
     }
   };
 
+  // ── KWL Real-Time Update ──
+  ws.onKWLUpdate = function(kwlItem) {
+    console.log("KWL UPDATE:", kwlItem);
+    if (!state.kwl) {
+      state.kwl = { l: [] };
+    }
+    state.kwl.l.push(kwlItem);
+    ui.updateKWLTab(state.kwl.l);
+  };
+
   // ── Mind Map checkpoint ──
   ws.onMindMap = function (data) {
     try {
