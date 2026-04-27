@@ -594,6 +594,7 @@ class SessionService:
         self,
         session_id: int,
         corrections: dict[str, str],
+        target_topic_index: int | None = None,
     ) -> dict[str, Any]:
         """Process mind map corrections and advance to next topic.
 
@@ -604,10 +605,10 @@ class SessionService:
             session_complete (bool)
         """
         async with _get_session_lock(session_id):
-            return await self._process_mind_map_locked(session_id, corrections)
+            return await self._process_mind_map_locked(session_id, corrections, target_topic_index)
 
     async def _process_mind_map_locked(
-        self, session_id: int, corrections: dict[str, str],
+        self, session_id: int, corrections: dict[str, str], target_topic_index: int | None = None,
     ) -> dict[str, Any]:
         """Inner implementation — always runs under session lock."""
         session = await self._get_session(session_id)
@@ -648,21 +649,52 @@ class SessionService:
         # Per strict causality model: MIND_MAP_CORRECTION logs events ONLY.
         # It does NOT mutate BKT, and does NOT advance the session state.
 
-        # --- 3. Flush state ---
+        # --- 3. Flush state (moved AFTER skip/normal logic) ---
         state["mind_map_version"] = state.get("mind_map_version", 0) + 1
+
+        if target_topic_index is not None and 0 <= target_topic_index < len(state.get("topics", [])):
+            # Handle Skip Topic Action
+            current_ti = state.get("current_topic_index", 0)
+            
+            # Mark current and any intermediate topics as skipped
+            if "skipped_indices" not in state:
+                state["skipped_indices"] = []
+            
+            # Only add to skipped if we're actually skipping forward
+            if target_topic_index > current_ti:
+                for i in range(current_ti, target_topic_index):
+                    if i not in state["skipped_indices"]:
+                        state["skipped_indices"].append(i)
+            
+            state["current_topic_index"] = target_topic_index
+            state["current_point_index"] = 0
+            state["point_attempts"] = 0
+            
+            # Clear pending states
+            state["needs_review"] = False
+            state["awaiting_topic_confirmation"] = False
+            
+            target_topic_title = state["topics"][target_topic_index]["topic_title"]
+            first_point_title = state["topics"][target_topic_index]["points"][0]["point_title"]
+            
+            kido_response = (
+                f"Got it! Skipping ahead to '{target_topic_title}'. "
+                f"Let's start with the first point: {first_point_title}. What do you already know about this?"
+            )
+            widget_type = "TEXT"
+            await self._persist_message(session_id, "kido", kido_response, widget_type=widget_type)
+            
+        else:
+            # Generate acknowledgment message for normal submission
+            kido_response = (
+                "Thanks for the annotations! I've updated my notes. "
+                "You can keep chatting, or select the next topic in the Roadmap when you're ready to move on."
+            )
+            widget_type = "TEXT"
+            await self._persist_message(session_id, "kido", kido_response, widget_type=widget_type)
+
+        # --- Persist FINAL state (AFTER all mutations including skip) ---
         session.session_state = deepcopy(state)
-        # Note: BKT aggregate has not changed because we didn't mutate it.
-        await self.db.commit()
-
-        # Generate acknowledgment message
-        kido_response = (
-            "Thanks for the annotations! I've updated my notes. "
-            "You can keep chatting, or select the next topic in the Roadmap when you're ready to move on."
-        )
-        widget_type = "TEXT"
-
-        await self._persist_message(session_id, "kido", kido_response, widget_type=widget_type)
-
         # Note: session_complete remains what it was
         session_complete = state.get("current_topic_index", 0) >= len(state.get("topics", []))
         await self.db.commit()

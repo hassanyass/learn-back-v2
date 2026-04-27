@@ -128,9 +128,9 @@ import { UIStateManager } from './js/core/UIStateManager.js';
     var hasPreview = state.hasPreview === true;
     var deckStatus = state.deckStatus || null;
     var hasRealPdf = hasPreview
-        && fileType === 'pdf'
-        && typeof pdfUrl === 'string'
-        && /^https?:\/\//i.test(pdfUrl);
+      && fileType === 'pdf'
+      && typeof pdfUrl === 'string'
+      && /^https?:\/\//i.test(pdfUrl);
     var fallbackMessage = 'Learning Session Ready\nSlide deck preview is not available.';
 
     if (!hasRealPdf && deckStatus === 'UPLOAD_FAILED') {
@@ -196,14 +196,14 @@ import { UIStateManager } from './js/core/UIStateManager.js';
       var oldPointIndex = state.currentPointIndex;
       state.updateFromWsResponse(data);
       var newPointIndex = state.currentPointIndex;
-      
+
       // Clear STALE widget if point boundary changed (lifecycle bound)
       if (oldPointIndex !== undefined && newPointIndex !== oldPointIndex) {
         state.pendingWidget = null;
       }
-      
+
       console.log('[DEBUG_WIDGET] received widget_type:', data.widget_type);
-      
+
       ui.renderMisconceptions(state);
 
       // Determine evaluator label and knowledge type
@@ -261,7 +261,7 @@ import { UIStateManager } from './js/core/UIStateManager.js';
   };
 
   // ── KWL Real-Time Update ──
-  ws.onKWLUpdate = function(kwlItem) {
+  ws.onKWLUpdate = function (kwlItem) {
     console.log("KWL UPDATE:", kwlItem);
     if (!state.kwl) {
       state.kwl = { l: [] };
@@ -270,12 +270,46 @@ import { UIStateManager } from './js/core/UIStateManager.js';
     ui.updateKWLTab(state.kwl.l);
   };
 
+  // ── Mind Map Orchestration ──
+  var _pendingCorrections = {};
+  
+  function displayMindMap(graphData, targetIdx) {
+    if (targetIdx === undefined) targetIdx = null;
+    _pendingCorrections = {};
+    console.log('[MindMap] displayMindMap called. targetIdx:', targetIdx, 'graphData:', graphData);
+    ui.renderKnowledgeCubeWidget(
+      graphData,
+      function(nodeTitle, correctionText) {
+        console.log('[MindMap] Correction submitted:', nodeTitle, correctionText);
+        _pendingCorrections[nodeTitle] = correctionText;
+      },
+      function() {
+        try {
+          var payload = { type: 'mind_map_submit', corrections: _pendingCorrections };
+          if (targetIdx !== null && targetIdx !== undefined) {
+            payload.target_topic_index = parseInt(targetIdx, 10);
+          }
+          console.log('[MindMap] Continue clicked! Sending WS payload:', JSON.stringify(payload));
+          ws.send(payload);
+          console.log('[MindMap] WS payload sent successfully.');
+          ui.setChatLockout(true);
+          ui.updateHud('thinking');
+          state.clearMindMap();
+        } catch (err) {
+          console.error('[MindMap] FATAL ERROR in onContinueCallback:', err, err.stack);
+          ui.setChatLockout(false);
+          ui.updateHud('waiting');
+        }
+      }
+    );
+  }
+
   // ── Mind Map checkpoint ──
   ws.onMindMap = function (data) {
     try {
       state.updateFromWsResponse(data);
       ui.appendKidoMessage(data.kido_response || 'Check my Mind Map!').then(function () {
-        ui.showMindMapModal(data.mind_map_data || []);
+        displayMindMap(data.mind_map_data || []);
         ui.setChatLockout(true);
       });
     } catch (err) {
@@ -392,47 +426,47 @@ import { UIStateManager } from './js/core/UIStateManager.js';
         if (state.pendingWidget) {
           var wState = state.pendingWidget;
           ui.setCubeState('TEXT'); // clear glow
-          
-          ui.renderInlineWidget(wState, function(submission, msgWrapper) {
-            ws.send({ 
-              type: 'widget_submit', 
-              submitted_data: submission 
+
+          ui.renderInlineWidget(wState, function (submission, msgWrapper) {
+            ws.send({
+              type: 'widget_submit',
+              submitted_data: submission
             });
             state.pendingWidget = null;
             ui.setChatLockout(true);
             ui.updateHud('thinking');
             if (msgWrapper) {
-               var btn = msgWrapper.querySelector('.widget-submit-btn');
-               if (btn) {
-                 btn.textContent = 'Submitted!';
-                 btn.style.background = '#94a3b8';
-                 btn.style.boxShadow = '0 4px 0 #64748b';
-               }
+              var btn = msgWrapper.querySelector('.widget-submit-btn');
+              if (btn) {
+                btn.textContent = 'Submitted!';
+                btn.style.background = '#94a3b8';
+                btn.style.boxShadow = '0 4px 0 #64748b';
+              }
             }
           });
           return;
         }
-        
+
         // Fallback: fetch from API (legacy path)
         ui.setChatLockout(true);
         ui.updateHud('thinking');
         var response = await window.LearnBackAPI.fetchWidgetState(state.sessionId);
-        
+
         if (response.widget_status !== 'ready') {
-           ui.appendKidoMessage("There is no interactive widget available right now.");
-           return;
+          ui.appendKidoMessage("There is no interactive widget available right now.");
+          return;
         }
-        
+
         var simulatedState = { type: response.widget_type, data: response.widget_data };
         ui.setCubeState('TEXT');
-        
-        ui.renderInlineWidget(simulatedState, function(submission, msgWrapper) {
-           ws.send({ 
-             type: 'widget_submit', 
-             submitted_data: submission 
-           });
-           ui.setChatLockout(true);
-           ui.updateHud('thinking');
+
+        ui.renderInlineWidget(simulatedState, function (submission, msgWrapper) {
+          ws.send({
+            type: 'widget_submit',
+            submitted_data: submission
+          });
+          ui.setChatLockout(true);
+          ui.updateHud('thinking');
         });
       } catch (err) {
         console.error('[Session] fetchWidgetState failed:', err);
@@ -443,28 +477,7 @@ import { UIStateManager } from './js/core/UIStateManager.js';
     });
   }
 
-  // ── Mind Map Submit (C3 stub) ──
-  if (dom.btnMindmapSubmit) {
-    dom.btnMindmapSubmit.addEventListener('click', function () {
-      var corrections = ui.getMindMapCorrections();
-      ws.send({ type: 'mind_map_submit', corrections: corrections });
-      ui.hideMindMapModal();
-      ui.setChatLockout(true);
-      ui.updateHud('thinking');
-      state.clearMindMap();
-    });
-  }
-
-  // ── Mind Map Skip ──
-  if (dom.btnMindmapSkip) {
-    dom.btnMindmapSkip.addEventListener('click', function () {
-      ws.send({ type: 'mind_map_submit', corrections: {} });
-      ui.hideMindMapModal();
-      ui.setChatLockout(true);
-      ui.updateHud('thinking');
-      state.clearMindMap();
-    });
-  }
+  // Legacy modal buttons removed - Knowledge Cube handles interactions internally.
 
   // ── View Feedback (session complete overlay) ──
   if (dom.btnViewFeedback) {
@@ -503,7 +516,7 @@ import { UIStateManager } from './js/core/UIStateManager.js';
 
   console.log('[Session] Orchestrator initialized. Session:', sessionId);
 
-  
+
   // ── Right-panel collapse toggle ──
   var btnCollapseRight = document.getElementById('btn-collapse-right');
   if (btnCollapseRight) {
@@ -513,7 +526,7 @@ import { UIStateManager } from './js/core/UIStateManager.js';
       uiManager.setRightPanelView('status');
     });
   }
-  
+
   var btnCollapseLeft = document.getElementById('btn-collapse-left');
   if (btnCollapseLeft) {
     btnCollapseLeft.addEventListener('click', function () {
@@ -525,23 +538,23 @@ import { UIStateManager } from './js/core/UIStateManager.js';
   // ── Panel Switch Buttons ──
   var btnKidoLearned = document.getElementById('btn-kido-learned');
   if (btnKidoLearned) {
-    btnKidoLearned.addEventListener('click', function() { uiManager.setRightPanelView('kwl'); });
+    btnKidoLearned.addEventListener('click', function () { uiManager.setRightPanelView('kwl'); });
   }
 
   var btnMisconceptions = document.getElementById('btn-misconceptions');
   if (btnMisconceptions) {
-    btnMisconceptions.addEventListener('click', function() { uiManager.setRightPanelView('misconceptions'); });
+    btnMisconceptions.addEventListener('click', function () { uiManager.setRightPanelView('misconceptions'); });
   }
 
   // ── Back Buttons ──
   var backKwl = document.getElementById('btn-back-kwl');
-  if (backKwl) backKwl.addEventListener('click', function() { uiManager.setRightPanelView('status'); });
-  
+  if (backKwl) backKwl.addEventListener('click', function () { uiManager.setRightPanelView('status'); });
+
   var backMisc = document.getElementById('btn-back-misconceptions');
-  if (backMisc) backMisc.addEventListener('click', function() { uiManager.setRightPanelView('status'); });
+  if (backMisc) backMisc.addEventListener('click', function () { uiManager.setRightPanelView('status'); });
 
   var backStatus = document.getElementById('btn-back-status');
-  if (backStatus) backStatus.addEventListener('click', function() { uiManager.setRightPanelView('status'); });
+  if (backStatus) backStatus.addEventListener('click', function () { uiManager.setRightPanelView('status'); });
 
   // ── KWL & Misconception Card Expand (Delegated) ──
   function toggleCardExpand(e) {
@@ -552,19 +565,19 @@ import { UIStateManager } from './js/core/UIStateManager.js';
   }
   var kwlStream = document.getElementById('kwl-stream');
   if (kwlStream) kwlStream.addEventListener('click', toggleCardExpand);
-  
+
   var miscStream = document.getElementById('misconceptions-stream');
   if (miscStream) miscStream.addEventListener('click', toggleCardExpand);
 
   // ── New Mind Map Button ──
   var btnTriggerMindmap = document.getElementById('btn-trigger-mindmap');
   if (btnTriggerMindmap) {
-    btnTriggerMindmap.addEventListener('click', async function() {
+    btnTriggerMindmap.addEventListener('click', async function () {
       try {
         ui.setChatLockout(true);
         ui.updateHud('thinking');
         var response = await window.LearnBackAPI.fetchMindMap(state.sessionId);
-        ui.showMindMapModal(response.mind_map_data);
+        displayMindMap(response.mind_map_data);
       } catch (err) {
         console.error('[Session] fetchMindMap error:', err);
         ui.appendKidoMessage("I couldn't generate my mind map right now.");
@@ -578,14 +591,20 @@ import { UIStateManager } from './js/core/UIStateManager.js';
   var pendingSkipIndex = null;
   var topicList = document.getElementById('topic-list');
   if (topicList) {
-    topicList.addEventListener('click', function(e) {
+    topicList.addEventListener('click', function (e) {
       var card = e.target.closest('.topic-card[data-action="skip_topic"]');
       if (card) {
         var targetIndex = parseInt(card.getAttribute('data-target-index'), 10);
         if (!isNaN(targetIndex)) {
           pendingSkipIndex = targetIndex;
           var modal = document.getElementById('modal-skip-topic');
-          if (modal) modal.removeAttribute('hidden');
+          if (modal) {
+            modal.removeAttribute('hidden');
+            var nameEl = document.getElementById('skip-topic-name');
+            var topicTitle = card.querySelector('.topic-title') ? card.querySelector('.topic-title').textContent : 'this topic';
+            if (nameEl) nameEl.textContent = topicTitle;
+            modal.setAttribute('data-target-idx', targetIndex);
+          }
         }
       }
     });
@@ -593,7 +612,7 @@ import { UIStateManager } from './js/core/UIStateManager.js';
 
   var btnCancelSkip = document.getElementById('btn-modal-cancel-skip');
   if (btnCancelSkip) {
-    btnCancelSkip.addEventListener('click', function() {
+    btnCancelSkip.addEventListener('click', function () {
       var modal = document.getElementById('modal-skip-topic');
       if (modal) modal.setAttribute('hidden', '');
       pendingSkipIndex = null;
@@ -602,27 +621,28 @@ import { UIStateManager } from './js/core/UIStateManager.js';
 
   var btnConfirmSkip = document.getElementById('btn-modal-confirm-skip');
   if (btnConfirmSkip) {
-    btnConfirmSkip.addEventListener('click', async function() {
+    btnConfirmSkip.addEventListener('click', async function () {
       var modal = document.getElementById('modal-skip-topic');
+      var targetIdx = modal ? modal.getAttribute('data-target-idx') : null;
+      console.log('[Skip] Confirm clicked. targetIdx:', targetIdx);
       if (modal) modal.setAttribute('hidden', '');
 
       try {
         ui.setChatLockout(true);
         ui.updateHud('thinking');
-        
-        // 1. Fetch mind map snapshot and show
+
+        // 1. Fetch mind map snapshot for CURRENT topic
+        console.log('[Skip] Fetching mind map for session:', state.sessionId);
         var response = await window.LearnBackAPI.fetchMindMap(state.sessionId);
-        ui.showMindMapModal(response.mind_map_data);
+        console.log('[Skip] Mind map fetched:', response);
+        displayMindMap(response.mind_map_data, targetIdx);
 
-        // 2. Perform the skip via HTTP POST
-        var skipResponse = await window.LearnBackAPI.skipTopic(state.sessionId);
-        if (skipResponse && skipResponse.session_state) {
-          state.updateFromWsResponse({ session_state: skipResponse.session_state });
-          ui.renderTopicList(state.getTopicTitles(), state.currentTopicIndex, state.skippedIndices);
-        }
-
+        // Note: The actual skip logic is now handled asynchronously when 
+        // the user interacts with the Knowledge Cube and clicks Continue.
       } catch (err) {
-        console.error('[Session] skipTopic flow failed:', err);
+        console.error('[Skip] skipTopic flow failed:', err);
+        ui.setChatLockout(false);
+        ui.updateHud('waiting');
       }
     });
   }

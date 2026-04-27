@@ -317,7 +317,7 @@ export class UIRenderer {
     // ── CHARACTER ANIMATION STATE INTEGRATION ──
     var canvas = document.getElementById('kido-canvas');
     var iframe = document.getElementById('kido-animation-frame');
-    
+
     if (canvas && iframe) {
       if (stateKey === 'waiting' || stateKey === 'thinking') {
         // Fallback to default Idle Lottie visually, but DO NOT reset the streak history
@@ -332,7 +332,7 @@ export class UIRenderer {
         if (stateKey === 'correct') emotion = 'got_it';
         else if (stateKey === 'incorrect' || stateKey === 'irrelevant') emotion = 'confused';
         else if (stateKey === 'needs_detail') emotion = 'needs_more_information';
-        
+
         if (emotion !== 'idle') {
           // Update streak (ignore waiting/thinking for streak calculations)
           if (this._lastEvaluationEmotion === emotion) {
@@ -341,40 +341,40 @@ export class UIRenderer {
             this._lastEvaluationEmotion = emotion;
             this._emotionStreak = 1;
           }
-          
+
           // Determine file level
           var maxLevel = 1;
           if (emotion === 'got_it') maxLevel = 3;
           if (emotion === 'confused') maxLevel = 2;
-          
+
           var level = Math.min(this._emotionStreak, maxLevel);
           var fileName = emotion + '_level_' + level + '.html?headless=true';
-          
+
           var targetSrc = './animation_states/' + fileName;
-          
+
           console.log('[UIRenderer] Updating Animation State:', {
             emotion: emotion,
             streak: this._emotionStreak,
             targetSrc: targetSrc
           });
-          
+
           // Avoid reloading the iframe if the source is exactly the same
           if (!iframe.src || !iframe.src.includes(fileName)) {
-             iframe.onload = function() {
-               canvas.style.display = 'none';
-               canvas.style.opacity = '0';
-               iframe.style.opacity = '1';
-             };
-             // Keep iframe invisible while loading
-             iframe.style.display = 'block';
-             iframe.style.opacity = '0';
-             iframe.src = targetSrc;
+            iframe.onload = function () {
+              canvas.style.display = 'none';
+              canvas.style.opacity = '0';
+              iframe.style.opacity = '1';
+            };
+            // Keep iframe invisible while loading
+            iframe.style.display = 'block';
+            iframe.style.opacity = '0';
+            iframe.src = targetSrc;
           } else {
-             // Already loaded, just toggle
-             canvas.style.display = 'none';
-             canvas.style.opacity = '0';
-             iframe.style.display = 'block';
-             iframe.style.opacity = '1';
+            // Already loaded, just toggle
+            canvas.style.display = 'none';
+            canvas.style.opacity = '0';
+            iframe.style.display = 'block';
+            iframe.style.opacity = '1';
           }
         }
       }
@@ -542,7 +542,7 @@ export class UIRenderer {
     var tl = dom.topicList;
     if (!tl) return;
     tl.innerHTML = '';
-    
+
     var skipped = skippedIndices || [];
 
     if (!topics || topics.length === 0) {
@@ -677,7 +677,7 @@ export class UIRenderer {
     if (!dom.kwlList || !dom.kwlEmpty) return;
 
     dom.kwlList.innerHTML = '';
-    
+
     if (dom.kwlCountBadge) {
       dom.kwlCountBadge.textContent = list.length;
       if (list.length > 0) {
@@ -755,15 +755,8 @@ export class UIRenderer {
     console.log('[UIRenderer] Mind Map rawData:', rawData);
     console.log('[UIRenderer] Normalized Nodes:', nodes.length, 'nodes, eventId:', renderId);
 
-    // 1. Idempotency Check
-    var existingRender = dom.chatMessages.querySelector('.kc-root[data-render-id="' + renderId + '"]');
-    if (existingRender) {
-      console.warn('[UI] Duplicate mind map render blocked:', renderId);
-      requestAnimationFrame(function () {
-        existingRender.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      });
-      return existingRender;
-    }
+    // Idempotency Check removed to allow dynamic callback binding for Skip flow
+
 
     // 2. Destroy previous widget
     var existingWidget = dom.chatMessages.querySelector('.kc-root');
@@ -777,7 +770,7 @@ export class UIRenderer {
     var hasNodes = nodes.length > 0;
 
     // 4. Map adapter canonical → KC internal format
-    var kcNodes = nodes.map(function(n) {
+    var kcNodes = nodes.map(function (n) {
       var kcStatus = 'pending';
       if (n.status === 'correct') kcStatus = 'reviewed';
       else if (n.status === 'incorrect') kcStatus = 'corrected';
@@ -789,7 +782,7 @@ export class UIRenderer {
       kcConnections.push([kcNodes[ci].id, kcNodes[ci + 1].id]);
     }
 
-    function kcNodeById(nid) { return kcNodes.find(function(n) { return n.id === nid; }); }
+    function kcNodeById(nid) { return kcNodes.find(function (n) { return n.id === nid; }); }
 
     var currentId = this._messageCount++;
 
@@ -871,7 +864,33 @@ export class UIRenderer {
 
     var footer = document.createElement('div');
     footer.style.cssText = 'padding:12px 16px 16px; border-top:1px solid ' + T.topBarBorder + '; background:' + T.topBarBg + ';';
-    footer.innerHTML = '<button type="button" id="kc-continue-' + currentId + '" style="width:100%; background:#022B3A; color:white; font-size:13px; font-weight:700; border:none; border-radius:10px; padding:11px 14px; cursor:pointer; box-shadow:0 3px 0 rgba(2,43,58,0.28);">Continue Learning</button>';
+    var continueBtn = document.createElement('button');
+    continueBtn.type = 'button';
+    continueBtn.id = 'kc-continue-' + currentId;
+    continueBtn.style.cssText = 'width:100%; background:#022B3A; color:white; font-size:13px; font-weight:700; border:none; border-radius:10px; padding:11px 14px; cursor:pointer; box-shadow:0 3px 0 rgba(2,43,58,0.28);';
+    continueBtn.textContent = 'Continue Learning';
+    // Wire click handler DIRECTLY on the element reference (not via getElementById)
+    continueBtn.addEventListener('click', function (evt) {
+      evt.preventDefault();
+      evt.stopPropagation();
+      console.log('[KC] Continue button clicked. currentId:', currentId);
+      this.disabled = true;
+      this.textContent = 'Continuing...';
+      this.style.opacity = '0.7';
+      this.style.cursor = 'not-allowed';
+      if (typeof onContinueCallback === 'function') {
+        console.log('[KC] Invoking onContinueCallback...');
+        try {
+          onContinueCallback({ hasNodes: hasNodes, currentPointTitle: kcNodes.length ? kcNodes[0].title : '' });
+          console.log('[KC] onContinueCallback completed.');
+        } catch (err) {
+          console.error('[KC] onContinueCallback ERROR:', err);
+        }
+      } else {
+        console.error('[KC] onContinueCallback is NOT a function!', onContinueCallback);
+      }
+    });
+    footer.appendChild(continueBtn);
 
     // 9. Review View
     var reviewView = document.createElement('div');
@@ -929,7 +948,7 @@ export class UIRenderer {
     }
     function kcRenderCubes() {
       cubeWrap.innerHTML = '';
-      kcNodes.forEach(function(node) {
+      kcNodes.forEach(function (node) {
         var c = kcNodeBg(node.status);
         var isPending = node.status === 'pending';
         var btn = document.createElement('button');
@@ -945,7 +964,7 @@ export class UIRenderer {
         ttl.textContent = node.title;
         btn.appendChild(hdr);
         btn.appendChild(ttl);
-        btn.addEventListener('click', function() { kcOpenReview(parseInt(this.dataset.kcid, 10)); });
+        btn.addEventListener('click', function () { kcOpenReview(parseInt(this.dataset.kcid, 10)); });
         cubeWrap.appendChild(btn);
       });
       requestAnimationFrame(kcDrawConnectors);
@@ -955,7 +974,7 @@ export class UIRenderer {
       if (!svg) return;
       svg.innerHTML = '';
       var canvasRect = canvas.getBoundingClientRect();
-      kcConnections.forEach(function(pair) {
+      kcConnections.forEach(function (pair) {
         var fromEl = document.getElementById('kc-cube-' + currentId + '-' + pair[0]);
         var toEl = document.getElementById('kc-cube-' + currentId + '-' + pair[1]);
         if (!fromEl || !toEl) return;
@@ -984,7 +1003,7 @@ export class UIRenderer {
       reviewView.className = 'kc-review-panel';
       kcActiveId = null;
       kcRenderCubes();
-      requestAnimationFrame(function() { widget.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
+      requestAnimationFrame(function () { widget.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
     }
     function kcOpenReview(id) {
       kcActiveId = id;
@@ -1005,51 +1024,57 @@ export class UIRenderer {
       reviewView.className = '';
       void reviewView.offsetWidth;
       reviewView.className = 'kc-review-panel';
-      requestAnimationFrame(function() { widget.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
+      requestAnimationFrame(function () { widget.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
     }
     function kcAdvanceOrReturn() {
-      var next = kcNodes.find(function(n) { return n.status === 'pending'; });
+      var next = kcNodes.find(function (n) { return n.status === 'pending'; });
       if (next) {
         reviewView.style.transition = 'opacity 0.15s ease';
         reviewView.style.opacity = '0.4';
-        setTimeout(function() { reviewView.style.opacity = '1'; kcOpenReview(next.id); }, 80);
+        setTimeout(function () { reviewView.style.opacity = '1'; kcOpenReview(next.id); }, 80);
       } else { kcShowGraph(); }
     }
-    // Wire events
-    document.getElementById('kc-continue-' + currentId).addEventListener('click', function(evt) {
-      evt.preventDefault();
-      evt.stopPropagation();
-      if (typeof onContinueCallback === 'function') {
-        onContinueCallback({
-          hasNodes: hasNodes,
-          currentPointTitle: kcNodes.length ? kcNodes[0].title : ''
-        });
-      }
-    });
-    document.getElementById('kc-back-' + currentId).addEventListener('click', kcShowGraph);
-    document.getElementById('kc-good-' + currentId).addEventListener('click', function() {
-      var node = kcNodeById(kcActiveId);
-      if (!node) return;
-      node.status = 'reviewed';
-      kcAdvanceOrReturn();
-    });
-    document.getElementById('kc-wrong-' + currentId).addEventListener('click', function() {
-      document.getElementById('kc-correct-area-' + currentId).style.display = '';
-      var ta = document.getElementById('kc-textarea-' + currentId);
-      if (ta) ta.focus();
-      requestAnimationFrame(function() { widget.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
-    });
-    document.getElementById('kc-save-' + currentId).addEventListener('click', function() {
-      var ta = document.getElementById('kc-textarea-' + currentId);
-      var txt = ta ? ta.value.trim() : '';
-      if (!txt) { if (ta) { ta.style.borderColor = '#EF4444'; setTimeout(function() { ta.style.borderColor = ''; }, 1200); } return; }
-      var node = kcNodeById(kcActiveId);
-      if (!node) return;
-      node.correction = txt;
-      node.status = 'corrected';
-      if (typeof onSubmitCallback === 'function') { onSubmitCallback(node.title, txt); }
-      kcAdvanceOrReturn();
-    });
+    // Wire review panel events (these use getElementById since they're innerHTML-created)
+    var backBtn = document.getElementById('kc-back-' + currentId);
+    var goodBtn = document.getElementById('kc-good-' + currentId);
+    var wrongBtn = document.getElementById('kc-wrong-' + currentId);
+    var saveBtn = document.getElementById('kc-save-' + currentId);
+
+    console.log('[KC] Wiring review events for currentId:', currentId,
+      '| backBtn:', !!backBtn, '| goodBtn:', !!goodBtn,
+      '| wrongBtn:', !!wrongBtn, '| saveBtn:', !!saveBtn);
+
+    if (backBtn) backBtn.addEventListener('click', kcShowGraph);
+    if (goodBtn) {
+      goodBtn.addEventListener('click', function () {
+        var node = kcNodeById(kcActiveId);
+        if (!node) return;
+        node.status = 'reviewed';
+        kcAdvanceOrReturn();
+      });
+    }
+    if (wrongBtn) {
+      wrongBtn.addEventListener('click', function () {
+        var area = document.getElementById('kc-correct-area-' + currentId);
+        if (area) area.style.display = '';
+        var ta = document.getElementById('kc-textarea-' + currentId);
+        if (ta) ta.focus();
+        requestAnimationFrame(function () { widget.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
+      });
+    }
+    if (saveBtn) {
+      saveBtn.addEventListener('click', function () {
+        var ta = document.getElementById('kc-textarea-' + currentId);
+        var txt = ta ? ta.value.trim() : '';
+        if (!txt) { if (ta) { ta.style.borderColor = '#EF4444'; setTimeout(function () { ta.style.borderColor = ''; }, 1200); } return; }
+        var node = kcNodeById(kcActiveId);
+        if (!node) return;
+        node.correction = txt;
+        node.status = 'corrected';
+        if (typeof onSubmitCallback === 'function') { onSubmitCallback(node.title, txt); }
+        kcAdvanceOrReturn();
+      });
+    }
     kcRenderCubes();
     return msgWrapper;
   }
@@ -1074,10 +1099,10 @@ export class UIRenderer {
     var payload = widgetState.data.payload || widgetState.data;
     var meta = widgetState.data.meta || {};
     var instruction = meta.instruction || 'Complete the exercise below:';
-    
+
     // Store active state
     this._currentWidgetState = {};
-    
+
     // Build wrapper
     var msgWrapper = document.createElement('div');
     msgWrapper.className = 'message message--ai message--ai-widget';
@@ -1089,7 +1114,7 @@ export class UIRenderer {
     // Build container
     var container = document.createElement('div');
     container.className = 'widget-container';
-    
+
     // Header — contextual title for process widgets
     var header = document.createElement('div');
     header.className = 'widget-header';
@@ -1116,9 +1141,9 @@ export class UIRenderer {
     // Body
     var body = document.createElement('div');
     body.className = 'widget-body';
-    
+
     var self = this;
-    
+
     if (wType === 'multiple_choice') {
       this._renderMultipleChoice(payload, body);
     } else if (wType === 'fill_blank') {
@@ -1131,7 +1156,7 @@ export class UIRenderer {
       // Fallback
       body.innerHTML = '<pre style="font-size:11px; white-space:pre-wrap; background:var(--surface-2); padding:10px; border-radius:8px;">' + JSON.stringify(payload, null, 2) + '</pre>';
     }
-    
+
     container.appendChild(body);
 
     // Footer with submit button
@@ -1140,7 +1165,7 @@ export class UIRenderer {
     var submitBtn = document.createElement('button');
     submitBtn.className = 'widget-submit-btn';
     submitBtn.textContent = 'Check Answer';
-    
+
     // Store callback reference for Next button
     self._widgetSubmitCallback = onSubmitCallback;
 
@@ -1149,7 +1174,7 @@ export class UIRenderer {
       self._widgetTrialCount = 0;
       self._widgetMaxTrials = 3;
 
-      submitBtn.onclick = function() {
+      submitBtn.onclick = function () {
         submitBtn.disabled = true;
         submitBtn.textContent = 'Checking...';
         self._widgetTrialCount++;
@@ -1160,7 +1185,7 @@ export class UIRenderer {
         }
       };
     } else {
-      submitBtn.onclick = function() {
+      submitBtn.onclick = function () {
         if (onSubmitCallback) {
           submitBtn.disabled = true;
           submitBtn.textContent = 'Checking...';
@@ -1168,7 +1193,7 @@ export class UIRenderer {
         }
       };
     }
-    
+
     footer.appendChild(submitBtn);
     container.appendChild(footer);
 
@@ -1183,7 +1208,7 @@ export class UIRenderer {
     self._lastWidgetWrapper = msgWrapper;
 
     // Scroll widget into view — use a small delay so DOM is ready
-    setTimeout(function() {
+    setTimeout(function () {
       msgWrapper.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }, 100);
   }
@@ -1194,16 +1219,16 @@ export class UIRenderer {
     question.style.cssText = 'font-size: 1.05rem; font-weight: 700; margin-bottom: 16px; color: var(--text-primary);';
     question.textContent = payload.question || '';
     container.appendChild(question);
-    
+
     var optionsWrap = document.createElement('div');
     optionsWrap.className = 'widget-mc-options';
-    
+
     var options = payload.options || [];
-    options.forEach(function(opt) {
+    options.forEach(function (opt) {
       var optEl = document.createElement('div');
       optEl.className = 'widget-mc-option';
       optEl.textContent = opt.text;
-      optEl.onclick = function() {
+      optEl.onclick = function () {
         // Deselect others
         var all = optionsWrap.querySelectorAll('.widget-mc-option');
         for (var i = 0; i < all.length; i++) all[i].classList.remove('is-selected');
@@ -1213,7 +1238,7 @@ export class UIRenderer {
       };
       optionsWrap.appendChild(optEl);
     });
-    
+
     container.appendChild(optionsWrap);
   }
 
@@ -1221,11 +1246,11 @@ export class UIRenderer {
     var self = this;
     var textWrap = document.createElement('div');
     textWrap.className = 'widget-fb-text';
-    
+
     self._currentWidgetState = { answers: {} };
-    
+
     var segments = payload.segments || [];
-    segments.forEach(function(seg) {
+    segments.forEach(function (seg) {
       if (seg.type === 'text') {
         var span = document.createElement('span');
         span.textContent = seg.value;
@@ -1235,13 +1260,13 @@ export class UIRenderer {
         input.type = 'text';
         input.className = 'widget-fb-input';
         if (seg.hint) input.placeholder = seg.hint;
-        input.oninput = function() {
+        input.oninput = function () {
           self._currentWidgetState.answers[seg.id] = input.value.trim();
         };
         textWrap.appendChild(input);
       }
     });
-    
+
     container.appendChild(textWrap);
   }
 
@@ -1259,7 +1284,7 @@ export class UIRenderer {
     var steps = payload.steps || [];
 
     // Store the correct order (IDs) for feedback — never mutated
-    var correctOrder = steps.map(function(s) { return s.id; });
+    var correctOrder = steps.map(function (s) { return s.id; });
 
     // Shuffle steps for display (Fisher-Yates)
     var shuffled = steps.slice();
@@ -1271,12 +1296,12 @@ export class UIRenderer {
     }
 
     // Initial order state (shuffled)
-    self._currentWidgetState = { order: shuffled.map(function(s) { return s.id; }) };
+    self._currentWidgetState = { order: shuffled.map(function (s) { return s.id; }) };
 
     // Store correct order + steps text on container for feedback access
     container.dataset.correctOrder = JSON.stringify(correctOrder);
     container.dataset.stepsMap = JSON.stringify(
-      steps.reduce(function(m, s) { m[s.id] = self._cleanStepText(s.text); return m; }, {})
+      steps.reduce(function (m, s) { m[s.id] = self._cleanStepText(s.text); return m; }, {})
     );
 
     // Sortable list (no START/END labels)
@@ -1285,7 +1310,7 @@ export class UIRenderer {
 
     var draggedItem = null;
 
-    shuffled.forEach(function(step, idx) {
+    shuffled.forEach(function (step, idx) {
       var item = document.createElement('div');
       item.className = 'widget-sort-item';
       item.draggable = true;
@@ -1296,12 +1321,12 @@ export class UIRenderer {
       var gripIcon = '<div class="widget-sort-handle"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg></div>';
       item.innerHTML = numBadge + '<div style="flex:1">' + self._cleanStepText(step.text) + '</div>' + gripIcon;
 
-      item.addEventListener('dragstart', function(e) {
+      item.addEventListener('dragstart', function (e) {
         draggedItem = item;
-        setTimeout(function() { item.classList.add('is-dragging'); }, 0);
+        setTimeout(function () { item.classList.add('is-dragging'); }, 0);
       });
 
-      item.addEventListener('dragend', function() {
+      item.addEventListener('dragend', function () {
         item.classList.remove('is-dragging');
         draggedItem = null;
         // Recalculate order from DOM
@@ -1319,7 +1344,7 @@ export class UIRenderer {
     });
 
     // Single dragover listener on the list (not per-item)
-    list.addEventListener('dragover', function(e) {
+    list.addEventListener('dragover', function (e) {
       e.preventDefault();
       var afterElement = getDragAfterElement(list, e.clientY);
       if (draggedItem) {
@@ -1333,7 +1358,7 @@ export class UIRenderer {
 
     function getDragAfterElement(container, y) {
       var draggableElements = [].slice.call(container.querySelectorAll('.widget-sort-item:not(.is-dragging)'));
-      return draggableElements.reduce(function(closest, child) {
+      return draggableElements.reduce(function (closest, child) {
         var box = child.getBoundingClientRect();
         var offset = y - box.top - box.height / 2;
         if (offset < 0 && offset > closest.offset) {
@@ -1409,7 +1434,7 @@ export class UIRenderer {
       var retryBtn = document.createElement('button');
       retryBtn.className = 'widget-retry-btn';
       retryBtn.textContent = 'Try Again (' + trialsLeft + ' left)';
-      retryBtn.onclick = function() {
+      retryBtn.onclick = function () {
         // Clear feedback
         for (var i = 0; i < items.length; i++) {
           items[i].classList.remove('is-correct', 'is-wrong');
@@ -1424,7 +1449,7 @@ export class UIRenderer {
         var submitBtn = document.createElement('button');
         submitBtn.className = 'widget-submit-btn';
         submitBtn.textContent = 'Check Answer';
-        submitBtn.onclick = function() {
+        submitBtn.onclick = function () {
           submitBtn.disabled = true;
           submitBtn.textContent = 'Checking...';
           self._widgetTrialCount++;
@@ -1442,7 +1467,7 @@ export class UIRenderer {
     var showBtn = document.createElement('button');
     showBtn.className = 'widget-show-correct-btn';
     showBtn.textContent = 'Show Correct Order';
-    showBtn.onclick = function() {
+    showBtn.onclick = function () {
       if (widgetContainer.querySelector('.widget-correct-sequence')) return;
       var seq = document.createElement('div');
       seq.className = 'widget-correct-sequence';
@@ -1451,7 +1476,7 @@ export class UIRenderer {
       seqTitle.textContent = 'Correct Order';
       seq.appendChild(seqTitle);
 
-      correctOrder.forEach(function(id, idx) {
+      correctOrder.forEach(function (id, idx) {
         var stepDiv = document.createElement('div');
         stepDiv.className = 'widget-correct-step';
         stepDiv.innerHTML = '<div class="widget-correct-step-num">' + (idx + 1) + '</div><span>' + (stepsMap[id] || id) + '</span>';
@@ -1496,7 +1521,7 @@ export class UIRenderer {
     nextBtn.style.background = '#3b82f6';
     nextBtn.style.boxShadow = '0 3px 0 #2563eb';
 
-    nextBtn.onclick = function() {
+    nextBtn.onclick = function () {
       nextBtn.disabled = true;
       nextBtn.textContent = 'Loading...';
       // NOW send to backend for kido followup
@@ -1515,7 +1540,7 @@ export class UIRenderer {
     if (dom.chatMessages) {
       var lastMsg = dom.chatMessages.lastElementChild;
       if (lastMsg) {
-        setTimeout(function() {
+        setTimeout(function () {
           lastMsg.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }, 50);
       }
@@ -1531,7 +1556,7 @@ export class UIRenderer {
 
     // Store correct category mapping for local evaluation
     var correctMap = {};
-    items.forEach(function(item) {
+    items.forEach(function (item) {
       correctMap[item.id] = item.category;
     });
     container.dataset.correctCategoryMap = JSON.stringify(correctMap);
@@ -1541,7 +1566,7 @@ export class UIRenderer {
     var dropZonesWrap = document.createElement('div');
     dropZonesWrap.className = 'widget-drop-zones';
 
-    categories.forEach(function(cat) {
+    categories.forEach(function (cat) {
       var zone = document.createElement('div');
       zone.className = 'widget-drop-zone';
       zone.dataset.category = cat;
@@ -1551,16 +1576,16 @@ export class UIRenderer {
       title.textContent = cat;
       zone.appendChild(title);
 
-      zone.addEventListener('dragover', function(e) {
+      zone.addEventListener('dragover', function (e) {
         e.preventDefault();
         zone.classList.add('drag-over');
       });
 
-      zone.addEventListener('dragleave', function() {
+      zone.addEventListener('dragleave', function () {
         zone.classList.remove('drag-over');
       });
 
-      zone.addEventListener('drop', function(e) {
+      zone.addEventListener('drop', function (e) {
         e.preventDefault();
         zone.classList.remove('drag-over');
         var itemId = e.dataTransfer.getData('text/plain');
@@ -1584,16 +1609,16 @@ export class UIRenderer {
     bankTitle.textContent = 'Item Bank';
     bank.appendChild(bankTitle);
 
-    bank.addEventListener('dragover', function(e) {
+    bank.addEventListener('dragover', function (e) {
       e.preventDefault();
       bank.classList.add('drag-over');
     });
 
-    bank.addEventListener('dragleave', function() {
+    bank.addEventListener('dragleave', function () {
       bank.classList.remove('drag-over');
     });
 
-    bank.addEventListener('drop', function(e) {
+    bank.addEventListener('drop', function (e) {
       e.preventDefault();
       bank.classList.remove('drag-over');
       var itemId = e.dataTransfer.getData('text/plain');
@@ -1604,19 +1629,19 @@ export class UIRenderer {
       }
     });
 
-    items.forEach(function(item) {
+    items.forEach(function (item) {
       var itemEl = document.createElement('div');
       itemEl.className = 'widget-sort-item';
       itemEl.draggable = true;
       itemEl.dataset.id = item.id;
       itemEl.textContent = item.text;
 
-      itemEl.addEventListener('dragstart', function(e) {
+      itemEl.addEventListener('dragstart', function (e) {
         e.dataTransfer.setData('text/plain', item.id);
-        setTimeout(function() { itemEl.classList.add('is-dragging'); }, 0);
+        setTimeout(function () { itemEl.classList.add('is-dragging'); }, 0);
       });
 
-      itemEl.addEventListener('dragend', function() {
+      itemEl.addEventListener('dragend', function () {
         itemEl.classList.remove('is-dragging');
       });
 
@@ -1641,7 +1666,7 @@ export class UIRenderer {
     var allItemIds = Object.keys(correctMap);
 
     // Check if all items have been placed
-    var allPlaced = allItemIds.every(function(id) { return placements[id] !== undefined; });
+    var allPlaced = allItemIds.every(function (id) { return placements[id] !== undefined; });
     if (!allPlaced) {
       // Not all placed — show message and re-enable submit
       var footer = widgetContainer.querySelector('.widget-footer');
@@ -1696,7 +1721,7 @@ export class UIRenderer {
       var retryBtn = document.createElement('button');
       retryBtn.className = 'widget-retry-btn';
       retryBtn.textContent = 'Try Again (' + trialsLeft + ' left)';
-      retryBtn.onclick = function() {
+      retryBtn.onclick = function () {
         for (var i = 0; i < items.length; i++) {
           items[i].classList.remove('is-correct', 'is-wrong');
           items[i].draggable = true;
@@ -1710,7 +1735,7 @@ export class UIRenderer {
         var submitBtn = document.createElement('button');
         submitBtn.className = 'widget-submit-btn';
         submitBtn.textContent = 'Check Answer';
-        submitBtn.onclick = function() {
+        submitBtn.onclick = function () {
           submitBtn.disabled = true;
           submitBtn.textContent = 'Checking...';
           self._widgetTrialCount++;
@@ -1726,7 +1751,7 @@ export class UIRenderer {
     var showBtn = document.createElement('button');
     showBtn.className = 'widget-show-correct-btn';
     showBtn.textContent = 'Show Correct Answer';
-    showBtn.onclick = function() {
+    showBtn.onclick = function () {
       if (widgetContainer.querySelector('.widget-correct-sequence')) return;
       var seq = document.createElement('div');
       seq.className = 'widget-correct-sequence';
@@ -1736,13 +1761,13 @@ export class UIRenderer {
       seq.appendChild(seqTitle);
 
       var categories = JSON.parse(body.dataset.categories || '[]');
-      categories.forEach(function(cat) {
+      categories.forEach(function (cat) {
         var catLabel = document.createElement('div');
         catLabel.style.cssText = 'font-weight:700; font-size:0.8rem; margin:8px 0 4px; color:var(--text-secondary);';
         catLabel.textContent = cat + ':';
         seq.appendChild(catLabel);
 
-        allItemIds.forEach(function(id) {
+        allItemIds.forEach(function (id) {
           if (correctMap[id] === cat) {
             var stepDiv = document.createElement('div');
             stepDiv.className = 'widget-correct-step';

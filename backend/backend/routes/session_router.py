@@ -359,6 +359,7 @@ async def session_websocket(websocket: WebSocket, session_id: int) -> None:
                         result = await service.process_mind_map(
                             session_id=session_id,
                             corrections=corrections,
+                            target_topic_index=validated_mm.target_topic_index,
                         )
 
                         if result.get("session_complete"):

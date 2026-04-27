@@ -58,6 +58,10 @@ class MindMapPayload(BaseModel):
         default_factory=dict,
         description="Map of point_title → corrected_summary. Empty dict = no corrections.",
     )
+    target_topic_index: int | None = Field(
+        default=None,
+        description="Optional index of the topic to skip to after submission.",
+    )
 
 
 class WidgetSubmitPayload(BaseModel):
