@@ -139,9 +139,23 @@ class KidoService:
         try:
             parsed = self._parse_json(raw)
         except (json.JSONDecodeError, ValueError):
+            import re
             logger.warning("Kido returned non-JSON; using fallback. Raw: %s", raw[:300])
+            
+            # Attempt to rescue the response text using regex if it looks like malformed JSON
+            fallback_text = ""
+            match = re.search(r'"kido_response"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"', raw)
+            if match:
+                fallback_text = match.group(1).replace('\\"', '"').replace('\\n', '\n')
+            elif "{" in raw and "kido_response" in raw:
+                # If it's malformed JSON but regex failed, don't dump the JSON string to the user
+                fallback_text = f"Hmm, I'm still thinking about {current_point}... can you explain it a bit more?"
+            else:
+                # If it's just raw text, use it
+                fallback_text = raw.strip()[:500]
+                
             parsed = {
-                "kido_response": raw.strip()[:500] if raw.strip() else (
+                "kido_response": fallback_text if fallback_text else (
                     f"Hmm, I'm still thinking about {current_point}... "
                     f"can you explain it a bit more?"
                 ),

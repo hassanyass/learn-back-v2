@@ -20,6 +20,8 @@ export class UIRenderer {
   constructor(domRefs) {
     this.dom = domRefs;
     this._messageCount = 0;
+    this._lastEvaluationEmotion = 'idle';
+    this._emotionStreak = 1;
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -311,6 +313,72 @@ export class UIRenderer {
         self._hudAnimTimeout = null;
       }, animDuration);
     }
+
+    // ── CHARACTER ANIMATION STATE INTEGRATION ──
+    var canvas = document.getElementById('kido-canvas');
+    var iframe = document.getElementById('kido-animation-frame');
+    
+    if (canvas && iframe) {
+      if (stateKey === 'waiting' || stateKey === 'thinking') {
+        // Fallback to default Idle Lottie visually, but DO NOT reset the streak history
+        console.log('[UIRenderer] Animation State Fallback to IDLE (canvas visible). stateKey:', stateKey);
+        canvas.style.display = 'block';
+        canvas.style.opacity = '1';
+        iframe.style.display = 'none';
+        iframe.style.opacity = '0';
+      } else {
+        // Map states to emotions
+        var emotion = 'idle';
+        if (stateKey === 'correct') emotion = 'got_it';
+        else if (stateKey === 'incorrect' || stateKey === 'irrelevant') emotion = 'confused';
+        else if (stateKey === 'needs_detail') emotion = 'needs_more_information';
+        
+        if (emotion !== 'idle') {
+          // Update streak (ignore waiting/thinking for streak calculations)
+          if (this._lastEvaluationEmotion === emotion) {
+            this._emotionStreak++;
+          } else {
+            this._lastEvaluationEmotion = emotion;
+            this._emotionStreak = 1;
+          }
+          
+          // Determine file level
+          var maxLevel = 1;
+          if (emotion === 'got_it') maxLevel = 3;
+          if (emotion === 'confused') maxLevel = 2;
+          
+          var level = Math.min(this._emotionStreak, maxLevel);
+          var fileName = emotion + '_level_' + level + '.html?headless=true';
+          
+          var targetSrc = './animation_states/' + fileName;
+          
+          console.log('[UIRenderer] Updating Animation State:', {
+            emotion: emotion,
+            streak: this._emotionStreak,
+            targetSrc: targetSrc
+          });
+          
+          // Avoid reloading the iframe if the source is exactly the same
+          if (!iframe.src || !iframe.src.includes(fileName)) {
+             iframe.onload = function() {
+               canvas.style.display = 'none';
+               canvas.style.opacity = '0';
+               iframe.style.opacity = '1';
+             };
+             // Keep iframe invisible while loading
+             iframe.style.display = 'block';
+             iframe.style.opacity = '0';
+             iframe.src = targetSrc;
+          } else {
+             // Already loaded, just toggle
+             canvas.style.display = 'none';
+             canvas.style.opacity = '0';
+             iframe.style.display = 'block';
+             iframe.style.opacity = '1';
+          }
+        }
+      }
+    }
   }
 
   /**
@@ -474,7 +542,7 @@ export class UIRenderer {
     var tl = dom.topicList;
     if (!tl) return;
     tl.innerHTML = '';
-
+    
     var skipped = skippedIndices || [];
 
     if (!topics || topics.length === 0) {

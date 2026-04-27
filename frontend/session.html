@@ -292,9 +292,9 @@
           <div class="hud-tail"></div>
         </div>
 
-        <!-- ── KIDO Character (always visible) ── -->
-        <div class="character-wrap">
-          <canvas id="kido-canvas"></canvas>
+        <div class="character-wrap" style="position: relative;">
+          <canvas id="kido-canvas" style="width: 100%; height: 100%; transition: opacity 0.3s;"></canvas>
+          <iframe id="kido-animation-frame" style="width: 100%; height: 100%; border: none; position: absolute; top: 0; left: 0; opacity: 0; pointer-events: none; transition: opacity 0.3s;" title="Kido State Animation"></iframe>
         </div>
 
       </div>

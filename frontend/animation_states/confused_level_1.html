@@ -148,6 +148,24 @@
       }
     }
   </style>
+  <script>
+    if (window.location.search.includes('headless=true')) {
+      document.write(`
+        <style>
+          body { background: transparent !important; padding: 0 !important; overflow: hidden !important; }
+          .shell { width: 100% !important; display: block !important; height: 100vh; }
+          .stage { border: none !important; box-shadow: none !important; background: transparent !important; backdrop-filter: none !important; padding: 0 !important; height: 100%; }
+          .stage::before { display: none !important; }
+          .notes { display: none !important; }
+          .artboard { width: 100% !important; height: 100% !important; aspect-ratio: auto !important; }
+          svg { width: 100% !important; height: 100% !important; max-height: 100vh; }
+        </style>
+      `);
+      window.addEventListener('DOMContentLoaded', () => {
+        if (typeof setDebugMode === 'function') setDebugMode(false);
+      });
+    }
+  </script>
 </head>
 <body>
   <main class="shell">
