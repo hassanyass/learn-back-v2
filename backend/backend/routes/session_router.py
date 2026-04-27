@@ -78,6 +78,19 @@ async def create_session(
     the SlideDeck's segmented_json.  Every topic and every point within it
     gets its own BKT score, misconceptions list, and kido_memory slot.
     """
+    # ── Guard: only one active session per user ──────────────────────
+    existing_active = (await db.execute(
+        select(LearningSession).where(
+            LearningSession.user_id == user_id,
+            LearningSession.status == "in_progress",
+        ).limit(1)
+    )).scalar_one_or_none()
+    if existing_active:
+        raise HTTPException(
+            status_code=409,
+            detail="You already have an active session. Please end or complete it first.",
+        )
+
     # Bind the session to the explicit document_id from the frontend so we
     # never silently switch to a different SlideDeck by created_at ordering.
     stmt = (
@@ -446,6 +459,31 @@ async def session_websocket(websocket: WebSocket, session_id: int) -> None:
             logger.info("WebSocket disconnected for session %s", session_id)
         finally:
             _active_connections.pop(session_id, None)
+
+            # ── Orphan session cleanup ──────────────────────────────────
+            # If the session is still in_progress after WS disconnect (user
+            # closed tab, lost connection, etc.), auto-complete it to prevent
+            # permanent orphans blocking the 1-active-session-per-user guard.
+            try:
+                await db.refresh(session)
+                if session.status == "in_progress":
+                    from copy import deepcopy
+                    state = session.session_state or {}
+                    state["completion_type"] = "abandoned"
+                    session.session_state = deepcopy(state)
+                    session.status = "completed"
+                    session.end_time = datetime.utcnow()
+                    await db.commit()
+                    logger.info(
+                        "Orphan session %s auto-completed (WS disconnect cleanup)",
+                        session_id,
+                    )
+            except Exception as cleanup_exc:
+                logger.error(
+                    "Failed to auto-complete orphan session %s: %s",
+                    session_id, cleanup_exc,
+                )
+
         break  # exit the async-for after one DB session
 
 

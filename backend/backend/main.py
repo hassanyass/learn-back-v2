@@ -12,11 +12,11 @@ from backend.routes.session_router import router as session_router
 app = FastAPI(title="LearnBack Backend")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# CORS — allow the frontend (served from file:// or dev server) to reach the API
+# CORS — allow any origin during controlled user testing phase
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://127.0.0.1:5500", "http://localhost:5500"],
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

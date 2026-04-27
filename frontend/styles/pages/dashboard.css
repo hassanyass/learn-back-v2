@@ -5,9 +5,9 @@
 
 body.dashboard-page {
   min-height: 100vh;
-  height: auto;
+  height: 100vh;
   overflow-x: hidden;
-  overflow-y: auto;
+  overflow-y: hidden;
   display: block;
   overscroll-behavior-y: contain;
 }
@@ -51,16 +51,17 @@ body.dashboard-page .filter-pill {
 .dashboard-shell {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100vh;
   width: 100%;
   background: var(--bg);
+  overflow: hidden;
 }
 
 /* Row below header: inset sidebar card + main — avoids one harsh line “cutting” the nav */
 .dashboard-body {
   display: grid;
   grid-template-columns: 248px 1fr;
-  align-items: start;
+  align-items: stretch;
   gap: 20px;
   flex: 1;
   min-height: 0;
@@ -70,6 +71,7 @@ body.dashboard-page .filter-pill {
   padding: 16px 20px 32px;
   box-sizing: border-box;
   background: var(--bg);
+  overflow: hidden;
   /* Separation from header is the nav-bar border-bottom only */
 }
 
@@ -90,11 +92,12 @@ body.dashboard-page .filter-pill {
 }
 
 .dashboard-sidebar {
-  position: sticky;
-  top: 56px;
-  align-self: start;
-  max-height: calc(100vh - 56px);
-  min-height: min(100vh - 56px, 680px);
+  position: relative;
+  top: auto;
+  align-self: stretch;
+  height: 100%;
+  max-height: none;
+  min-height: 0;
   padding: 20px 16px 18px;
   background: var(--surface);
   border: 1px solid var(--border-light);
@@ -104,7 +107,7 @@ body.dashboard-page .filter-pill {
   flex-direction: column;
   gap: 18px;
   z-index: 10;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .dashboard-sidebar__brand {
@@ -242,7 +245,12 @@ body.dashboard-page .filter-pill {
 
 .dashboard-main {
   min-width: 0;
+  min-height: 0;
   background: var(--bg);
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .dashboard-main__inner {
@@ -252,6 +260,7 @@ body.dashboard-page .filter-pill {
   display: flex;
   flex-direction: column;
   gap: 0;
+  min-height: 100%;
 }
 
 /* ── Home block (welcome + one CTA) — divider before gamify in same tab ─ */
@@ -287,6 +296,18 @@ body.dashboard-page .filter-pill {
   flex-shrink: 0;
   object-fit: contain;
   margin-right: -1px;
+  animation: kido-float 3s ease-in-out infinite;
+  filter: drop-shadow(0 8px 20px rgba(146, 94, 120, 0.18));
+  transition: transform 0.3s ease;
+}
+
+.dashboard-welcome__character:hover {
+  transform: scale(1.04) rotate(2deg);
+}
+
+@keyframes kido-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
 }
 
 .dashboard-welcome__title {
@@ -366,12 +387,12 @@ body.dashboard-page .filter-pill {
 .dashboard-action-card__title {
   font-size: var(--fs-md);
   font-weight: 700;
-  color: var(--text-primary);
+  color: #F3F4F6;
 }
 
 .dashboard-action-card__desc {
   font-size: var(--fs-sm);
-  color: var(--text-mid);
+  color: #F3F4F6;
   line-height: 1.45;
 }
 
@@ -1041,15 +1062,31 @@ body.dashboard-page .filter-pill {
 }
 
 @media (max-width: 1024px) {
+  .dashboard-home {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .dashboard-welcome__character {
+    height: 180px;
+    order: -1;
+  }
+
+  .dashboard-home__cta {
+    max-width: 100%;
+  }
+
   .dashboard-body {
     grid-template-columns: 1fr;
     padding: 12px 16px 28px;
     gap: 16px;
+    overflow: visible;
   }
 
   .dashboard-sidebar {
     position: relative;
     top: auto;
+    height: auto;
     max-height: none;
     min-height: auto;
     flex-direction: row;

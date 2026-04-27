@@ -16,7 +16,7 @@ import asyncio
 import json
 import re
 
-print("🔥 SESSION SERVICE LOADED - NEW CODE ACTIVE")
+print("[SESSION_SERVICE] Module loaded")
 import logging
 import os
 from copy import deepcopy
@@ -43,7 +43,7 @@ OVERALL_BKT_COMPLETION_THRESHOLD: float = 0.95
 # When True, forces specific widget types at specific points for
 # controlled frontend testing.  Set to False for production.
 # ──────────────────────────────────────────────────────────────────────
-DETERMINISTIC_WIDGET_OVERRIDE: bool = True
+DETERMINISTIC_WIDGET_OVERRIDE: bool = False
 
 _FORCED_WIDGET_INSTRUCTIONS: dict[str, str] = {
     "process": (

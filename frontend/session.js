@@ -553,8 +553,8 @@ import { UIStateManager } from './js/core/UIStateManager.js';
       if (endLoadingOverlay) endLoadingOverlay.removeAttribute('hidden');
 
       // Disconnect WS first (suppresses reconnect via _isEndingSession)
-      if (ws && typeof ws.disconnect === 'function') {
-        ws.disconnect();
+      if (ws && typeof ws.close === 'function') {
+        ws.close();
       }
 
       try {

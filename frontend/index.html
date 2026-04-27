@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LearnBack — Learn by Teaching, Powered by AI</title>
+<meta name="description" content="LearnBack is an AI-powered learning-by-teaching platform. Teach KIDO, get real-time feedback, and master any topic through active recall.">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config={theme:{extend:{colors:{bg:'#F6E8EA',ink:'#022B3A',cta:'#F6AE2D',ok:'#5DA271',kido:'#925E78'},fontFamily:{sans:['Inter','system-ui','sans-serif']}}}}
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+@keyframes browL{0%,100%{transform:rotate(0)}30%{transform:rotate(-8deg)}60%{transform:rotate(4deg)}}
+@keyframes browR{0%,100%{transform:rotate(0)}30%{transform:rotate(8deg)}60%{transform:rotate(-4deg)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+@keyframes typing{0%{opacity:.2}50%{opacity:1}100%{opacity:.2}}
+.anim-float{animation:float 4s ease-in-out infinite}
+.anim-fade{opacity:0;transform:translateY(24px);transition:opacity .6s ease,transform .6s ease}
+.anim-fade.visible{opacity:1;transform:translateY(0)}
+.brow-l{animation:browL 3.5s ease-in-out infinite}
+.brow-r{animation:browR 3.5s ease-in-out infinite .2s}
+.dot-typing span{animation:typing 1.4s infinite;display:inline-block;width:6px;height:6px;border-radius:50%;background:#925E78;margin:0 2px}
+.dot-typing span:nth-child(2){animation-delay:.2s}
+.dot-typing span:nth-child(3){animation-delay:.4s}
+html{scroll-behavior:smooth}
+</style>
+</head>
+<body class="bg-bg text-ink font-sans antialiased">
+
+<!-- ========== HEADER ========== -->
+<header id="site-header" class="fixed top-0 inset-x-0 z-50 bg-bg/90 backdrop-blur border-b border-ink/5">
+<div class="max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-6 h-16">
+<a href="#" class="flex items-center gap-2 font-bold text-xl text-ink">
+<svg width="28" height="28" viewBox="0 0 40 40" fill="none"><rect width="40" height="40" rx="10" fill="#925E78"/><rect x="10" y="12" width="20" height="3" rx="1.5" fill="#F6E8EA"/><rect x="10" y="18" width="14" height="3" rx="1.5" fill="#F6E8EA"/><rect x="10" y="24" width="18" height="3" rx="1.5" fill="#F6E8EA"/></svg>
+LearnBack
+</a>
+<nav class="hidden md:flex items-center gap-6 text-sm font-medium">
+<a href="#how" class="hover:text-kido transition">How It Works</a>
+<a href="#walkthrough" class="hover:text-kido transition">Demo</a>
+<a href="#about" class="hover:text-kido transition">About</a>
+<a href="#testing" class="hover:text-kido transition">Testing</a>
+<a href="#contact" class="hover:text-kido transition">Contact</a>
+</nav>
+<div class="flex items-center gap-3">
+<a href="auth.html" class="hidden sm:inline text-sm font-medium hover:text-kido transition">Sign In</a>
+<a href="auth.html" class="px-4 py-2 bg-cta text-ink text-sm font-semibold rounded-lg hover:brightness-110 transition shadow-sm">Start Testing</a>
+</div>
+</div>
+</header>
+
+<!-- ========== HERO ========== -->
+<section class="pt-28 pb-16 sm:pt-36 sm:pb-24">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
+<div class="flex-1 text-center lg:text-left">
+<h1 class="text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight tracking-tight">Learn by Teaching.<br><span class="text-kido">Powered by AI.</span></h1>
+<p class="mt-5 text-lg text-ink/70 max-w-xl mx-auto lg:mx-0">Upload your slides, teach an AI student called KIDO, and receive real-time feedback on your understanding. A learning-by-teaching system built for deeper mastery.</p>
+<div class="mt-8 flex flex-col sm:flex-row items-center gap-3 justify-center lg:justify-start">
+<a href="auth.html" class="w-full sm:w-auto px-6 py-3 bg-cta text-ink font-semibold rounded-lg hover:brightness-110 transition shadow text-center">Start Testing</a>
+<a href="#walkthrough" class="w-full sm:w-auto px-6 py-3 border-2 border-ink/15 text-ink font-semibold rounded-lg hover:border-kido hover:text-kido transition text-center">Watch Demo</a>
+</div>
+<p class="mt-4 text-xs text-ink/40 font-medium">Best experienced on laptop or desktop</p>
+<div class="mt-6 flex flex-wrap justify-center lg:justify-start gap-3">
+<span class="px-3 py-1 bg-ink/5 rounded-full text-xs font-medium text-ink/60">Academic Prototype — TRL 5</span>
+<span class="px-3 py-1 bg-ink/5 rounded-full text-xs font-medium text-ink/60">No personal data stored</span>
+<span class="px-3 py-1 bg-ink/5 rounded-full text-xs font-medium text-ink/60">Testing environment only</span>
+</div>
+</div>
+<!-- KIDO Character -->
+<div class="flex-shrink-0 anim-float" aria-label="KIDO AI character">
+<svg width="220" height="280" viewBox="0 0 220 280" fill="none">
+<rect x="50" y="40" width="120" height="160" rx="24" fill="#925E78"/>
+<rect x="60" y="210" width="30" height="50" rx="8" fill="#7a4e66"/>
+<rect x="130" y="210" width="30" height="50" rx="8" fill="#7a4e66"/>
+<rect x="30" y="80" width="24" height="60" rx="8" fill="#7a4e66"/>
+<rect x="166" y="80" width="24" height="60" rx="8" fill="#7a4e66"/>
+<rect class="brow-l" x="72" y="90" width="28" height="5" rx="2.5" fill="#F6E8EA" transform-origin="86 92"/>
+<rect class="brow-r" x="120" y="90" width="28" height="5" rx="2.5" fill="#F6E8EA" transform-origin="134 92"/>
+<rect x="85" y="150" width="50" height="6" rx="3" fill="#F6E8EA" opacity="0.5"/>
+</svg>
+</div>
+</div>
+</section>
+
+<!-- ========== HOW IT WORKS ========== -->
+<section id="how" class="py-16 sm:py-24 bg-white/40">
+<div class="max-w-6xl mx-auto px-4 sm:px-6">
+<div class="text-center mb-14 anim-fade">
+<h2 class="text-2xl sm:text-3xl font-semibold">How It Works</h2>
+<p class="mt-3 text-ink/60 text-lg max-w-lg mx-auto">Five steps from upload to mastery feedback.</p>
+</div>
+<div class="grid sm:grid-cols-3 gap-6 mb-6">
+<div class="bg-white rounded-2xl p-6 border border-ink/5 shadow-sm anim-fade">
+<div class="w-10 h-10 rounded-lg bg-cta/15 flex items-center justify-center mb-4"><svg class="w-5 h-5 text-cta" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="10"/></svg></div>
+<h3 class="font-semibold text-lg mb-1">1. Choose Your Topic</h3>
+<p class="text-sm text-ink/60">Upload lecture slides or pick a subject. The system segments your material into teachable concepts.</p>
+</div>
+<div class="bg-white rounded-2xl p-6 border border-ink/5 shadow-sm anim-fade">
+<div class="w-10 h-10 rounded-lg bg-kido/15 flex items-center justify-center mb-4"><svg class="w-5 h-5 text-kido" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
+<h3 class="font-semibold text-lg mb-1">2. Teach KIDO</h3>
+<p class="text-sm text-ink/60">Explain concepts to KIDO in your own words. Teaching forces you to organize and articulate knowledge.</p>
+</div>
+<div class="bg-white rounded-2xl p-6 border border-ink/5 shadow-sm anim-fade">
+<div class="w-10 h-10 rounded-lg bg-ok/15 flex items-center justify-center mb-4"><svg class="w-5 h-5 text-ok" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg></div>
+<h3 class="font-semibold text-lg mb-1">3. Answer Questions</h3>
+<p class="text-sm text-ink/60">KIDO asks follow-up questions to probe depth. The AI evaluator checks your reasoning in real time.</p>
+</div>
+</div>
+<div class="grid sm:grid-cols-2 gap-6 max-w-2xl mx-auto">
+<div class="bg-white rounded-2xl p-6 border border-ink/5 shadow-sm anim-fade">
+<div class="w-10 h-10 rounded-lg bg-cta/15 flex items-center justify-center mb-4"><svg class="w-5 h-5 text-cta" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+<h3 class="font-semibold text-lg mb-1">4. Interact with Widgets</h3>
+<p class="text-sm text-ink/60">Knowledge checkpoints appear as interactive quizzes and selection tasks to verify understanding.</p>
+</div>
+<div class="bg-white rounded-2xl p-6 border border-ink/5 shadow-sm anim-fade">
+<div class="w-10 h-10 rounded-lg bg-kido/15 flex items-center justify-center mb-4"><svg class="w-5 h-5 text-kido" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8m8 4H8"/></svg></div>
+<h3 class="font-semibold text-lg mb-1">5. Get AI Feedback</h3>
+<p class="text-sm text-ink/60">Receive a detailed mastery report with per-topic scores, misconception analysis, and improvement suggestions.</p>
+</div>
+</div>
+</div>
+</section>
+
+<!-- ========== LIVE WALKTHROUGH ========== -->
+<section id="walkthrough" class="py-16 sm:py-24">
+<div class="max-w-5xl mx-auto px-4 sm:px-6">
+<div class="text-center mb-10 anim-fade">
+<h2 class="text-2xl sm:text-3xl font-semibold">See It In Action</h2>
+<p class="mt-3 text-ink/60 text-lg">A simulated teaching session with KIDO.</p>
+</div>
+<div class="bg-white rounded-2xl border border-ink/10 shadow-lg overflow-hidden anim-fade">
+<!-- App bar -->
+<div class="flex items-center justify-between px-4 py-3 bg-ink/[.03] border-b border-ink/5">
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-red-400"></div>
+<div class="w-3 h-3 rounded-full bg-yellow-400"></div>
+<div class="w-3 h-3 rounded-full bg-green-400"></div>
+</div>
+<span class="text-xs font-medium text-ink/40">LearnBack Session — Greedy Algorithms</span>
+<div></div>
+</div>
+<!-- Chat area -->
+<div class="p-4 sm:p-6 space-y-4 min-h-[420px]" id="wt-chat">
+<!-- User message -->
+<div class="flex justify-start"><div class="max-w-[75%] bg-ink/[.06] rounded-2xl rounded-bl-md px-4 py-3 text-sm">
+<p class="font-medium text-xs text-ink/40 mb-1">You (Teacher)</p>
+A greedy algorithm makes the locally optimal choice at each step, hoping to find the global optimum. For example, in activity selection, we always pick the activity that finishes earliest.
+</div></div>
+<!-- KIDO response -->
+<div class="flex justify-end"><div class="max-w-[75%] bg-kido/10 border border-kido/15 rounded-2xl rounded-br-md px-4 py-3 text-sm">
+<p class="font-medium text-xs text-kido mb-1">KIDO</p>
+That makes sense! But why does picking the earliest finishing activity actually give us the most activities? Could you explain the greedy-choice property?
+</div></div>
+<!-- User reply -->
+<div class="flex justify-start"><div class="max-w-[75%] bg-ink/[.06] rounded-2xl rounded-bl-md px-4 py-3 text-sm">
+<p class="font-medium text-xs text-ink/40 mb-1">You (Teacher)</p>
+The greedy-choice property means that a locally optimal choice leads to a globally optimal solution. By choosing the earliest finish time, we leave the maximum remaining time for other activities.
+</div></div>
+<!-- Widget checkpoint -->
+<div class="flex justify-end"><div class="max-w-[80%] w-full sm:w-auto">
+<div class="bg-kido/5 border border-kido/15 rounded-2xl rounded-br-md px-4 py-3">
+<p class="font-medium text-xs text-kido mb-2">KIDO — Knowledge Check</p>
+<p class="text-sm mb-3">Which property guarantees that the greedy approach works for activity selection?</p>
+<div class="space-y-2">
+<button class="w-full text-left px-3 py-2 rounded-lg border border-ink/10 bg-white text-sm hover:border-kido/40 transition cursor-default">A. Optimal substructure only</button>
+<button class="w-full text-left px-3 py-2 rounded-lg border-2 border-ok bg-ok/5 text-sm font-medium cursor-default">B. Greedy-choice property</button>
+<button class="w-full text-left px-3 py-2 rounded-lg border border-ink/10 bg-white text-sm hover:border-kido/40 transition cursor-default">C. Overlapping subproblems</button>
+</div>
+</div>
+</div></div>
+<!-- KIDO misconception correction -->
+<div class="flex justify-end"><div class="max-w-[75%] bg-kido/10 border border-kido/15 rounded-2xl rounded-br-md px-4 py-3 text-sm">
+<p class="font-medium text-xs text-kido mb-1">KIDO</p>
+Correct! One thing I want to clarify though — you mentioned greedy always finds the global optimum. That is only true when the greedy-choice property holds. Not all problems have this property. Can you think of a case where greedy fails?
+</div></div>
+<!-- Typing indicator -->
+<div class="flex justify-end"><div class="bg-kido/10 border border-kido/15 rounded-2xl rounded-br-md px-4 py-3">
+<div class="dot-typing flex items-center gap-0.5 h-4"><span></span><span></span><span></span></div>
+</div></div>
+<!-- Final feedback -->
+<div class="flex justify-end"><div class="max-w-[80%] bg-ok/5 border border-ok/20 rounded-2xl rounded-br-md px-4 py-3 text-sm">
+<p class="font-medium text-xs text-ok mb-1">KIDO — Session Feedback</p>
+<p>Strong understanding of greedy fundamentals. Your explanation of the greedy-choice property was accurate. <strong>Area to revisit:</strong> distinguish when greedy applies vs. when dynamic programming is needed. Overall mastery: <span class="font-bold text-ok">78%</span></p>
+</div></div>
+</div>
+</div>
+</div>
+</section>
+
+<!-- ========== CTA BRIDGE ========== -->
+<section class="py-14 bg-kido/5">
+<div class="max-w-3xl mx-auto px-4 text-center anim-fade">
+<h2 class="text-2xl sm:text-3xl font-semibold">Ready to try it yourself?</h2>
+<p class="mt-3 text-ink/60 text-lg">Start a real session and experience AI-powered learning by teaching.</p>
+<div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+<a href="auth.html" class="w-full sm:w-auto px-8 py-3 bg-cta text-ink font-semibold rounded-lg hover:brightness-110 transition shadow text-center">Start Testing</a>
+<a href="auth.html" class="text-sm font-medium text-kido hover:underline">or Sign In</a>
+</div>
+</div>
+</section>
+
+<!-- ========== DEMO VIDEO ========== -->
+<section id="demo" class="py-16 sm:py-24">
+<div class="max-w-4xl mx-auto px-4 sm:px-6">
+<div class="text-center mb-10 anim-fade">
+<h2 class="text-2xl sm:text-3xl font-semibold">Watch the Demo</h2>
+<p class="mt-3 text-ink/60 text-lg">See a complete teaching session from start to feedback.</p>
+</div>
+<div class="bg-white rounded-2xl border border-ink/10 shadow-lg overflow-hidden anim-fade">
+<div class="relative w-full" style="padding-bottom:56.25%">
+<iframe class="absolute inset-0 w-full h-full" src="https://www.youtube.com/embed/dQw4w9WgXcQ" title="LearnBack Demo" frameborder="0" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen loading="lazy"></iframe>
+</div>
+</div>
+</div>
+</section>
+
+<!-- ========== ABOUT ========== -->
+<section id="about" class="py-16 sm:py-24 bg-white/40">
+<div class="max-w-6xl mx-auto px-4 sm:px-6">
+<div class="text-center mb-12 anim-fade">
+<h2 class="text-2xl sm:text-3xl font-semibold">About the Project</h2>
+<p class="mt-3 text-ink/60 text-lg max-w-2xl mx-auto">LearnBack is an AI learning-by-teaching system where students teach a virtual AI student named KIDO. The system evaluates explanations in real time and provides structured feedback.</p>
+</div>
+<div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 anim-fade">
+<div class="bg-white rounded-xl p-5 border border-ink/5">
+<div class="w-9 h-9 rounded-lg bg-kido/10 flex items-center justify-center mb-3"><svg class="w-5 h-5 text-kido" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
+<h3 class="font-semibold mb-1">LLM Integration</h3>
+<p class="text-sm text-ink/60">Dual-agent architecture with evaluator and student agents powered by large language models.</p>
+</div>
+<div class="bg-white rounded-xl p-5 border border-ink/5">
+<div class="w-9 h-9 rounded-lg bg-cta/10 flex items-center justify-center mb-3"><svg class="w-5 h-5 text-cta" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg></div>
+<h3 class="font-semibold mb-1">RAG-Based Reasoning</h3>
+<p class="text-sm text-ink/60">Retrieval-augmented generation grounds KIDO's responses in your actual lecture content.</p>
+</div>
+<div class="bg-white rounded-xl p-5 border border-ink/5">
+<div class="w-9 h-9 rounded-lg bg-red-50 flex items-center justify-center mb-3"><svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+<h3 class="font-semibold mb-1">Misconception Detection</h3>
+<p class="text-sm text-ink/60">Identifies and addresses conceptual errors during teaching through targeted follow-up questions.</p>
+</div>
+<div class="bg-white rounded-xl p-5 border border-ink/5">
+<div class="w-9 h-9 rounded-lg bg-ok/10 flex items-center justify-center mb-3"><svg class="w-5 h-5 text-ok" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg></div>
+<h3 class="font-semibold mb-1">Adaptive Questioning</h3>
+<p class="text-sm text-ink/60">Bayesian Knowledge Tracing adapts difficulty based on demonstrated mastery level.</p>
+</div>
+</div>
+</div>
+</section>
+
+<!-- ========== EDUCATIONAL VALUE ========== -->
+<section class="py-16 sm:py-24">
+<div class="max-w-5xl mx-auto px-4 sm:px-6">
+<div class="text-center mb-12 anim-fade">
+<h2 class="text-2xl sm:text-3xl font-semibold">Why Learning by Teaching Works</h2>
+</div>
+<div class="grid md:grid-cols-3 gap-8 anim-fade">
+<div class="text-center">
+<div class="w-14 h-14 rounded-2xl bg-cta/10 flex items-center justify-center mx-auto mb-4"><svg class="w-7 h-7 text-cta" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div>
+<h3 class="font-semibold text-lg mb-2">Active Recall</h3>
+<p class="text-sm text-ink/60">Teaching forces you to retrieve and restructure knowledge from memory, one of the most effective study techniques proven by research.</p>
+</div>
+<div class="text-center">
+<div class="w-14 h-14 rounded-2xl bg-kido/10 flex items-center justify-center mx-auto mb-4"><svg class="w-7 h-7 text-kido" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M4.26 10.147a60.436 60.436 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.697 50.697 0 0112 13.489a50.702 50.702 0 017.74-3.342"/></svg></div>
+<h3 class="font-semibold text-lg mb-2">Protege Effect</h3>
+<p class="text-sm text-ink/60">Students who teach others demonstrate deeper understanding and longer retention than those who only study for themselves.</p>
+</div>
+<div class="text-center">
+<div class="w-14 h-14 rounded-2xl bg-ok/10 flex items-center justify-center mx-auto mb-4"><svg class="w-7 h-7 text-ok" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3"/></svg></div>
+<h3 class="font-semibold text-lg mb-2">Feedback Loops</h3>
+<p class="text-sm text-ink/60">Immediate, structured feedback after each explanation accelerates correction of misconceptions and strengthens retention.</p>
+</div>
+</div>
+</div>
+</section>
+
+<!-- ========== DIFFERENTIATORS ========== -->
+<section class="py-16 sm:py-24 bg-white/40">
+<div class="max-w-5xl mx-auto px-4 sm:px-6">
+<div class="text-center mb-12 anim-fade">
+<h2 class="text-2xl sm:text-3xl font-semibold">What Makes LearnBack Different</h2>
+</div>
+<div class="grid md:grid-cols-3 gap-6 anim-fade">
+<div class="bg-white rounded-2xl p-6 border border-ink/5 shadow-sm">
+<div class="w-12 h-12 rounded-xl bg-kido/10 flex items-center justify-center mb-4"><svg class="w-6 h-6 text-kido" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></div>
+<h3 class="font-semibold text-lg mb-2">Real-Time Misconception Detection</h3>
+<p class="text-sm text-ink/60">The evaluator agent identifies factual errors and conceptual gaps as you teach, not after. Corrections happen in the moment.</p>
+</div>
+<div class="bg-white rounded-2xl p-6 border border-ink/5 shadow-sm">
+<div class="w-12 h-12 rounded-xl bg-cta/10 flex items-center justify-center mb-4"><svg class="w-6 h-6 text-cta" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></div>
+<h3 class="font-semibold text-lg mb-2">Adaptive Questioning Engine</h3>
+<p class="text-sm text-ink/60">KIDO adjusts question difficulty using Bayesian Knowledge Tracing. Weak areas get more probing; strong areas advance faster.</p>
+</div>
+<div class="bg-white rounded-2xl p-6 border border-ink/5 shadow-sm">
+<div class="w-12 h-12 rounded-xl bg-ok/10 flex items-center justify-center mb-4"><svg class="w-6 h-6 text-ok" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg></div>
+<h3 class="font-semibold text-lg mb-2">AI-Driven Feedback Loop</h3>
+<p class="text-sm text-ink/60">Every session produces a structured mastery report with per-topic scores, identified misconceptions, and actionable improvement paths.</p>
+</div>
+</div>
+</div>
+</section>
+
+<!-- ========== USER TESTING ========== -->
+<section id="testing" class="py-16 sm:py-24">
+<div class="max-w-3xl mx-auto px-4 sm:px-6 text-center anim-fade">
+<h2 class="text-2xl sm:text-3xl font-semibold">Help Us Improve LearnBack</h2>
+<p class="mt-4 text-ink/60 text-lg">We are conducting user testing with 30-40 participants. Your feedback is essential for validating this system.</p>
+<div class="mt-8 bg-white rounded-2xl border border-ink/10 p-6 sm:p-8 text-left shadow-sm">
+<h3 class="font-semibold text-lg mb-4">How to participate:</h3>
+<ol class="space-y-3 text-sm text-ink/70">
+<li class="flex gap-3"><span class="flex-shrink-0 w-6 h-6 rounded-full bg-cta/15 flex items-center justify-center text-xs font-bold text-cta">1</span>Sign in and complete one full teaching session with KIDO.</li>
+<li class="flex gap-3"><span class="flex-shrink-0 w-6 h-6 rounded-full bg-cta/15 flex items-center justify-center text-xs font-bold text-cta">2</span>Review your feedback report at the end of the session.</li>
+<li class="flex gap-3"><span class="flex-shrink-0 w-6 h-6 rounded-full bg-cta/15 flex items-center justify-center text-xs font-bold text-cta">3</span>Fill out the feedback survey linked below.</li>
+</ol>
+</div>
+<a href="#" class="mt-8 inline-flex items-center gap-2 px-8 py-3 bg-cta text-ink font-semibold rounded-lg hover:brightness-110 transition shadow text-center">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+Go to Feedback Survey
+</a>
+</div>
+</section>
+
+<!-- ========== PRIVACY ========== -->
+<section class="py-12 bg-white/40">
+<div class="max-w-3xl mx-auto px-4 sm:px-6 text-center anim-fade">
+<h2 class="text-xl font-semibold mb-4">Privacy Notice</h2>
+<div class="flex flex-wrap justify-center gap-4 text-sm text-ink/60">
+<span class="flex items-center gap-1.5"><svg class="w-4 h-4 text-ok" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>No personal data is stored</span>
+<span class="flex items-center gap-1.5"><svg class="w-4 h-4 text-ok" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>Testing environment only</span>
+<span class="flex items-center gap-1.5"><svg class="w-4 h-4 text-ok" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>No user identity tracking</span>
+</div>
+</div>
+</section>
+
+<!-- ========== CONTACT ========== -->
+<section id="contact" class="py-16 sm:py-20">
+<div class="max-w-3xl mx-auto px-4 sm:px-6 text-center anim-fade">
+<h2 class="text-2xl sm:text-3xl font-semibold mb-4">Contact</h2>
+<p class="text-ink/60 mb-6">Questions about the project or testing process? Reach out below.</p>
+<div class="flex flex-wrap justify-center gap-4">
+<a href="mailto:contact@learnback.ai" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-ink/10 rounded-lg text-sm font-medium hover:border-kido transition shadow-sm">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+contact@learnback.ai
+</a>
+<a href="#" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-ink/10 rounded-lg text-sm font-medium hover:border-kido transition shadow-sm">
+<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+GitHub
+</a>
+<a href="#" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-ink/10 rounded-lg text-sm font-medium hover:border-kido transition shadow-sm">
+<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+LinkedIn
+</a>
+</div>
+</div>
+</section>
+
+<!-- ========== FOOTER ========== -->
+<footer class="border-t border-ink/10 py-10 bg-ink/[.02]">
+<div class="max-w-6xl mx-auto px-4 sm:px-6">
+<div class="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-ink/50">
+<div class="flex items-center gap-2 font-semibold text-ink/70">
+<svg width="20" height="20" viewBox="0 0 40 40" fill="none"><rect width="40" height="40" rx="10" fill="#925E78"/><rect x="10" y="12" width="20" height="3" rx="1.5" fill="#F6E8EA"/><rect x="10" y="18" width="14" height="3" rx="1.5" fill="#F6E8EA"/><rect x="10" y="24" width="18" height="3" rx="1.5" fill="#F6E8EA"/></svg>
+LearnBack
+</div>
+<div class="flex flex-wrap justify-center gap-4 text-xs">
+<span>Copyright Pending</span>
+<span>Technology Readiness Level: TRL 5</span>
+<span>Academic prototype only</span>
+</div>
+<a href="#" class="text-xs font-medium text-kido hover:underline">Feedback Survey</a>
+</div>
+<p class="text-center text-xs text-ink/30 mt-4">This is an academic research prototype and is not a commercial product.</p>
+</div>
+</footer>
+
+<script>
+// Scroll fade-up animation
+const obs=new IntersectionObserver((entries)=>{entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');obs.unobserve(e.target)}})},{threshold:0.15});
+document.querySelectorAll('.anim-fade').forEach(el=>obs.observe(el));
+</script>
+</body>
+</html>
