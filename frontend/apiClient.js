@@ -254,6 +254,7 @@
       fileType: normalizeText(payload.file_type || payload.fileType, null),
       hasPreview: normalizeBoolean(payload.has_preview, false),
       deckStatus: normalizeText(payload.deck_status || payload.deckStatus, null),
+      sourceType: normalizeText(payload.source_type || payload.sourceType, 'upload'),
       startedAt: normalizeText(payload.started_at || payload.startedAt, new Date().toISOString()),
       completedAt: normalizeText(payload.completed_at || payload.completedAt, null)
     };
@@ -445,6 +446,20 @@
     fetchHint: function (sessionId) {
       return request('/session/' + encodeURIComponent(sessionId) + '/hint', {
         method: 'POST'
+      });
+    },
+
+    fetchDemoContent: function () {
+      return request('/demo-content');
+    },
+
+    startDemoSession: function (demoId) {
+      return request('/session/create-demo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ demo_id: demoId })
+      }).then(function (response) {
+        return normalizeSessionStartResponse(response);
       });
     }
   };

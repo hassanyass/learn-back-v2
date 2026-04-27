@@ -127,10 +127,15 @@ import { UIStateManager } from './js/core/UIStateManager.js';
     var fileType = state.fileType || null;
     var hasPreview = state.hasPreview === true;
     var deckStatus = state.deckStatus || null;
-    var hasRealPdf = hasPreview
-      && fileType === 'pdf'
+    var isDemoSession = state.sourceType === 'demo';
+    var hasDemoPdf = isDemoSession
       && typeof pdfUrl === 'string'
       && /^https?:\/\//i.test(pdfUrl);
+    var hasRealPdf = (hasPreview
+      && fileType === 'pdf'
+      && typeof pdfUrl === 'string'
+      && /^https?:\/\//i.test(pdfUrl))
+      || hasDemoPdf;
     var fallbackMessage = 'Learning Session Ready\nSlide deck preview is not available.';
 
     if (!hasRealPdf && deckStatus === 'UPLOAD_FAILED') {

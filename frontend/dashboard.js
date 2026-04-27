@@ -343,7 +343,7 @@
     var start = document.getElementById('btn-start-session');
     if (start) {
       start.addEventListener('click', function () {
-        window.location.href = 'upload_slides.html';
+        window.location.href = 'start_session.html';
       });
     }
   }

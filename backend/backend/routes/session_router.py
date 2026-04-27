@@ -28,10 +28,12 @@ from backend.core.db import get_db
 from backend.models.core import LearningSession, SlideDeck
 from backend.schemas.api_schemas import (
     ChatPayload,
+    DemoSessionRequest,
     MindMapPayload,
     SessionCreateRequest,
     WidgetSubmitPayload,
 )
+from backend.demo_content import get_demo_content, list_demo_content
 from pydantic import ValidationError
 from backend.services.auth_service import AuthService
 from backend.services.bkt_service import BKTService
@@ -63,7 +65,83 @@ _active_connections: dict[int, WebSocket] = {}
 
 
 # ──────────────────────────────────────────────────────────────────────
-# HTTP: Create session endpoint
+# Shared helper: build session_state from extracted_segments
+# ──────────────────────────────────────────────────────────────────────
+
+def _build_session_state(segments: list[dict[str, Any]]) -> dict[str, Any]:
+    """Build the nested session_state from extracted_segments.
+
+    Shared by both upload-based and demo-based session creation.
+    Identical BKT initialization, point structure, and progression logic.
+    """
+    bkt = BKTService()
+    topics: list[dict[str, Any]] = []
+    for t_idx, seg in enumerate(segments):
+        points: list[dict[str, Any]] = []
+        for p_idx, concept in enumerate(seg.get("extracted_concepts", [])):
+            points.append({
+                "id": f"topic_{t_idx}_point_{p_idx}",
+                "point_title": concept,
+                "bkt_score": bkt.initial_probability(),
+                "status": "pending",
+                "is_visited": False,
+                "is_correct": None,
+                "total_attempts": 0,
+                "widget_used": False,
+                "misconceptions": [],
+                "kido_memory": None,
+            })
+        topics.append({
+            "topic_title": seg.get("topic_title", "Untitled"),
+            "points": points,
+        })
+
+    # Activate the very first point
+    if topics and topics[0]["points"]:
+        topics[0]["points"][0]["status"] = "in_progress"
+        topics[0]["points"][0]["is_visited"] = True
+
+    return {
+        "current_topic_index": 0,
+        "current_point_index": 0,
+        "point_attempts": 0,
+        "current_difficulty": 1,
+        "topics": topics,
+        "skipped_indices": [],
+        "correction_events": [],
+    }
+
+
+async def _guard_concurrent_session(db: AsyncSession, user_id: int) -> None:
+    """Reject if user already has an in_progress session."""
+    existing = (await db.execute(
+        select(LearningSession).where(
+            LearningSession.user_id == user_id,
+            LearningSession.status == "in_progress",
+        ).limit(1)
+    )).scalar_one_or_none()
+    if existing:
+        raise HTTPException(
+            status_code=409,
+            detail="You already have an active session. Please end or complete it first.",
+        )
+
+
+def _session_create_response(session: LearningSession, topics: list) -> dict[str, Any]:
+    """Standard response shape for session creation (both flows)."""
+    current_topic = topics[0] if topics else {}
+    current_point = current_topic.get("points", [{}])[0] if current_topic else {}
+    return {
+        "session_id": session.id,
+        "session_status": "active",
+        "current_topic": current_topic,
+        "current_point": current_point,
+        "kido_message": "Let's begin!",
+    }
+
+
+# ──────────────────────────────────────────────────────────────────────
+# HTTP: Create session from uploaded slides
 # ──────────────────────────────────────────────────────────────────────
 
 @router.post("/session/create")
@@ -72,27 +150,9 @@ async def create_session(
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
-    """Create a new learning session for the requested slide deck.
+    """Create a new learning session for the requested slide deck."""
+    await _guard_concurrent_session(db, user_id)
 
-    Initialises session_state as a complete map of the lesson, built from
-    the SlideDeck's segmented_json.  Every topic and every point within it
-    gets its own BKT score, misconceptions list, and kido_memory slot.
-    """
-    # ── Guard: only one active session per user ──────────────────────
-    existing_active = (await db.execute(
-        select(LearningSession).where(
-            LearningSession.user_id == user_id,
-            LearningSession.status == "in_progress",
-        ).limit(1)
-    )).scalar_one_or_none()
-    if existing_active:
-        raise HTTPException(
-            status_code=409,
-            detail="You already have an active session. Please end or complete it first.",
-        )
-
-    # Bind the session to the explicit document_id from the frontend so we
-    # never silently switch to a different SlideDeck by created_at ordering.
     stmt = (
         select(SlideDeck)
         .where(
@@ -108,54 +168,16 @@ async def create_session(
             detail="Slide deck not found for the provided document_id.",
         )
 
-    # Extract segments from the AI-generated curriculum
     segments = deck.segmented_json.get("extracted_segments", [])
     if not segments:
         raise HTTPException(
             status_code=422,
             detail="This slide deck has no segmented content. Please re-upload.",
         )
+
+    session_state = _build_session_state(segments)
     topic = segments[0].get("topic_title", "Untitled Topic")
 
-    # ── Build the nested session_state from segments ──────────────────
-    bkt = BKTService()
-    topics: list[dict[str, Any]] = []
-    for t_idx, seg in enumerate(segments):
-        points: list[dict[str, Any]] = []
-        for p_idx, concept in enumerate(seg.get("extracted_concepts", [])):
-            points.append({
-                "id": f"topic_{t_idx}_point_{p_idx}",
-                "point_title": concept,
-                "bkt_score": bkt.initial_probability(),
-                "status": "pending",     # pending → in_progress → completed
-                "is_visited": False,
-                "is_correct": None,
-                "total_attempts": 0,     # Accumulated across all exchanges for this point
-                "widget_used": False,    # True if a non-TEXT widget was rendered
-                "misconceptions": [],
-                "kido_memory": None,     # {"title": "...", "summary": "..."} on completion
-            })
-        topics.append({
-            "topic_title": seg.get("topic_title", "Untitled"),
-            "points": points,
-        })
-
-    # Set the very first point to in_progress and visited
-    if topics and topics[0]["points"]:
-        topics[0]["points"][0]["status"] = "in_progress"
-        topics[0]["points"][0]["is_visited"] = True
-
-    session_state: dict[str, Any] = {
-        "current_topic_index": 0,
-        "current_point_index": 0,
-        "point_attempts": 0,
-        "current_difficulty": 1,
-        "topics": topics,
-        "skipped_indices": [],
-        "correction_events": [],
-    }
-
-    # Create the learning session with the full state machine
     session = LearningSession(
         user_id=user_id,
         slide_deck_id=deck.id,
@@ -169,16 +191,71 @@ async def create_session(
     await db.commit()
     await db.refresh(session)
 
-    current_topic = topics[0] if topics else {}
-    current_point = current_topic.get("points", [{}])[0] if current_topic else {}
+    return _session_create_response(session, session_state["topics"])
 
-    return {
-        "session_id": session.id,
-        "session_status": "active",
-        "current_topic": current_topic,
-        "current_point": current_point,
-        "kido_message": "Let's begin!"
-    }
+
+# ──────────────────────────────────────────────────────────────────────
+# HTTP: Create session from demo content (bypasses ingestion)
+# ──────────────────────────────────────────────────────────────────────
+
+@router.post("/session/create-demo")
+async def create_demo_session(
+    payload: DemoSessionRequest,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Create a learning session from pre-loaded demo content.
+
+    Bypasses ingestion entirely. Uses the exact same BKT initialization
+    and session_state structure as upload-based sessions.
+    """
+    await _guard_concurrent_session(db, user_id)
+
+    demo = get_demo_content(payload.demo_id)
+    if not demo:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Demo content '{payload.demo_id}' not found.",
+        )
+
+    segments = demo.get("extracted_segments", [])
+    if not segments:
+        raise HTTPException(
+            status_code=422,
+            detail="Demo content has no topics.",
+        )
+
+    session_state = _build_session_state(segments)
+    # Inject demo metadata into session_state for frontend
+    session_state["source_type"] = "demo"
+    session_state["demo_slide_url"] = demo["slide_url"]
+
+    topic = demo["title"]
+
+    session = LearningSession(
+        user_id=user_id,
+        slide_deck_id=None,  # No SlideDeck row for demo content
+        topic=topic,
+        status="in_progress",
+        start_time=datetime.utcnow(),
+        created_at=datetime.utcnow(),
+        session_state=session_state,
+    )
+    db.add(session)
+    await db.commit()
+    await db.refresh(session)
+
+    return _session_create_response(session, session_state["topics"])
+
+
+# ──────────────────────────────────────────────────────────────────────
+# HTTP: List available demo content
+# ──────────────────────────────────────────────────────────────────────
+
+@router.get("/demo-content")
+async def get_demo_content_list() -> list[dict[str, Any]]:
+    """Return available demo content for the choice page. No auth required."""
+    return list_demo_content()
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -207,6 +284,19 @@ async def get_session(
     for t in state.get("topics", []):
         topic_titles.append(t.get("topic_title", "Untitled"))
 
+    # Determine source type and slide URL
+    is_demo = state.get("source_type") == "demo"
+    if session.slide_deck:
+        pdf_url = session.slide_deck.pdf_storage_url
+        file_type = session.slide_deck.file_type
+        has_preview = session.slide_deck.has_preview
+        deck_status = session.slide_deck.status
+    else:
+        pdf_url = state.get("demo_slide_url")
+        file_type = "pdf" if pdf_url else None
+        has_preview = bool(pdf_url)
+        deck_status = None
+
     return {
         "session_id": session.id,
         "title": session.topic,
@@ -215,10 +305,11 @@ async def get_session(
         "current_topic_index": state.get("current_topic_index", 0),
         "topics": topic_titles,
         "slide_deck_id": session.slide_deck_id,
-        "pdf_url": session.slide_deck.pdf_storage_url if session.slide_deck else None,
-        "file_type": session.slide_deck.file_type if session.slide_deck else None,
-        "has_preview": session.slide_deck.has_preview if session.slide_deck else False,
-        "deck_status": session.slide_deck.status if session.slide_deck else None,
+        "source_type": "demo" if is_demo else "upload",
+        "pdf_url": pdf_url,
+        "file_type": file_type,
+        "has_preview": has_preview,
+        "deck_status": deck_status,
         "started_at": session.start_time.isoformat() if session.start_time else None,
         "completed_at": session.end_time.isoformat() if session.end_time else None,
         "session_state": state,

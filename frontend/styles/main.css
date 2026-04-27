@@ -34,6 +34,7 @@
 @import 'pages/feedback.css';
 @import 'pages/upload.css';
 @import 'pages/auth.css';
+@import 'pages/start-session.css';
 
 /* 6. Utilities (Helper Classes - Must load last) */
 @import 'utilities/colors.css';

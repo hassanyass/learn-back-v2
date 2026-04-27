@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LearnBack - Start Session</title>
+    <meta name="description" content="Choose how to start your teaching session on LearnBack">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+
+<body class="choice-page" data-theme="light">
+
+    <!-- ============================================
+         HEADER
+         ============================================ -->
+    <header class="nav-bar">
+        <div class="nav-bar__left">
+            <img src="Logo/Transparent2.png" alt="LearnBack Logo" class="nav-bar__brand-img logo-light"
+                style="height: 44px; width: auto; margin-left: -4px;">
+            <img src="Logo/transparent_dark_mode.png" alt="LearnBack Logo" class="nav-bar__brand-img logo-dark"
+                style="height: 44px; width: auto; margin-left: -4px;">
+            <span class="nav-bar__divider"></span>
+            <span class="nav-bar__session">Start Session</span>
+        </div>
+
+        <div class="nav-bar__right" style="display:flex;align-items:center;gap:12px;">
+            <a href="dashboard.html" class="btn btn--neutral" style="font-size:var(--fs-sm);">Back to Dashboard</a>
+            <button type="button" class="btn btn-theme-toggle" id="btn-theme-toggle" aria-label="Toggle dark mode">
+                <svg class="theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" style="display:none;">
+                    <circle cx="12" cy="12" r="5"></circle>
+                    <line x1="12" y1="1" x2="12" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                    <line x1="1" y1="12" x2="3" y2="12"></line>
+                    <line x1="21" y1="12" x2="23" y2="12"></line>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+                <svg class="theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+                <span class="theme-toggle-text">Dark</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- ============================================
+         MAIN CONTENT
+         ============================================ -->
+    <div class="choice-container">
+        <div class="choice-zone">
+
+            <!-- Header -->
+            <div class="choice-header">
+                <h1 class="choice-title">How would you like to start?</h1>
+                <p class="choice-subtitle">Upload your own slides or try a pre-loaded demo session.</p>
+            </div>
+
+            <!-- Choice Cards -->
+            <div class="choice-cards" id="choice-cards">
+                <button type="button" class="choice-card choice-card--primary" id="btn-upload">
+                    <span class="choice-card__icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke-linecap="round" stroke-linejoin="round"/>
+                            <polyline points="17 8 12 3 7 8" stroke-linecap="round" stroke-linejoin="round"/>
+                            <line x1="12" y1="3" x2="12" y2="15" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </span>
+                    <span class="choice-card__body">
+                        <span class="choice-card__title">Upload Your Slides</span>
+                        <span class="choice-card__desc">Upload a PDF and teach Kido your own content.</span>
+                    </span>
+                    <span class="choice-card__chev" aria-hidden="true">&rarr;</span>
+                </button>
+
+                <button type="button" class="choice-card choice-card--demo" id="btn-demo">
+                    <span class="choice-card__icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="5 3 19 12 5 21 5 3" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </span>
+                    <span class="choice-card__body">
+                        <span class="choice-card__title">Try Demo Content</span>
+                        <span class="choice-card__desc">Start with a pre-loaded lecture to explore LearnBack.</span>
+                    </span>
+                    <span class="choice-card__chev" aria-hidden="true">&rarr;</span>
+                </button>
+            </div>
+
+            <!-- Demo Loading State -->
+            <div class="demo-loading" id="demo-loading">
+                <div class="demo-spinner"></div>
+                <span>Loading demo content...</span>
+            </div>
+
+            <!-- Demo Error State -->
+            <div class="demo-error" id="demo-error">
+                <span id="demo-error-text">Failed to load demo content.</span>
+                <button type="button" class="demo-error__retry" id="btn-demo-retry">Try Again</button>
+            </div>
+
+            <!-- Demo Preview Panel (hidden by default) -->
+            <div class="demo-preview" id="demo-preview">
+                <div class="demo-preview__header">
+                    <button type="button" class="demo-preview__back" id="btn-demo-back" aria-label="Back to choices">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M19 12H5M12 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    <div class="demo-preview__info">
+                        <h2 class="demo-preview__title" id="demo-title"></h2>
+                        <p class="demo-preview__meta" id="demo-meta"></p>
+                    </div>
+                </div>
+
+                <ul class="demo-topics" id="demo-topics">
+                    <!-- Dynamic topic items -->
+                </ul>
+
+                <button type="button" class="demo-start-btn" id="btn-start-demo" disabled>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polygon points="10 8 16 12 10 16 10 8"/>
+                    </svg>
+                    <span>Start Demo Session</span>
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="apiClient.js?v=5"></script>
+    <script src="start_session.js?v=1"></script>
+</body>
+
+</html>
