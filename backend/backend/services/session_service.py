@@ -653,16 +653,17 @@ class SessionService:
         state["mind_map_version"] = state.get("mind_map_version", 0) + 1
 
         if target_topic_index is not None and 0 <= target_topic_index < len(state.get("topics", [])):
-            # Handle Skip Topic Action
+            # Handle Topic Advancement (either natural completion → next, or skip → jump)
             current_ti = state.get("current_topic_index", 0)
+            is_natural_advance = (target_topic_index == current_ti + 1)
             
-            # Mark current and any intermediate topics as skipped
+            # Mark intermediate topics as skipped (not the current completed one)
             if "skipped_indices" not in state:
                 state["skipped_indices"] = []
             
-            # Only add to skipped if we're actually skipping forward
-            if target_topic_index > current_ti:
-                for i in range(current_ti, target_topic_index):
+            if target_topic_index > current_ti + 1:
+                # True skip: mark topics between current+1 and target as skipped
+                for i in range(current_ti + 1, target_topic_index):
                     if i not in state["skipped_indices"]:
                         state["skipped_indices"].append(i)
             
@@ -677,19 +678,31 @@ class SessionService:
             target_topic_title = state["topics"][target_topic_index]["topic_title"]
             first_point_title = state["topics"][target_topic_index]["points"][0]["point_title"]
             
-            kido_response = (
-                f"Got it! Skipping ahead to '{target_topic_title}'. "
-                f"Let's start with the first point: {first_point_title}. What do you already know about this?"
-            )
+            if is_natural_advance:
+                kido_response = (
+                    f"Great work on that topic! Now let's move on to '{target_topic_title}'. "
+                    f"Let's start with: {first_point_title}. What do you already know about this?"
+                )
+            else:
+                kido_response = (
+                    f"Got it! Skipping ahead to '{target_topic_title}'. "
+                    f"Let's start with the first point: {first_point_title}. What do you already know about this?"
+                )
             widget_type = "TEXT"
             await self._persist_message(session_id, "kido", kido_response, widget_type=widget_type)
             
         else:
             # Generate acknowledgment message for normal submission
-            kido_response = (
-                "Thanks for the annotations! I've updated my notes. "
-                "You can keep chatting, or select the next topic in the Roadmap when you're ready to move on."
-            )
+            if corrections:
+                kido_response = (
+                    "Thanks for the corrections! I've updated my notes with your feedback. "
+                    "Let's keep going — what should I learn next?"
+                )
+            else:
+                kido_response = (
+                    "Got it! My understanding looks good so far. "
+                    "Let's keep going — continue teaching or pick the next topic in the Roadmap!"
+                )
             widget_type = "TEXT"
             await self._persist_message(session_id, "kido", kido_response, widget_type=widget_type)
 
@@ -974,10 +987,14 @@ class SessionService:
         nodes = []
         for index, p in enumerate(points):
             memory = p.get("kido_memory") or {}
+            misconceptions = p.get("misconceptions", [])
+            # Get the latest misconception text if any
+            latest_misconception = misconceptions[-1]["misconception"] if misconceptions else None
             nodes.append({
                 "node_id": p.get("node_id", index + 1),
                 "point": p.get("point_title", ""),
                 "kido_sentence": memory.get("summary", ""),
+                "misconception": latest_misconception,
                 "status": "correct" if p.get("bkt_score", 0) >= MASTERY_THRESHOLD else (
                     "incorrect" if p.get("status") == "completed" else "partial"
                 ),

@@ -66,6 +66,9 @@ export const MindMapAdapter = {
         // Value Resolution: prefers new graph `kido_sentence`
         value: safeNode.kido_sentence || safeNode.kido_understanding || safeNode.thought || safeNode.summary || 'Kido has no thoughts here.',
 
+        // Misconception (if any)
+        misconception: safeNode.misconception || null,
+
         // Interaction State Resolution
         status: safeNode.status || 'unseen'
       };

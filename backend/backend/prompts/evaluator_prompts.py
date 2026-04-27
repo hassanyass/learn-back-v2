@@ -28,7 +28,7 @@ You must return ONLY a JSON object with these exact keys:
   "label": "CORRECT|INCORRECT|NEEDS_INFO|IRRELEVANT",
   "detected_misconception": "A concise description of the factual error or conceptual misunderstanding the student expressed. null if no misconception.",
   "memory_title": "1-2 words summarizing the core concept the user taught (e.g., 'Turing Test', 'Symbolic Logic'). null if the explanation was insufficient to form a memory.",
-  "memory_summary": "1 short sentence summarizing what the AI learner should remember from the user's explanation. null if the explanation was insufficient."
+  "memory_summary": "1 short sentence written from Kido's first-person perspective about what he learned (e.g., 'I learned that linked lists use pointers to chain nodes'). null if the explanation was insufficient."
 }
 
 ## Label Definitions
@@ -51,8 +51,10 @@ You must return ONLY a JSON object with these exact keys:
   (even if INCORRECT or NEEDS_INFO) — these capture what the AI learned.
 - memory_title: 1-2 words only. This will become a node label in a Mind Map UI.
   Examples: "Turing Test", "Backpropagation", "Binary Search", "Linked Lists".
-- memory_summary: 1 short sentence (max 20 words). Summarizes what the student
-  actually said, including any metaphors or analogies they used.
+- memory_summary: 1 short sentence (max 20 words). Written from Kido's first-person
+  perspective — what Kido now understands (e.g., 'I learned that Dijkstra’s uses
+  a priority queue to always expand the closest node'). Do NOT write in third person
+  ('Student explained...'). Include any metaphors or analogies the student used.
 - Set BOTH to null only if the message is IRRELEVANT (off-topic, greetings, etc.)
 
 ## Rules

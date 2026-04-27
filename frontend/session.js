@@ -308,8 +308,11 @@ import { UIStateManager } from './js/core/UIStateManager.js';
   ws.onMindMap = function (data) {
     try {
       state.updateFromWsResponse(data);
+      // After all points in the current topic are done, the next topic is currentTopicIndex + 1
+      var nextTopicIdx = state.currentTopicIndex + 1;
+      console.log('[MindMap] Topic checkpoint. Current topic:', state.currentTopicIndex, '→ next:', nextTopicIdx);
       ui.appendKidoMessage(data.kido_response || 'Check my Mind Map!').then(function () {
-        displayMindMap(data.mind_map_data || []);
+        displayMindMap(data.mind_map_data || [], nextTopicIdx);
         ui.setChatLockout(true);
       });
     } catch (err) {
@@ -580,7 +583,7 @@ import { UIStateManager } from './js/core/UIStateManager.js';
         displayMindMap(response.mind_map_data);
       } catch (err) {
         console.error('[Session] fetchMindMap error:', err);
-        ui.appendKidoMessage("I couldn't generate my mind map right now.");
+        ui.appendKidoMessage("Hmm, I don't have enough notes to show my mind map yet. Keep teaching and I'll build it as I learn!");
       } finally {
         ui.updateHud('waiting');
       }

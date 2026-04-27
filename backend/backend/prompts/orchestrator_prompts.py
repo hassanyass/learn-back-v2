@@ -28,13 +28,13 @@ You must return ONLY a JSON object with these exact keys:
 {
   "label": "CORRECT|INCORRECT|NEEDS_INFO|IRRELEVANT",
   "bkt_shift_direction": 1,
-  "kido_learned_summary": "A concise statement of what Kido learned from the student in this exchange.",
+  "kido_learned_summary": "A concise first-person statement of what Kido learned (e.g., 'I now understand that quicksort uses a pivot to partition the array').",
   "instruction_for_kido": "A clear directive telling Kido how to respond. Include what to say, tone, and any follow-up question Kido should ask.",
   "widget_type": "TEXT|PROCESS|COMPARISON|MATH",
   "identified_metaphors": "Any analogy, metaphor, or real-world comparison the student used. Empty string if none.",
   "detected_misconception": "A concise description of the factual error or misconception the student expressed. null if no misconception.",
   "memory_title": "1-2 words summarizing the core concept the user taught (e.g., 'Turing Test', 'Binary Search'). null if IRRELEVANT.",
-  "memory_summary": "1 short sentence (max 20 words) summarizing what Kido learned from this explanation. null if IRRELEVANT."
+  "memory_summary": "1 short sentence (max 20 words) written from Kido's first-person perspective about what he learned (e.g., 'I learned that binary search halves the search space each step'). null if IRRELEVANT."
 }
 
 ## Label Definitions
@@ -65,9 +65,10 @@ You must return ONLY a JSON object with these exact keys:
 - Generate these when the student has provided ANY substantive explanation
   (even if INCORRECT or NEEDS_INFO) — these capture what the AI learned.
 - memory_title: 1-2 words only. This becomes a node label in the Mind Map UI.
-- memory_summary: 1 short sentence (max 20 words). Summarizes what the student
-  actually said, including any metaphors or analogies they used.
-- Set BOTH to null only if the message is IRRELEVANT (off-topic, greetings).
+- memory_summary: 1 short sentence (max 20 words). Written from Kido's first-person
+  perspective — what Kido now understands (e.g., 'I learned that greedy algorithms
+  pick the locally best option at each step'). Do NOT write in third person
+  ('Student explained...'). Include any metaphors or analogies the student used.
 
 
 ## Rules

@@ -774,7 +774,7 @@ export class UIRenderer {
       var kcStatus = 'pending';
       if (n.status === 'correct') kcStatus = 'reviewed';
       else if (n.status === 'incorrect') kcStatus = 'corrected';
-      return { id: n.id, title: n.label, thought: n.value, status: kcStatus, correction: '' };
+      return { id: n.id, title: n.label, thought: n.value, misconception: n.misconception || null, status: kcStatus, correction: '' };
     });
 
     var kcConnections = [];
@@ -932,6 +932,15 @@ export class UIRenderer {
       dom.chatWelcome.style.display = 'none';
     }
     dom.chatMessages.appendChild(msgWrapper);
+
+    // RENDER CUBES IMMEDIATELY after DOM insert (before event wiring)
+    try {
+      kcRenderCubes();
+      console.log('[KC] Cubes rendered. cubeWrap children:', cubeWrap.childElementCount);
+    } catch (cubeErr) {
+      console.error('[KC] CRITICAL: kcRenderCubes failed:', cubeErr, cubeErr.stack);
+    }
+
     this.scrollToBottom();
 
     // 11. Interactivity
@@ -948,23 +957,31 @@ export class UIRenderer {
     }
     function kcRenderCubes() {
       cubeWrap.innerHTML = '';
+      console.log('[KC] kcRenderCubes: rendering', kcNodes.length, 'cubes');
       kcNodes.forEach(function (node) {
         var c = kcNodeBg(node.status);
         var isPending = node.status === 'pending';
         var btn = document.createElement('button');
         btn.id = 'kc-cube-' + currentId + '-' + node.id;
-        btn.dataset.kcid = node.id;
+        btn.dataset.kcid = String(node.id);
         btn.className = 'kc-cube' + (isPending ? ' kc-ping' : '');
-        btn.style.cssText = 'position:relative;z-index:1;background:' + c.bg + ';border:2px solid ' + c.border + ';box-shadow:3px 3px 0 ' + T.pendingShadow + ';border-radius:10px;padding:10px;width:100px;height:100px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;flex-shrink:0;';
+        btn.style.cssText = 'position:relative;z-index:1;background:' + c.bg + ';border:2px solid ' + c.border + ';box-shadow:3px 3px 0 ' + T.pendingShadow + ';border-radius:10px;padding:10px;width:100px;height:100px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;flex-shrink:0;cursor:pointer;';
         var hdr = document.createElement('div');
-        hdr.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:3px;';
+        hdr.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:3px;position:relative;z-index:2;pointer-events:none;';
         hdr.innerHTML = kcNodeIcon(node.status);
         var ttl = document.createElement('span');
-        ttl.style.cssText = 'font-size:11px;font-weight:700;color:' + T.pendingText + ';line-height:1.25;text-align:center;';
+        ttl.style.cssText = 'font-size:11px;font-weight:700;color:' + T.pendingText + ';line-height:1.25;text-align:center;position:relative;z-index:2;pointer-events:none;overflow:hidden;text-overflow:ellipsis;max-width:90px;';
         ttl.textContent = node.title;
         btn.appendChild(hdr);
         btn.appendChild(ttl);
-        btn.addEventListener('click', function () { kcOpenReview(parseInt(this.dataset.kcid, 10)); });
+        // Wire cube click directly on element reference (IIFE to capture nodeId)
+        (function(nodeId) {
+          btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            console.log('[KC] Cube clicked! nodeId:', nodeId);
+            kcOpenReview(nodeId);
+          });
+        })(node.id);
         cubeWrap.appendChild(btn);
       });
       requestAnimationFrame(kcDrawConnectors);
@@ -998,6 +1015,7 @@ export class UIRenderer {
       });
     }
     function kcShowGraph() {
+      console.log('[KC] kcShowGraph: switching back to graph view');
       reviewView.style.display = 'none';
       graphView.style.display = '';
       reviewView.className = 'kc-review-panel';
@@ -1006,19 +1024,127 @@ export class UIRenderer {
       requestAnimationFrame(function () { widget.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
     }
     function kcOpenReview(id) {
+      console.log('[KC] kcOpenReview called with id:', id);
       kcActiveId = id;
       var node = kcNodeById(id);
-      if (!node) return;
-      document.getElementById('kc-r-badge-' + currentId).textContent = '#' + node.id;
-      document.getElementById('kc-r-title-' + currentId).textContent = node.title;
-      document.getElementById('kc-r-thought-' + currentId).textContent = node.thought;
-      var priorEl = document.getElementById('kc-prior-' + currentId);
-      var priorTxt = document.getElementById('kc-prior-text-' + currentId);
-      if (node.correction) { priorEl.style.display = ''; priorTxt.textContent = node.correction; }
-      else { priorEl.style.display = 'none'; }
-      document.getElementById('kc-correct-area-' + currentId).style.display = 'none';
-      var ta = document.getElementById('kc-textarea-' + currentId);
+      if (!node) { console.error('[KC] Node not found for id:', id); return; }
+
+      var hasContent = node.thought && node.thought !== 'Kido has no thoughts here.';
+
+      // Populate review panel
+      var badge = reviewView.querySelector('[id="kc-r-badge-' + currentId + '"]');
+      var titleEl = reviewView.querySelector('[id="kc-r-title-' + currentId + '"]');
+      var thoughtEl = reviewView.querySelector('[id="kc-r-thought-' + currentId + '"]');
+      if (badge) badge.textContent = '#' + node.id;
+      if (titleEl) titleEl.textContent = node.title;
+      if (thoughtEl) {
+        if (hasContent) {
+          thoughtEl.textContent = node.thought;
+          thoughtEl.style.color = T.quoteText;
+          thoughtEl.style.fontStyle = 'italic';
+        } else {
+          thoughtEl.textContent = '📭 Kido hasn\'t learned about this point yet. Keep teaching to fill this in!';
+          thoughtEl.style.color = T.legend;
+          thoughtEl.style.fontStyle = 'normal';
+        }
+      }
+
+      // Show/hide prior correction
+      var priorEl = reviewView.querySelector('[id="kc-prior-' + currentId + '"]');
+      var priorTxt = reviewView.querySelector('[id="kc-prior-text-' + currentId + '"]');
+      if (node.correction) {
+        if (priorEl) priorEl.style.display = '';
+        if (priorTxt) priorTxt.textContent = node.correction;
+      } else {
+        if (priorEl) priorEl.style.display = 'none';
+      }
+
+      // Show misconception warning if present
+      var miscBanner = reviewView.querySelector('.kc-misconception-banner');
+      if (!miscBanner) {
+        miscBanner = document.createElement('div');
+        miscBanner.className = 'kc-misconception-banner';
+        miscBanner.style.cssText = 'display:none;background:#FEF2F2;border:1px solid #EF4444;border-radius:8px;padding:8px 10px;margin-bottom:10px;';
+        // Insert after prior correction area
+        var insertRef = priorEl ? priorEl.nextSibling : null;
+        if (insertRef) { reviewView.insertBefore(miscBanner, insertRef); }
+        else { reviewView.appendChild(miscBanner); }
+      }
+      if (node.misconception) {
+        miscBanner.style.display = '';
+        miscBanner.innerHTML = '<p style="font-size:10px;font-weight:700;color:#DC2626;margin-bottom:3px;text-transform:uppercase;letter-spacing:.05em;">⚠️ Misconception Detected</p>' +
+          '<p style="font-size:11px;color:#991B1B;font-style:italic;">' + node.misconception + '</p>';
+      } else {
+        miscBanner.style.display = 'none';
+      }
+
+      // Show/hide action buttons based on whether there's content to review
+      var correctArea = reviewView.querySelector('[id="kc-correct-area-' + currentId + '"]');
+      if (correctArea) correctArea.style.display = 'none';
+      var ta = reviewView.querySelector('[id="kc-textarea-' + currentId + '"]');
       if (ta) ta.value = node.correction || '';
+
+      var goodBtn = reviewView.querySelector('[id="kc-good-' + currentId + '"]');
+      var wrongBtn = reviewView.querySelector('[id="kc-wrong-' + currentId + '"]');
+      if (goodBtn) goodBtn.style.display = hasContent ? '' : 'none';
+      if (wrongBtn) wrongBtn.style.display = hasContent ? '' : 'none';
+
+      // Re-wire Back button each time (guaranteed to work)
+      var backBtn = reviewView.querySelector('[id="kc-back-' + currentId + '"]');
+      if (backBtn) {
+        backBtn.onclick = function (e) {
+          e.stopPropagation();
+          console.log('[KC] Back to Map clicked');
+          kcShowGraph();
+        };
+      }
+
+      // Wire Looks Good button
+      var goodBtnR = reviewView.querySelector('[id="kc-good-' + currentId + '"]');
+      if (goodBtnR) {
+        goodBtnR.onclick = function (e) {
+          e.stopPropagation();
+          console.log('[KC] Looks Good clicked for node:', kcActiveId);
+          var n = kcNodeById(kcActiveId);
+          if (!n) return;
+          n.status = 'reviewed';
+          kcAdvanceOrReturn();
+        };
+      }
+
+      // Wire That's Wrong button
+      var wrongBtnR = reviewView.querySelector('[id="kc-wrong-' + currentId + '"]');
+      if (wrongBtnR) {
+        wrongBtnR.onclick = function (e) {
+          e.stopPropagation();
+          console.log('[KC] Thats Wrong clicked for node:', kcActiveId);
+          var correctArea = reviewView.querySelector('[id="kc-correct-area-' + currentId + '"]');
+          if (correctArea) correctArea.style.display = '';
+          var textarea = reviewView.querySelector('[id="kc-textarea-' + currentId + '"]');
+          if (textarea) textarea.focus();
+          requestAnimationFrame(function () { widget.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
+        };
+      }
+
+      // Wire Save button
+      var saveBtnR = reviewView.querySelector('[id="kc-save-' + currentId + '"]');
+      if (saveBtnR) {
+        saveBtnR.onclick = function (e) {
+          e.stopPropagation();
+          console.log('[KC] Save clicked for node:', kcActiveId);
+          var textarea = reviewView.querySelector('[id="kc-textarea-' + currentId + '"]');
+          var txt = textarea ? textarea.value.trim() : '';
+          if (!txt) { if (textarea) { textarea.style.borderColor = '#EF4444'; setTimeout(function () { textarea.style.borderColor = ''; }, 1200); } return; }
+          var n = kcNodeById(kcActiveId);
+          if (!n) return;
+          n.correction = txt;
+          n.status = 'corrected';
+          if (typeof onSubmitCallback === 'function') { onSubmitCallback(n.title, txt); }
+          kcAdvanceOrReturn();
+        };
+      }
+
+      // Show review panel
       graphView.style.display = 'none';
       reviewView.style.display = '';
       reviewView.className = '';
@@ -1034,19 +1160,22 @@ export class UIRenderer {
         setTimeout(function () { reviewView.style.opacity = '1'; kcOpenReview(next.id); }, 80);
       } else { kcShowGraph(); }
     }
-    // Wire review panel events (these use getElementById since they're innerHTML-created)
-    var backBtn = document.getElementById('kc-back-' + currentId);
-    var goodBtn = document.getElementById('kc-good-' + currentId);
-    var wrongBtn = document.getElementById('kc-wrong-' + currentId);
-    var saveBtn = document.getElementById('kc-save-' + currentId);
 
-    console.log('[KC] Wiring review events for currentId:', currentId,
-      '| backBtn:', !!backBtn, '| goodBtn:', !!goodBtn,
-      '| wrongBtn:', !!wrongBtn, '| saveBtn:', !!saveBtn);
+    // Wire review panel buttons using querySelector on reviewView
+    var backBtn = reviewView.querySelector('[id="kc-back-' + currentId + '"]');
+    var goodBtn = reviewView.querySelector('[id="kc-good-' + currentId + '"]');
+    var wrongBtn = reviewView.querySelector('[id="kc-wrong-' + currentId + '"]');
+    var saveBtn = reviewView.querySelector('[id="kc-save-' + currentId + '"]');
 
-    if (backBtn) backBtn.addEventListener('click', kcShowGraph);
+    console.log('[KC] Wiring review buttons:', { back: !!backBtn, good: !!goodBtn, wrong: !!wrongBtn, save: !!saveBtn });
+
+    if (backBtn) {
+      backBtn.addEventListener('click', function (e) { e.stopPropagation(); console.log('[KC] Back clicked'); kcShowGraph(); });
+    }
     if (goodBtn) {
-      goodBtn.addEventListener('click', function () {
+      goodBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        console.log('[KC] Looks Good clicked for node:', kcActiveId);
         var node = kcNodeById(kcActiveId);
         if (!node) return;
         node.status = 'reviewed';
@@ -1054,17 +1183,21 @@ export class UIRenderer {
       });
     }
     if (wrongBtn) {
-      wrongBtn.addEventListener('click', function () {
-        var area = document.getElementById('kc-correct-area-' + currentId);
-        if (area) area.style.display = '';
-        var ta = document.getElementById('kc-textarea-' + currentId);
+      wrongBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        console.log('[KC] Thats Wrong clicked for node:', kcActiveId);
+        var correctArea = reviewView.querySelector('[id="kc-correct-area-' + currentId + '"]');
+        if (correctArea) correctArea.style.display = '';
+        var ta = reviewView.querySelector('[id="kc-textarea-' + currentId + '"]');
         if (ta) ta.focus();
         requestAnimationFrame(function () { widget.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
       });
     }
     if (saveBtn) {
-      saveBtn.addEventListener('click', function () {
-        var ta = document.getElementById('kc-textarea-' + currentId);
+      saveBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        console.log('[KC] Save clicked for node:', kcActiveId);
+        var ta = reviewView.querySelector('[id="kc-textarea-' + currentId + '"]');
         var txt = ta ? ta.value.trim() : '';
         if (!txt) { if (ta) { ta.style.borderColor = '#EF4444'; setTimeout(function () { ta.style.borderColor = ''; }, 1200); } return; }
         var node = kcNodeById(kcActiveId);
@@ -1075,7 +1208,7 @@ export class UIRenderer {
         kcAdvanceOrReturn();
       });
     }
-    kcRenderCubes();
+
     return msgWrapper;
   }
 
