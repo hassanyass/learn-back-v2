@@ -310,9 +310,14 @@ async def session_websocket(websocket: WebSocket, session_id: int) -> None:
                             "kido_response": result["kido_response"],
                             "evaluator_label": result.get("evaluator_label", ""),
                             "widget_type": result["widget_type"],
+                            "widget_data": result.get("widget_data"),
                             "advanced": result["advanced"],
                             "session_state": result["session_state"],
                         }
+
+                        # TEST MODE: include widget debug info if present
+                        if result.get("widget_debug"):
+                            response_data["widget_debug"] = result["widget_debug"]
 
                         # Include checkpoint data if present
                         if result.get("topic_checkpoint"):

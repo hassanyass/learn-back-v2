@@ -28,39 +28,51 @@ export const MindMapAdapter = {
    */
   normalize: function (input) {
     var rawNodes = [];
+    var eventId = null;
 
-    // 1. Detect direct array input (Legacy KC logic bypass)
-    if (Array.isArray(input)) {
+    // 1. Detect graph structure (New Projection Mode)
+    if (input && input.graph && Array.isArray(input.graph.nodes)) {
+      rawNodes = input.graph.nodes;
+      eventId = input.graph.event_id || null;
+    }
+    // 2. Detect direct array input (Legacy KC logic bypass)
+    else if (Array.isArray(input)) {
       rawNodes = input;
     }
-    // 2. Detect standard object payload format
+    // 3. Detect standard object payload format
     else if (input && Array.isArray(input.nodes)) {
       rawNodes = input.nodes;
+      eventId = input.event_id || null;
     }
 
     // Safety fallback
     if (!rawNodes || rawNodes.length === 0) {
-      return [];
+      var emptyNodes = [];
+      emptyNodes.eventId = eventId;
+      return emptyNodes;
     }
 
-    // Strict normalization map
-    return rawNodes.map(function (node, index) {
+    // Attach event_id to the array object itself so UIRenderer can read it
+    var normalizedNodes = rawNodes.map(function (node, index) {
       // Handle null/undefined nodes safely
       var safeNode = node || {};
 
       return {
-        id: safeNode.id || (index + 1),
+        id: safeNode.node_id || safeNode.id || (index + 1),
 
-        // Label Resolution: prefers new WS `point`, falls back through legacy chains
-        label: safeNode.point || safeNode.title || safeNode.label || 'Untitled Concept',
+        // Label Resolution: prefers new graph `point`
+        label: safeNode.point || safeNode.label || safeNode.title || 'Untitled Concept',
 
-        // Value Resolution: prefers new WS `kido_sentence`, falls back through legacy chains
-        value: safeNode.kido_sentence || safeNode.thought || safeNode.summary || safeNode.value || 'Kido has no thoughts here.',
+        // Value Resolution: prefers new graph `kido_sentence`
+        value: safeNode.kido_sentence || safeNode.kido_understanding || safeNode.thought || safeNode.summary || 'Kido has no thoughts here.',
 
         // Interaction State Resolution
-        status: safeNode.status || 'pending',
-        correction: safeNode.correction || ''
+        status: safeNode.status || 'unseen'
       };
     });
+    
+    // Mount the immutable backend identity string
+    normalizedNodes.eventId = eventId;
+    return normalizedNodes;
   }
 };

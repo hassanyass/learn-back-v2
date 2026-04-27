@@ -398,6 +398,17 @@
   transform: translateY(-1px);
 }
 
+.chat-pill__action.cube-active {
+  background: var(--gold, #f6ae2d);
+  color: #ffffff;
+  animation: cubeGlow 2s infinite alternate;
+}
+
+@keyframes cubeGlow {
+  0% { box-shadow: 0 0 6px rgba(246, 174, 45, 0.3); }
+  100% { box-shadow: 0 0 16px rgba(246, 174, 45, 0.7); }
+}
+
 .chat-pill__send {
   display: inline-flex;
   align-items: center;
@@ -568,6 +579,11 @@
 [data-theme="dark"] .chat-pill__action:hover {
   background: var(--control-hover);
   color: var(--text-primary);
+}
+
+[data-theme="dark"] .chat-pill__action.cube-active {
+  background: var(--gold, #f6ae2d);
+  color: #052733;
 }
 
 [data-theme="dark"] .chat-pill__send {

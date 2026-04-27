@@ -168,26 +168,27 @@ class EvaluatorService:
 
         if wt == "PROCESS":
             expected_steps = expected_data.get("steps", [])
-            submitted_steps = submitted_data.get("steps", [])
-            is_correct = expected_steps == submitted_steps
+            # Frontend submits an array of IDs in 'order'
+            submitted_order = submitted_data.get("order", [])
+            # Extract the correct order of IDs from the expected steps
+            expected_order = [s.get("id") for s in expected_steps if isinstance(s, dict)]
+            is_correct = expected_order == submitted_order
 
         elif wt == "COMPARISON":
-            expected_attrs = expected_data.get("attributes", [])
-            submitted_attrs = submitted_data.get("attributes", [])
+            expected_items = expected_data.get("items", [])
+            # Frontend submits an object mapping item IDs to categories
+            submitted_placements = submitted_data.get("placements", {})
 
-            # Build lookup: text → correct category
+            # Build lookup: id → correct category
             expected_map = {
-                a["text"]: a["category"] for a in expected_attrs
-            }
-            submitted_map = {
-                a["text"]: a["category"] for a in submitted_attrs
+                i["id"]: i["category"] for i in expected_items if isinstance(i, dict)
             }
 
-            # Every expected attribute must be present and correctly categorized
-            if set(expected_map.keys()) == set(submitted_map.keys()):
+            # Every expected item must be present and correctly categorized
+            if set(expected_map.keys()) == set(submitted_placements.keys()):
                 is_correct = all(
-                    submitted_map.get(text) == cat
-                    for text, cat in expected_map.items()
+                    submitted_placements.get(i_id) == cat
+                    for i_id, cat in expected_map.items()
                 )
             else:
                 is_correct = False

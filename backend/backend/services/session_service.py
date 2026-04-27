@@ -14,6 +14,9 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
+
+print("🔥 SESSION SERVICE LOADED - NEW CODE ACTIVE")
 import logging
 import os
 from copy import deepcopy
@@ -34,6 +37,138 @@ logger = logging.getLogger(__name__)
 
 MAX_ATTEMPTS_PER_POINT: int = 5
 OVERALL_BKT_COMPLETION_THRESHOLD: float = 0.95
+
+# ──────────────────────────────────────────────────────────────────────
+# TEST MODE: DETERMINISTIC_WIDGET_OVERRIDE
+# When True, forces specific widget types at specific points for
+# controlled frontend testing.  Set to False for production.
+# ──────────────────────────────────────────────────────────────────────
+DETERMINISTIC_WIDGET_OVERRIDE: bool = True
+
+_FORCED_WIDGET_INSTRUCTIONS: dict[str, str] = {
+    "process": (
+        "\n\n[SYSTEM ALARM — MANDATORY WIDGET GENERATION]\n"
+        "You MUST set widget_type to \"process\" and generate widget_data.\n"
+        "Your widget_data MUST contain steps as objects with id and text:\n"
+        '{\n'
+        '  "kido_response": "Can you put these in order for me?",\n'
+        '  "widget_type": "process",\n'
+        '  "widget_data": {\n'
+        '    "steps": [\n'
+        '      {"id": "s1", "text": "First action"},\n'
+        '      {"id": "s2", "text": "Second action"},\n'
+        '      {"id": "s3", "text": "Third action"}\n'
+        '    ]\n'
+        '  }\n'
+        '}\n\n'
+        "Rules:\n"
+        "- Each step must be a short, clean sentence related to the current point.\n"
+        "- DO NOT include numbering.\n"
+        "- DO NOT include prefixes (Step, Process, First, etc.).\n"
+        "- DO NOT include explanations.\n"
+        "- Generate 3-5 ordered steps.\n"
+        "- EACH step MUST be an object with 'id' (s1, s2, ...) and 'text'.\n"
+        'This is NON-NEGOTIABLE. Do NOT output widget_type: "text".'
+    ),
+    "comparison": (
+        "\n\n[SYSTEM ALARM — MANDATORY WIDGET GENERATION]\n"
+        "You MUST generate a COMPARISON widget for this response.\n"
+        "Your JSON output MUST include:\n"
+        '  "widget_type": "comparison"\n'
+        '  "widget_data": {{\n'
+        '    "categories": ["Category A", "Category B"],\n'
+        '    "items": [\n'
+        '      {{"id": "i1", "text": "Trait 1", "category": "Category A"}},\n'
+        '      {{"id": "i2", "text": "Trait 2", "category": "Category B"}}\n'
+        '    ]\n'
+        '  }}\n'
+        "The categories and items must be related to the current point.\n"
+        "Generate 2 categories and 4-6 items. EACH item MUST be an object with 'id', 'text', and 'category'.\n"
+        'This is NON-NEGOTIABLE. Do NOT output widget_type: "text".'
+    ),
+}
+
+
+def _check_forced_widget(state: dict[str, Any]) -> str | None:
+    print("🔥 ENTERED WIDGET CHECK", state.get("point_interaction_count"), state.get("current_point_index"))
+    """TEST MODE: Return forced widget type slug, or None for default behavior.
+
+    Rules (per-topic, deterministic):
+      point_index == 0, interaction_count == 2  →  "process"
+      point_index == 1, interaction_count == 2  →  "comparison"
+      everything else                           →  None
+    """
+    count = state.get("point_interaction_count", 0)
+    if count != 1:
+        return None
+    pi = state.get("current_point_index", 0)
+    if pi == 0:
+        return "process"
+    if pi == 1:
+        return "comparison"
+    return None
+
+
+def _validate_forced_widget_data(
+    widget_type: str, widget_data: dict | None,
+) -> str | None:
+    """Validate widget_data matches the forced widget_type.
+
+    Returns None on success, or an error message string on failure.
+    """
+    if widget_data is None:
+        return f"widget_data is null — Kido did not generate {widget_type} data"
+    if widget_type == "process":
+        steps = widget_data.get("steps")
+        if not isinstance(steps, list) or len(steps) < 2:
+            return f"process widget_data.steps is invalid: {type(steps).__name__}, expected list of 2+"
+    elif widget_type == "comparison":
+        cats = widget_data.get("categories")
+        items = widget_data.get("items")
+        if not isinstance(cats, list) or len(cats) < 2:
+            return f"comparison widget_data.categories is invalid: {type(cats).__name__}"
+        if not isinstance(items, list) or len(items) < 2:
+            return f"comparison widget_data.items is invalid: {type(items).__name__}"
+    return None
+
+
+_STEP_PREFIX_RE = re.compile(r'^\s*(step|process)?\s*\d+[:.\'\-\s]*', re.IGNORECASE)
+
+
+def _sanitize_widget_steps(widget_data: dict | None) -> dict | None:
+    """Normalize and sanitize process widget steps.
+
+    Handles two LLM output formats:
+      1. Objects: [{"id": "s1", "text": "..."}]  — preferred
+      2. Strings: ["Step 1: ..."]  — system prompt fallback
+
+    Strips numbering/prefix labels from step text.
+    Assigns IDs if missing (s1, s2, ...).
+    """
+    if widget_data is None:
+        return None
+    steps = widget_data.get("steps")
+    if not isinstance(steps, list) or len(steps) == 0:
+        return widget_data
+
+    normalized: list[dict[str, str]] = []
+    for i, step in enumerate(steps):
+        if isinstance(step, str):
+            # Plain string → convert to {id, text}
+            clean = _STEP_PREFIX_RE.sub("", step).strip()
+            normalized.append({"id": f"s{i + 1}", "text": clean})
+        elif isinstance(step, dict) and "text" in step:
+            step["text"] = _STEP_PREFIX_RE.sub("", step["text"]).strip()
+            if "id" not in step:
+                step["id"] = f"s{i + 1}"
+            normalized.append(step)
+        else:
+            # Unknown format — skip
+            normalized.append({"id": f"s{i + 1}", "text": str(step)})
+
+    widget_data["steps"] = normalized
+    return widget_data
+
 
 # ──────────────────────────────────────────────────────────────────────
 # Concurrency: Per-session mutual exclusion lock registry
@@ -115,6 +250,7 @@ class SessionService:
             topic_checkpoint (bool)  – True if we hit a mind map checkpoint
             mind_map_data    (list)  – kido_memory entries for the current topic
         """
+        print("🔥 HIT PROCESS_USER_MESSAGE")
         async with _get_session_lock(session_id):
             return await self._process_user_message_locked(session_id, user_text)
 
@@ -122,8 +258,20 @@ class SessionService:
         self, session_id: int, user_text: str,
     ) -> dict[str, Any]:
         """Inner implementation — always runs under session lock."""
+        print("🔥 HIT PROCESS_USER_MESSAGE")
         session = await self._get_session(session_id)
         state = self._ensure_state(session)
+        print(f"[STATE DEBUG] ENTRY: id={id(state)}, count={state.get('point_interaction_count')}, point={state.get('current_point_index')}")
+
+        # TEST MODE: increment per-point interaction counter and decide widget
+        forced_widget: str | None = None
+        if DETERMINISTIC_WIDGET_OVERRIDE:
+            state["point_interaction_count"] = state.get("point_interaction_count", 0) + 1
+            print(f"[STATE DEBUG] BEFORE DECISION: id={id(state)}, count={state.get('point_interaction_count')}, point={state.get('current_point_index')}")
+            print(f"[DEBUG_WIDGET] 1. BEFORE DECISION: point_interaction_count={state['point_interaction_count']}, current_point_index={state.get('current_point_index', 0)}")
+            forced_widget = _check_forced_widget(state)
+            print(f"[DEBUG_WIDGET] 2. AFTER DECISION: forced_widget={forced_widget}")
+
         segments = await self._get_segments(session)
 
         current_point = self._resolve_current_point(state, segments)
@@ -169,6 +317,24 @@ class SessionService:
         identified_metaphors = evaluator_output.get("identified_metaphors", "")
         kido_learned_so_far = [learned_summary] if learned_summary else []
 
+        # --- 4b. Populate kido_memory LIVE during learning ---
+        # This ensures the Mind Map shows Kido's evolving understanding
+        # at every stage, not only after point completion.
+        mem_title = evaluator_output.get("memory_title")
+        mem_summary = evaluator_output.get("memory_summary")
+        if point_node and (mem_title or mem_summary):
+            existing_memory = point_node.get("kido_memory") or {}
+            point_node["kido_memory"] = {
+                "title": mem_title or existing_memory.get("title", current_point or "Unknown"),
+                "summary": mem_summary or existing_memory.get("summary", ""),
+            }
+        elif point_node and not point_node.get("kido_memory") and learned_summary:
+            # Fallback: use kido_learned_summary if no memory fields provided
+            point_node["kido_memory"] = {
+                "title": current_point or "Unknown",
+                "summary": learned_summary,
+            }
+
         # --- 5. Increment attempt counter (only on INCORRECT/NEEDS_INFO) ---
         if label in ("INCORRECT", "NEEDS_INFO"):
             state["point_attempts"] += 1
@@ -177,7 +343,7 @@ class SessionService:
         advanced = False
         session_complete = False
         topic_checkpoint = False
-        mind_map_data: list[dict[str, Any]] = []
+        mind_map_data: dict[str, Any] = {}
         instruction_for_kido = evaluator_output.get("instruction_for_kido", "")
 
         if state["point_attempts"] >= MAX_ATTEMPTS_PER_POINT or self.bkt.is_mastered(new_score):
@@ -188,22 +354,17 @@ class SessionService:
                 point_node["status"] = "completed"
                 point_node["is_correct"] = (label == "CORRECT")
                 
-                # Populate kido_memory from evaluator output
-                mem_title = evaluator_output.get("memory_title")
-                mem_summary = evaluator_output.get("memory_summary")
-                if mem_title and mem_summary:
-                    point_node["kido_memory"] = {
-                        "title": mem_title,
-                        "summary": mem_summary,
-                    }
-                elif not point_node.get("kido_memory"):
-                    # Fallback: use learned_summary from evaluator
+                # Ensure kido_memory is populated on completion
+                # (Step 3d already populates it live, but guarantee it here)
+                if not point_node.get("kido_memory"):
                     point_node["kido_memory"] = {
                         "title": current_point or "Unknown",
                         "summary": evaluator_output.get("kido_learned_summary", ""),
                     }
 
             state["point_attempts"] = 0
+            if DETERMINISTIC_WIDGET_OVERRIDE:
+                state["point_interaction_count"] = 0
             state["current_point_index"] += 1
 
             # Check: are ALL points in the current topic completed?
@@ -217,8 +378,9 @@ class SessionService:
 
             if all_points_done and topic_node:
                 # ── COMPLETION_ELIGIBLE (REVIEW MODE) ──
-                # We no longer hard-lock the session or return early.
-                # Just instruct Kido to invite the user to review the Mind Map.
+                # Trigger Mind Map checkpoint and build the DTO for the frontend.
+                topic_checkpoint = True
+                mind_map_data = self._build_mind_map_dto(state, ti)
                 instruction_for_kido += (
                     "\n\nIMPORTANT: We have finished all points in this topic! 🎉 "
                     "Tell the student you learned a lot and invite them to view your 'Mind Map' "
@@ -263,6 +425,19 @@ class SessionService:
         evaluator_label = label  # Use the validated label, not raw LLM output
         widget_type = evaluator_output.get("widget_type", "TEXT")
 
+        # ── TEST MODE: Injection Point A — force widget before Kido call ──
+        widget_debug: dict[str, Any] | None = None
+        if DETERMINISTIC_WIDGET_OVERRIDE:
+            if forced_widget:
+                pi = state.get("current_point_index", 0)
+                count = state.get("point_interaction_count", 0)
+                logger.info(
+                    "[TEST_MODE] Widget forced: type=%s, point_index=%s, "
+                    "interaction_count=%s", forced_widget, pi, count,
+                )
+                widget_type = forced_widget.upper()
+                instruction_for_kido += _FORCED_WIDGET_INSTRUCTIONS[forced_widget]
+
         kido_result = await self.kido.generate_response(
             session_state=state,
             evaluator_label=evaluator_label,
@@ -274,8 +449,57 @@ class SessionService:
             kido_learned_summary=learned_summary,
         )
         kido_response = kido_result.get("kido_response", "")
-        widget_type = kido_result.get("widget_type", widget_type.lower())
-        widget_data = kido_result.get("widget_data", None)
+
+        # ── TEST MODE: Injection Point B — enforce widget after Kido call ──
+        if DETERMINISTIC_WIDGET_OVERRIDE and forced_widget:
+            logger.info(
+                "[TEST_MODE] Kido raw output: widget_type=%s, widget_data=%s",
+                kido_result.get("widget_type"), kido_result.get("widget_data"),
+            )
+            # ALWAYS use forced type — never let Kido override
+            widget_type = forced_widget.upper()
+            widget_data = kido_result.get("widget_data", None)
+
+            # Fallback: kido_service nukes widget_data when widget_type="text".
+            # We preserved the pre-nuke value in _raw_widget_data.
+            if widget_data is None and forced_widget == "process":
+                raw_wd = kido_result.get("_raw_widget_data")
+                if isinstance(raw_wd, dict) and isinstance(raw_wd.get("steps"), list):
+                    widget_data = raw_wd
+                    print(f"[RECOVERY] Recovered widget_data from _raw_widget_data: {len(raw_wd['steps'])} steps")
+                else:
+                    # Last resort: check top-level steps
+                    top_steps = kido_result.get("steps")
+                    if isinstance(top_steps, list) and len(top_steps) > 0:
+                        widget_data = {"steps": top_steps}
+                        print(f"[RECOVERY] Recovered widget_data from top-level steps: {len(top_steps)} steps")
+
+            # Backend sanitization: strip LLM prefixes from step text
+            if forced_widget == "process":
+                widget_data = _sanitize_widget_steps(widget_data)
+
+            validation_error = _validate_forced_widget_data(forced_widget, widget_data)
+            if validation_error:
+                logger.error(
+                    "[TEST_MODE] Validation FAILED: %s  — widget still returned for visibility",
+                    validation_error,
+                )
+            else:
+                logger.info("[TEST_MODE] Validation PASSED")
+
+            # NEVER drop the widget — always attach debug for test visibility
+            widget_debug = {
+                "forced": True,
+                "expected_type": forced_widget,
+                "validation_error": validation_error,
+                "trigger_rule": (
+                    f"point_index={state.get('current_point_index', 0)}, "
+                    f"interaction_count={state.get('point_interaction_count', 0)}"
+                ),
+            }
+        else:
+            widget_type = kido_result.get("widget_type", widget_type.lower())
+            widget_data = kido_result.get("widget_data", None)
 
         # --- 8. Persist Kido message ---
         await self._persist_message(
@@ -284,6 +508,7 @@ class SessionService:
         )
 
         # --- 9. Flush state back to DB ---
+        state["mind_map_version"] = state.get("mind_map_version", 0) + 1
         session.session_state = deepcopy(state)
         session.bkt_score = overall_bkt
         if session_complete:
@@ -291,7 +516,10 @@ class SessionService:
             session.end_time = datetime.utcnow()
         await self.db.commit()
 
-        return {
+        print(f"[STATE DEBUG] BEFORE RETURN: id={id(state)}, count={state.get('point_interaction_count')}, point={state.get('current_point_index')}")
+        print(f"[DEBUG_WIDGET] 3. PAYLOAD RETURN: widget_type={widget_type.upper()}, widget_data={'<PRESENT>' if widget_data else 'None'}, widget_debug={widget_debug}")
+
+        result = {
             "kido_response": kido_response,
             "evaluator_label": evaluator_label,
             "widget_type": widget_type.upper(),
@@ -299,9 +527,12 @@ class SessionService:
             "session_state": state,
             "advanced": advanced,
             "session_complete": session_complete,
-            "topic_checkpoint": False,
-            "mind_map_data": [],
+            "topic_checkpoint": topic_checkpoint,
+            "mind_map_data": mind_map_data,
         }
+        if widget_debug is not None:
+            result["widget_debug"] = widget_debug
+        return result
 
     # ------------------------------------------------------------------
     # Public API: Mind Map Submission Pipeline
@@ -353,8 +584,7 @@ class SessionService:
                     "node_id": node_id,
                     "correction_text": text.strip(),
                     "timestamp": datetime.utcnow().isoformat(),
-                    "impact_type": "OVERRIDE",
-                    "bkt_delta": 0.05
+                    "impact_type": "ANNOTATION",
                 }
                 new_events.append(evt)
         
@@ -362,66 +592,27 @@ class SessionService:
             state["correction_events"] = []
         state["correction_events"].extend(new_events)
 
-        # --- 2. Apply BKT bonuses via Evaluator using Event Log ---
-        self.evaluator.evaluate_mind_map(state, new_events)
+        # --- 2. NO State Mutation ---
+        # Per strict causality model: MIND_MAP_CORRECTION logs events ONLY.
+        # It does NOT mutate BKT, and does NOT advance the session state.
 
-        # --- 2. Advance to next topic ---
-        state["current_topic_index"] += 1
-        state["current_point_index"] = 0
-        state["point_attempts"] = 0
-
-        # --- 3. Check end of session ---
-        ti = state["current_topic_index"]
-        topics = state.get("topics", [])
-        session_complete = ti >= len(topics)
-
-        if session_complete:
-            # Generate goodbye message
-            kido_response = (
-                "You did it! 🎉🌟 You taught me everything and I learned so much! "
-                "Thank you for being the most amazing teacher ever! "
-                "Check out your feedback report to see how well you did. "
-                "I'll never forget what you taught me! 💖"
-            )
-            widget_type = "TEXT"
-
-            session.status = "completed"
-            session.end_time = datetime.utcnow()
-
-            await self._persist_message(session_id, "kido", kido_response, widget_type=widget_type)
-        else:
-            # Mark next topic's first point as in_progress
-            next_topic = topics[ti]
-            if next_topic.get("points"):
-                next_topic["points"][0]["status"] = "in_progress"
-
-            next_topic_title = next_topic.get("topic_title", "the next topic")
-            next_point_title = next_topic["points"][0]["point_title"] if next_topic.get("points") else "the first point"
-
-            # Call Kido to introduce the new topic
-            conversation_history = await self._build_conversation_history(session_id)
-            instruction = f"Acknowledge the mind map review is done, and enthusiastically introduce the next topic: {next_topic_title}."
-            
-            kido_result = await self.kido.generate_response(
-                session_state=state,
-                evaluator_label="CORRECT",
-                user_message="(Mind map reviewed — moving to next topic)",
-                current_point=next_point_title,
-                instruction_for_kido=instruction,
-                identified_metaphors="",
-                conversation_history=conversation_history,
-                kido_learned_summary="",
-                force_transition=True,
-                next_point=next_point_title,
-            )
-            kido_response = kido_result.get("kido_response", f"Let's learn about {next_topic_title}!")
-            widget_type = kido_result.get("widget_type", "text").upper()
-
-            await self._persist_message(session_id, "kido", kido_response, widget_type=widget_type)
-
-        # --- 4. Flush state ---
+        # --- 3. Flush state ---
+        state["mind_map_version"] = state.get("mind_map_version", 0) + 1
         session.session_state = deepcopy(state)
-        session.bkt_score = self._aggregate_bkt(state)
+        # Note: BKT aggregate has not changed because we didn't mutate it.
+        await self.db.commit()
+
+        # Generate acknowledgment message
+        kido_response = (
+            "Thanks for the annotations! I've updated my notes. "
+            "You can keep chatting, or select the next topic in the Roadmap when you're ready to move on."
+        )
+        widget_type = "TEXT"
+
+        await self._persist_message(session_id, "kido", kido_response, widget_type=widget_type)
+
+        # Note: session_complete remains what it was
+        session_complete = state.get("current_topic_index", 0) >= len(state.get("topics", []))
         await self.db.commit()
 
         return {
@@ -485,6 +676,8 @@ class SessionService:
         if point_completed:
             advanced = True
             state["point_attempts"] = 0
+            if DETERMINISTIC_WIDGET_OVERRIDE:
+                state["point_interaction_count"] = 0
             state["current_point_index"] += 1
 
             # Check if all points in topic are done
@@ -533,6 +726,7 @@ class SessionService:
         await self._persist_message(session_id, "kido", kido_response, widget_type=kido_widget_type)
 
         # --- 5. Flush state ---
+        state["mind_map_version"] = state.get("mind_map_version", 0) + 1
         overall_bkt = self._aggregate_bkt(state)
         session.session_state = deepcopy(state)
         session.bkt_score = overall_bkt
@@ -633,6 +827,8 @@ class SessionService:
         state["current_topic_index"] += 1
         state["current_point_index"] = 0
         state["point_attempts"] = 0
+        if DETERMINISTIC_WIDGET_OVERRIDE:
+            state["point_interaction_count"] = 0
 
         new_ti = state["current_topic_index"]
         session_complete = new_ti >= len(topics)
@@ -647,6 +843,7 @@ class SessionService:
                 next_topic["points"][0]["status"] = "in_progress"
 
         # --- 3. Flush state ---
+        state["mind_map_version"] = state.get("mind_map_version", 0) + 1
         session.session_state = deepcopy(state)
         session.bkt_score = self._aggregate_bkt(state)
         await self.db.commit()
@@ -693,9 +890,10 @@ class SessionService:
             return {"nodes": []}
 
         nodes = []
-        for p in points:
+        for index, p in enumerate(points):
             memory = p.get("kido_memory") or {}
             nodes.append({
+                "node_id": p.get("node_id", index + 1),
                 "point": p.get("point_title", ""),
                 "kido_sentence": memory.get("summary", ""),
                 "status": "correct" if p.get("bkt_score", 0) >= MASTERY_THRESHOLD else (
@@ -703,7 +901,11 @@ class SessionService:
                 ),
             })
 
+        version = state.get("mind_map_version", 1)
+        event_id = f"mm_evt_v{version}"
+
         return {
+            "event_id": event_id,
             "topic_title": topic_node.get("topic_title", "Untitled"),
             "nodes": nodes,
         }
@@ -984,10 +1186,18 @@ class SessionService:
 
     @staticmethod
     def _ensure_state(session: LearningSession) -> dict[str, Any]:
-        """Return (and bootstrap if needed) the mutable session state."""
+        """Return a detached copy of the session state for safe mutation.
+
+        SQLAlchemy JSONB columns track changes by comparing the committed
+        snapshot with the current attribute value.  If we return the *same*
+        dict object, in-place mutations silently corrupt the snapshot and
+        the ORM skips the UPDATE on commit.  Returning a deepcopy keeps the
+        snapshot pristine so ``session.session_state = deepcopy(state)``
+        always triggers a real database write.
+        """
         if session.session_state is None:
             session.session_state = _default_session_state()
-        return session.session_state
+        return deepcopy(session.session_state)
 
     @staticmethod
     def _aggregate_bkt(state: dict[str, Any]) -> float:

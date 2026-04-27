@@ -193,7 +193,17 @@ import { UIStateManager } from './js/core/UIStateManager.js';
   // ── Normal Kido response ──
   ws.onKidoResponse = function (data) {
     try {
+      var oldPointIndex = state.currentPointIndex;
       state.updateFromWsResponse(data);
+      var newPointIndex = state.currentPointIndex;
+      
+      // Clear STALE widget if point boundary changed (lifecycle bound)
+      if (oldPointIndex !== undefined && newPointIndex !== oldPointIndex) {
+        state.pendingWidget = null;
+      }
+      
+      console.log('[DEBUG_WIDGET] received widget_type:', data.widget_type);
+      
       ui.renderMisconceptions(state);
 
       // Determine evaluator label and knowledge type
@@ -215,8 +225,35 @@ import { UIStateManager } from './js/core/UIStateManager.js';
       ui.updateHud(label);
       ui.updateBktProgress(newBkt);
       ui.updateConceptCard({ text: data.kido_response || '', type: knowledgeType, delta: delta });
-      ui.setCubeState((data.widget_type || 'TEXT').toString());
       ui.renderTopicList(state.getTopicTitles(), state.currentTopicIndex, state.skippedIndices || []);
+
+      // (Process widget feedback is handled locally in UIRenderer._localProcessEvaluate)
+
+      // ── TEST MODE: pending widget tracking ──
+      // If this response has an interactive widget, store it
+      var wType = (data.widget_type || 'TEXT').toUpperCase();
+      if (wType !== 'TEXT' && wType !== 'MIND_MAP') {
+        state.pendingWidget = {
+          type: wType,
+          data: data.widget_data || null,
+          debug: data.widget_debug || null
+        };
+        console.log('[DEBUG_WIDGET] pendingWidget assignment:', state.pendingWidget);
+        if (data.widget_debug) {
+          console.log('[TEST_MODE] widget_debug:', JSON.stringify(data.widget_debug, null, 2));
+        }
+      }
+
+      // (Removed aggressive wipe based on data.advanced — widgets are bound to point lifecycle)
+
+      // Cube reflects PENDING state, not just latest message
+      if (state.pendingWidget) {
+        console.log('[DEBUG_WIDGET] cube state update to:', state.pendingWidget.type);
+        ui.setCubeState(state.pendingWidget.type);
+      } else {
+        console.log('[DEBUG_WIDGET] cube state update to: TEXT');
+        ui.setCubeState('TEXT');
+      }
     } catch (err) {
       console.error('[Session] FATAL in onKidoResponse:', err, err.stack);
       ui.setChatLockout(false);
@@ -347,10 +384,36 @@ import { UIStateManager } from './js/core/UIStateManager.js';
     }
   }
 
-  // ── Cube Button (opens widget modal) ──
+  // ── Cube Button (reveals inline widget) ──
   if (dom.btnRequestGraph) {
     dom.btnRequestGraph.addEventListener('click', async function () {
       try {
+        // Use stored pending widget (no API roundtrip)
+        if (state.pendingWidget) {
+          var wState = state.pendingWidget;
+          ui.setCubeState('TEXT'); // clear glow
+          
+          ui.renderInlineWidget(wState, function(submission, msgWrapper) {
+            ws.send({ 
+              type: 'widget_submit', 
+              submitted_data: submission 
+            });
+            state.pendingWidget = null;
+            ui.setChatLockout(true);
+            ui.updateHud('thinking');
+            if (msgWrapper) {
+               var btn = msgWrapper.querySelector('.widget-submit-btn');
+               if (btn) {
+                 btn.textContent = 'Submitted!';
+                 btn.style.background = '#94a3b8';
+                 btn.style.boxShadow = '0 4px 0 #64748b';
+               }
+            }
+          });
+          return;
+        }
+        
+        // Fallback: fetch from API (legacy path)
         ui.setChatLockout(true);
         ui.updateHud('thinking');
         var response = await window.LearnBackAPI.fetchWidgetState(state.sessionId);
@@ -360,31 +423,23 @@ import { UIStateManager } from './js/core/UIStateManager.js';
            return;
         }
         
-        ui.showWidgetModal(response.widget_type, response.widget_data);
+        var simulatedState = { type: response.widget_type, data: response.widget_data };
+        ui.setCubeState('TEXT');
+        
+        ui.renderInlineWidget(simulatedState, function(submission, msgWrapper) {
+           ws.send({ 
+             type: 'widget_submit', 
+             submitted_data: submission 
+           });
+           ui.setChatLockout(true);
+           ui.updateHud('thinking');
+        });
       } catch (err) {
         console.error('[Session] fetchWidgetState failed:', err);
       } finally {
         ui.setChatLockout(false);
         ui.updateHud('waiting');
       }
-    });
-  }
-
-  // ── Widget Submit (C3 stub) ──
-  if (dom.btnWidgetSubmit) {
-    dom.btnWidgetSubmit.addEventListener('click', function () {
-      var submission = ui.getWidgetSubmission();
-      ws.send({ type: 'widget_submit', submitted_data: submission });
-      ui.hideWidgetModal();
-      ui.setChatLockout(true);
-      ui.updateHud('thinking');
-    });
-  }
-
-  // ── Widget Cancel ──
-  if (dom.btnWidgetCancel) {
-    dom.btnWidgetCancel.addEventListener('click', function () {
-      ui.hideWidgetModal();
     });
   }
 

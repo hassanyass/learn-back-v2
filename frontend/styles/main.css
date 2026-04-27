@@ -25,6 +25,7 @@
 @import 'components/kido-hud.css';
 @import 'components/mindmap.css';
 @import 'components/modals.css';
+@import 'components/widgets.css';
 /* Note: forms.css is intentionally omitted until built */
 
 /* 5. Pages (Specific View Overrides) */

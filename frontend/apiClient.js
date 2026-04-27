@@ -244,6 +244,7 @@
       progress: clamp(Math.round(toNumber(payload.progress_percent || payload.progressPercent || 0, 0)), 0, 100),
       topicIndex: Math.max(0, Math.round(toNumber(payload.current_topic_index || payload.currentTopicIndex || 0, 0))),
       topics: topics,
+      sessionState: payload.session_state || null,
       documentId: normalizeText(payload.document_id, null),
       pdfUrl: normalizeNullableText(payload.pdf_url, null),
       fileType: normalizeText(payload.file_type || payload.fileType, null),
