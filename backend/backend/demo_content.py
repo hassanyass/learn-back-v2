@@ -79,6 +79,7 @@ def list_demo_content() -> list[dict[str, Any]]:
             topics_preview.append({
                 "topic_title": seg.get("topic_title", "Untitled"),
                 "point_count": len(concepts),
+                "concepts": concepts,
             })
         result.append({
             "id": v["id"],

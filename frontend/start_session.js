@@ -108,6 +108,9 @@
   }
 
   // ── Demo Flow: Render Preview ────────────────────────────────
+  // Uses the exact same .syllabus-card markup from the upload flow (app.js)
+  var bookIcon = '<svg class="syllabus-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>';
+
   function renderPreview(demo) {
     dom.demoTitle.textContent = demo.title || 'Demo Session';
     dom.demoMeta.textContent = demo.topic_count + ' topics \u00B7 ' + demo.total_points + ' learning points';
@@ -117,29 +120,33 @@
 
     var topics = demo.topics || [];
     topics.forEach(function (topic, idx) {
-      var li = document.createElement('li');
-      li.className = 'demo-topic-item';
+      var card = document.createElement('div');
+      card.className = 'syllabus-card';
+      card.style.opacity = '0';
+      card.style.transform = 'translateY(10px)';
+      card.style.transition = 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
 
-      var number = document.createElement('span');
-      number.className = 'demo-topic-item__number';
-      number.textContent = String(idx + 1);
+      var displayTitle = escapeHtml(topic.topic_title || 'Untitled');
+      var displayDesc = 'No description generated.';
+      if (topic.concepts && Array.isArray(topic.concepts) && topic.concepts.length > 0) {
+        displayDesc = topic.concepts.map(escapeHtml).join(', ');
+      } else if (topic.point_count) {
+        displayDesc = topic.point_count + ' learning point' + (topic.point_count !== 1 ? 's' : '');
+      }
 
-      var textWrap = document.createElement('div');
-      textWrap.className = 'demo-topic-item__text';
+      card.innerHTML = bookIcon +
+        '<div style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;">' +
+          '<span class="syllabus-title">' + displayTitle + '</span>' +
+          '<span class="syllabus-desc">' + displayDesc + '</span>' +
+        '</div>';
 
-      var title = document.createElement('div');
-      title.className = 'demo-topic-item__title';
-      title.textContent = topic.topic_title || 'Untitled';
+      dom.demoTopics.appendChild(card);
 
-      var points = document.createElement('div');
-      points.className = 'demo-topic-item__points';
-      points.textContent = topic.point_count + ' learning point' + (topic.point_count !== 1 ? 's' : '');
-
-      textWrap.appendChild(title);
-      textWrap.appendChild(points);
-      li.appendChild(number);
-      li.appendChild(textWrap);
-      dom.demoTopics.appendChild(li);
+      // Staggered fade in (matching upload flow)
+      setTimeout(function () {
+        card.style.opacity = '1';
+        card.style.transform = 'translateY(0)';
+      }, 50 + (idx * 80));
     });
 
     // Enable start button

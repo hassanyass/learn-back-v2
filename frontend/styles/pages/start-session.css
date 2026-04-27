@@ -5,9 +5,11 @@
 
 .choice-page {
   min-height: 100vh;
+  height: auto;
   display: flex;
   flex-direction: column;
   background: var(--bg);
+  overflow-y: auto; /* Allow scrolling for long demo content */
 }
 
 .choice-container {
@@ -217,7 +219,7 @@
   font-weight: 600;
 }
 
-/* ── Topic List ── */
+/* ── Topic List (reuses .syllabus-card from upload.css) ── */
 .demo-topics {
   list-style: none;
   margin: 0;
@@ -225,48 +227,6 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-.demo-topic-item {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 14px 16px;
-  border-radius: var(--r-sm);
-  background: var(--bg);
-  border: 1px solid var(--border-light);
-}
-
-.demo-topic-item__number {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--plum-bg);
-  color: var(--plum);
-  font-size: var(--fs-xs);
-  font-weight: 800;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.demo-topic-item__text {
-  flex: 1;
-  min-width: 0;
-}
-
-.demo-topic-item__title {
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-  line-height: 1.35;
-}
-
-.demo-topic-item__points {
-  font-size: var(--fs-xs);
-  color: var(--text-soft);
-  margin-top: 2px;
 }
 
 /* ── Start Demo CTA ── */
