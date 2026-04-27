@@ -19,6 +19,7 @@ export class WebSocketManager {
     this._maxReconnectAttempts = 3;
     this._reconnectTimer = null;
     this._intentionalClose = false;
+    this._isEndingSession = false;  // Set by session.js during manual end
 
     // ── Callback hooks (set by session.js orchestrator) ──
     this.onKidoResponse = null;     // (data) => void
@@ -87,6 +88,10 @@ export class WebSocketManager {
       if (event.code === 1000) {
         // Normal closure — session complete
         self._emitConnectionChange('disconnected');
+        if (self._isEndingSession) {
+          console.log('[WS] Closed due to manual session end. Suppressing onSessionComplete.');
+          return;
+        }
         if (typeof self.onSessionComplete === 'function') {
           // The session_complete message should have already been handled via onmessage.
           // This is a safety net.
@@ -100,7 +105,12 @@ export class WebSocketManager {
         return;
       }
 
-      // Unexpected close — attempt reconnect
+      // Unexpected close — attempt reconnect (unless ending session)
+      if (self._isEndingSession) {
+        console.log('[WS] Closed during manual end. Suppressing reconnect.');
+        self._emitConnectionChange('disconnected');
+        return;
+      }
       self._reconnect();
     };
 

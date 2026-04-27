@@ -117,6 +117,8 @@ async def create_session(
                 "status": "pending",     # pending → in_progress → completed
                 "is_visited": False,
                 "is_correct": None,
+                "total_attempts": 0,     # Accumulated across all exchanges for this point
+                "widget_used": False,    # True if a non-TEXT widget was rendered
                 "misconceptions": [],
                 "kido_memory": None,     # {"title": "...", "summary": "..."} on completion
             })
@@ -506,6 +508,32 @@ async def skip_topic(
 
     service = SessionService(db)
     return await service.skip_topic(session_id)
+
+
+# ──────────────────────────────────────────────────────────────────────
+# HTTP: End Session (JWT-protected, idempotent)
+# ──────────────────────────────────────────────────────────────────────
+
+@router.post("/session/{session_id}/end")
+async def end_session(
+    session_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Manually end a teaching session — transport only, logic in SessionService.
+
+    Idempotent: calling on an already-completed session returns 200 with cached data.
+    Triggers eager feedback generation so the feedback page loads instantly.
+    """
+    session = await db.get(LearningSession, session_id)
+    if not session or session.user_id != user_id:
+        raise HTTPException(status_code=404, detail="Session not found.")
+
+    service = SessionService(db)
+    try:
+        return await service.end_session(session_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 # ──────────────────────────────────────────────────────────────────────

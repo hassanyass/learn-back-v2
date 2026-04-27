@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.models.core import LearningSession, UserMilestone
-from backend.schemas.api_schemas import CategorizedSessions, DashboardResponse
+from backend.schemas.api_schemas import CategorizedSessions, DashboardResponse, SessionSummary
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +67,9 @@ class DashboardService:
             average_mastery=average_mastery,
         )
 
+        # Build recent sessions list (newest first, max 20)
+        recent_sessions = self._build_session_list(sessions)
+
         return DashboardResponse(
             total_time_hours=round(total_seconds / 3600.0, 2),
             current_streak_days=current_streak,
@@ -77,6 +80,7 @@ class DashboardService:
                 needs_review=needs_review_count,
                 in_progress=in_progress_count,
             ),
+            recent_sessions=recent_sessions,
         )
 
     def _calculate_streak(
@@ -134,3 +138,61 @@ class DashboardService:
 
         all_codes = sorted(existing_codes.union(unlocked_now))
         return all_codes
+
+    @staticmethod
+    def _build_session_list(
+        sessions: list[LearningSession],
+    ) -> list[SessionSummary]:
+        """Convert ORM sessions into lightweight dashboard card DTOs."""
+        summaries: list[SessionSummary] = []
+
+        # Sort newest first by start_time (fallback to id)
+        sorted_sessions = sorted(
+            sessions,
+            key=lambda s: s.start_time or datetime.min,
+            reverse=True,
+        )
+
+        for s in sorted_sessions[:20]:
+            bkt = s.bkt_score or 0.0
+
+            # Derive card status
+            if s.status == "completed":
+                card_status = "mastered" if bkt >= 0.90 else "needs_review"
+            else:
+                card_status = "in_progress"
+
+            # Compute progress from session_state
+            progress = 0
+            state = s.session_state or {}
+            topics = state.get("topics", [])
+            total_points = 0
+            completed_points = 0
+            for t in topics:
+                for p in t.get("points", []):
+                    total_points += 1
+                    if p.get("status") == "completed":
+                        completed_points += 1
+            if total_points > 0:
+                progress = round((completed_points / total_points) * 100)
+
+            # Date
+            ref_time = s.end_time or s.start_time
+            date_str = ref_time.strftime("%Y-%m-%d") if ref_time else None
+
+            # Duration
+            duration = None
+            if s.start_time and s.end_time and s.end_time > s.start_time:
+                duration = max(1, round((s.end_time - s.start_time).total_seconds() / 60))
+
+            summaries.append(SessionSummary(
+                id=s.id,
+                title=s.topic or "Untitled Session",
+                status=card_status,
+                date=date_str,
+                progress=progress,
+                bkt_score=round(bkt, 2),
+                duration_minutes=duration,
+            ))
+
+        return summaries

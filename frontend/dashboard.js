@@ -296,7 +296,11 @@
       button.appendChild(inner);
 
       button.addEventListener('click', function () {
-        window.location.href = 'feedback.html?id=' + encodeURIComponent(sessionRecord.id);
+        if (sessionRecord.status === 'in_progress') {
+          window.location.href = 'session.html?sessionId=' + encodeURIComponent(sessionRecord.id);
+        } else {
+          window.location.href = 'feedback.html?sessionId=' + encodeURIComponent(sessionRecord.id);
+        }
       });
 
       elements.sessionGrid.appendChild(button);
@@ -410,7 +414,17 @@
             badges: (remote.unlocked_milestones || []).map(function (code) {
               return { id: code, name: code, unlocked: true };
             }),
-            sessions: [],
+            sessions: (remote.recent_sessions || []).map(function (s) {
+              return {
+                id: s.id,
+                title: s.title || 'Untitled Session',
+                status: s.status || 'in_progress',
+                date: s.date || null,
+                progress: s.progress || 0,
+                bktScore: s.bkt_score || 0,
+                durationMinutes: s.duration_minutes || null
+              };
+            }),
             categorized: {
               mastered: cat.mastered || 0,
               needs_review: cat.needs_review || 0,

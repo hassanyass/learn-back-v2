@@ -81,7 +81,12 @@ document.addEventListener('DOMContentLoaded', function () {
     grid.innerHTML = '<div style="text-align:center; padding:40px; color: var(--plum); grid-column:1 / -1;">' + message + '</div>';
   }
 
-  function gainDesc(score) {
+  function gainDesc(score, completionType) {
+    if (completionType === 'manual') {
+      if (score >= 50) return 'Good effort! Kido made solid progress before the session ended.';
+      if (score >= 25) return 'A useful start. Kido picked up some ideas before the session ended early.';
+      return 'The session ended early. Try a full session next time so Kido can learn more.';
+    }
     if (score >= 80) return 'Outstanding session. Kido mastered most of the ideas you covered today.';
     if (score >= 50) return 'Solid session. Kido made strong progress, with a few areas still worth revisiting.';
     if (score >= 25) return 'A useful start. Kido picked up some of the ideas, but the explanation still needs reinforcement.';
@@ -136,24 +141,28 @@ document.addEventListener('DOMContentLoaded', function () {
 
   async function loadFeedbackSummary(sessionId, sessionRecord) {
     var record = sessionRecord;
+    console.log('[Feedback] Loading feedback for session ' + sessionId);
 
     if (window.LearnBackAPI && typeof window.LearnBackAPI.fetchSessionFeedback === 'function') {
       try {
-        return await window.LearnBackAPI.fetchSessionFeedback(sessionId, record && record.sessionTitle);
+        var data = await window.LearnBackAPI.fetchSessionFeedback(sessionId, record && record.sessionTitle);
+        console.log('[Feedback] Loaded feedback for session ' + sessionId);
+        return data;
       } catch (error) {
-        console.warn('Feedback endpoint unavailable, using saved session summary instead.', error);
+        console.warn('[Feedback] Feedback endpoint unavailable, using defaults.', error);
       }
     }
 
-    if (window.SessionStore && typeof window.SessionStore.getFeedback === 'function') {
-      return window.SessionStore.getFeedback(sessionId);
-    }
-
+    // Defensive fallback — never return null
     return {
       sessionId: sessionId,
-      sessionTitle: 'Machine Learning',
+      sessionTitle: 'Session Summary',
+      completionType: 'natural',
       overallMastery: 0,
-      topics: []
+      durationMinutes: null,
+      topics: [],
+      strengths: [],
+      weakAreas: []
     };
   }
 
@@ -165,8 +174,14 @@ document.addEventListener('DOMContentLoaded', function () {
     var sessionLabel = document.querySelector('.nav-bar__session');
 
     if (masteryScore) masteryScore.textContent = overallMastery + '%';
-    if (masteryDesc) masteryDesc.textContent = gainDesc(overallMastery);
+    if (masteryDesc) masteryDesc.textContent = gainDesc(overallMastery, summary.completionType);
     if (sessionLabel) sessionLabel.textContent = summary.sessionTitle || 'Session Summary';
+
+    // Duration display
+    var durationEl = el('session-duration');
+    if (durationEl) {
+      durationEl.textContent = summary.durationMinutes != null ? summary.durationMinutes + ' min' : '\u2014';
+    }
 
     setTimeout(function () {
       if (masteryFill) masteryFill.style.width = overallMastery + '%';
@@ -222,15 +237,26 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function buildCard(topic) {
+    // Defensive: null-guard every field
+    var title = topic.title || topic.topic || 'Untitled Topic';
+    var feedback = topic.feedback || 'No detailed feedback available.';
+    var understanding = topic.understanding || 'unknown';
+    var misconceptions = Array.isArray(topic.misconceptions) ? topic.misconceptions : [];
+    var recommendation = topic.recommendation || '';
+    var points = Array.isArray(topic.points) ? topic.points : [];
+    var bktScore = typeof topic.bkt_score === 'number' ? topic.bkt_score : 0;
+    var topicStatus = topic.status || 'pending';
+    var topicId = topic.id || 'topic-unknown';
+
     var card = document.createElement('article');
     card.className = 'fb-topic-card fb-topic-card--' + cardClass(topic);
-    card.id = topic.id;
+    card.id = topicId;
     card.setAttribute('aria-expanded', 'false');
 
     var head = document.createElement('div');
     head.className = 'fb-card-head';
     head.innerHTML = [
-      '<h2 class="fb-card-title">' + escapeHtml(topic.title) + '</h2>',
+      '<h2 class="fb-card-title">' + escapeHtml(title) + '</h2>',
       '<svg class="fb-card-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">',
       '<polyline points="6 9 12 15 18 9"/>',
       '</svg>'
@@ -243,15 +269,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
     card.appendChild(head);
 
-    if (topic.understanding) {
+    if (understanding && understanding !== 'unknown') {
       var levelRow = document.createElement('div');
       levelRow.className = 'fb-level-row';
       levelRow.innerHTML = [
         '<span class="fb-level-label">Understanding</span>',
         '<div class="fb-level-track">',
-        '<div class="fb-level-fill fb-level-fill--' + topic.understanding + '"></div>',
+        '<div class="fb-level-fill fb-level-fill--' + understanding + '"></div>',
         '</div>',
-        '<span class="fb-level-text fb-level-text--' + topic.understanding + '">' + levelLabel(topic.understanding) + '</span>'
+        '<span class="fb-level-text fb-level-text--' + understanding + '">' + levelLabel(understanding) + '</span>'
       ].join('');
       card.appendChild(levelRow);
     }
@@ -263,20 +289,20 @@ document.addEventListener('DOMContentLoaded', function () {
     divider.className = 'fb-card-divider';
     collapsible.appendChild(divider);
 
-    if (topic.status === 'skipped') {
+    if (topicStatus === 'skipped') {
       var skipped = document.createElement('p');
       skipped.className = 'fb-card-skipped-note';
-      skipped.textContent = topic.feedback || 'This topic was skipped in the recorded session.';
+      skipped.textContent = feedback;
       collapsible.appendChild(skipped);
     } else {
       var body = document.createElement('div');
       body.className = 'fb-card-body';
 
-      var feedback = document.createElement('p');
-      feedback.textContent = topic.feedback || 'No detailed feedback was recorded for this topic yet.';
-      body.appendChild(feedback);
+      var fbParagraph = document.createElement('p');
+      fbParagraph.textContent = feedback;
+      body.appendChild(fbParagraph);
 
-      if (Array.isArray(topic.misconceptions) && topic.misconceptions.length) {
+      if (misconceptions.length) {
         var focus = document.createElement('div');
         focus.className = 'fb-focus';
         focus.innerHTML = [
@@ -287,15 +313,15 @@ document.addEventListener('DOMContentLoaded', function () {
           '</svg>',
           'Focus Areas',
           '</div>',
-          '<ul>' + topic.misconceptions.map(function (item) { return '<li>' + escapeHtml(item) + '</li>'; }).join('') + '</ul>'
+          '<ul>' + misconceptions.map(function (item) { return '<li>' + escapeHtml(String(item)) + '</li>'; }).join('') + '</ul>'
         ].join('');
         body.appendChild(focus);
       }
 
-      if (topic.recommendation) {
-        var recommendation = document.createElement('div');
-        recommendation.className = 'fb-rec';
-        recommendation.innerHTML = [
+      if (recommendation) {
+        var rec = document.createElement('div');
+        rec.className = 'fb-rec';
+        rec.innerHTML = [
           '<div class="fb-rec__title">',
           '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0;">',
           '<circle cx="12" cy="12" r="10"/>',
@@ -303,9 +329,54 @@ document.addEventListener('DOMContentLoaded', function () {
           '</svg>',
           'For Next Time',
           '</div>',
-          '<p>' + escapeHtml(topic.recommendation) + '</p>'
+          '<p>' + escapeHtml(recommendation) + '</p>'
         ].join('');
-        body.appendChild(recommendation);
+        body.appendChild(rec);
+      }
+
+      // Per-point breakdown
+      if (points.length) {
+        var pointsSection = document.createElement('div');
+        pointsSection.className = 'fb-points-section';
+        pointsSection.innerHTML = '<h3 class="fb-points-title">Point Breakdown</h3>';
+
+        var ptList = document.createElement('div');
+        ptList.className = 'fb-points-list';
+
+        points.forEach(function (point) {
+          var ptTitle = point.title || 'Unknown Point';
+          var ptStatus = point.status || 'pending';
+          var ptBkt = typeof point.bkt_score === 'number' ? Math.round(point.bkt_score * 100) : 0;
+          var ptAttempts = typeof point.attempts === 'number' ? point.attempts : 0;
+          var ptMemory = point.kido_memory || null;
+          var ptMisc = Array.isArray(point.misconceptions) ? point.misconceptions : [];
+          var ptVisited = point.was_visited !== false;
+
+          var statusIcon = ptStatus === 'completed' ? '\u2705' : (ptVisited ? '\u23F3' : '\u26AA');
+          var row = document.createElement('div');
+          row.className = 'fb-point-row';
+          row.style.cssText = 'display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--border, #E2E8F0);';
+
+          var details = '<strong>' + statusIcon + ' ' + escapeHtml(ptTitle) + '</strong>';
+          details += '<br><span style="font-size:12px;color:var(--text-muted, #64748B);">Score: ' + ptBkt + '%';
+          if (ptAttempts > 0) details += ' &middot; Attempts: ' + ptAttempts;
+          if (point.widget_used) details += ' &middot; Widget used';
+          details += '</span>';
+
+          if (ptMemory) {
+            details += '<br><span style="font-size:12px;font-style:italic;color:var(--text-muted, #64748B);">Kido learned: &ldquo;' + escapeHtml(ptMemory) + '&rdquo;</span>';
+          }
+
+          if (ptMisc.length) {
+            details += '<br><span style="font-size:12px;color:#DC2626;">\u26A0 ' + ptMisc.map(function (m) { return escapeHtml(String(m)); }).join('; ') + '</span>';
+          }
+
+          row.innerHTML = details;
+          ptList.appendChild(row);
+        });
+
+        pointsSection.appendChild(ptList);
+        body.appendChild(pointsSection);
       }
 
       collapsible.appendChild(body);
@@ -320,13 +391,15 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!grid) return;
 
     grid.innerHTML = '';
+    var topics = Array.isArray(summary.topics) ? summary.topics : [];
+    console.log('[Feedback] Rendering ' + topics.length + ' topic cards.');
 
-    if (!summary.topics.length) {
+    if (!topics.length) {
       showError('No topic-level feedback is available yet for this session.');
       return;
     }
 
-    summary.topics.forEach(function (topic) {
+    topics.forEach(function (topic) {
       grid.appendChild(buildCard(topic));
     });
   }
@@ -385,10 +458,6 @@ document.addEventListener('DOMContentLoaded', function () {
     sessionRecord = await finalizeIfNeeded(sessionRecord);
 
     var summary = await loadFeedbackSummary(sessionId, sessionRecord);
-    if (window.SessionStore && typeof window.SessionStore.setFeedback === 'function') {
-      window.SessionStore.setFeedback(sessionId, summary);
-      summary = window.SessionStore.getFeedback(sessionId);
-    }
 
     renderMastery(summary);
     renderMisconceptions(summary);

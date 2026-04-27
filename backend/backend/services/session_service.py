@@ -371,6 +371,7 @@ class SessionService:
         new_score = self.bkt.update(prev_score, bkt_direction)
         if point_node:
             point_node["bkt_score"] = new_score
+            point_node["total_attempts"] = point_node.get("total_attempts", 0) + 1
 
         # --- 3c. Track misconceptions live (nested inside point) ---
         detected_misconception = evaluator_output.get("detected_misconception")
@@ -559,6 +560,10 @@ class SessionService:
             widget_type=widget_type.upper(), widget_data=widget_data,
         )
 
+        # Track widget usage on the point node
+        if point_node and widget_type.upper() != "TEXT":
+            point_node["widget_used"] = True
+
         # --- 9. Flush state back to DB ---
         state["mind_map_version"] = state.get("mind_map_version", 0) + 1
         session.session_state = deepcopy(state)
@@ -566,6 +571,7 @@ class SessionService:
         if session_complete:
             session.status = "completed"
             session.end_time = datetime.utcnow()
+            state["completion_type"] = "natural"
         await self.db.commit()
 
         print(f"[STATE DEBUG] BEFORE RETURN: session_count={state.get('session_interaction_count', 0)}, point={state.get('current_point_index')}")
@@ -1352,3 +1358,74 @@ class SessionService:
         if not raw:
             return []
         return [k.strip() for k in raw.split(",") if k.strip()]
+
+    # ──────────────────────────────────────────────────────────────────
+    # Manual Session Termination
+    # ──────────────────────────────────────────────────────────────────
+
+    async def end_session(self, session_id: int) -> dict[str, Any]:
+        """Manually end a session — idempotent, with eager feedback generation.
+
+        Returns:
+            dict with status, completion_type, session_id, message.
+        """
+        from backend.services.feedback_service import FeedbackService
+
+        session = await self.db.get(LearningSession, session_id)
+        if not session:
+            raise ValueError(f"Session {session_id} not found.")
+
+        state = session.session_state or {}
+
+        # Idempotent: already completed → return cached data, no error
+        if session.status == "completed":
+            logger.info("[END_SESSION] session_id=%s already completed (idempotent return)", session_id)
+            return {
+                "status": "completed",
+                "completion_type": state.get("completion_type", "natural"),
+                "session_id": session_id,
+                "message": "Session was already completed.",
+            }
+
+        # 1. Compute final BKT score
+        overall_bkt = self._aggregate_bkt(state)
+
+        # 2. Count progress for logging
+        topics = state.get("topics", [])
+        completed_count = 0
+        total_count = 0
+        for t in topics:
+            for p in t.get("points", []):
+                total_count += 1
+                if p.get("status") == "completed":
+                    completed_count += 1
+
+        # 3. Set terminal state
+        state["completion_type"] = "manual"
+        session.session_state = deepcopy(state)
+        session.status = "completed"
+        session.end_time = datetime.utcnow()
+        session.bkt_score = overall_bkt
+        await self.db.commit()
+
+        logger.info(
+            "[END_SESSION] session_id=%s completion_type=manual bkt_score=%.3f topics_completed=%d/%d",
+            session_id, overall_bkt, completed_count, total_count,
+        )
+
+        # 4. Eager feedback generation (blocks but cached for instant redirect)
+        try:
+            feedback_svc = FeedbackService(self.db)
+            await feedback_svc.generate_session_feedback(session_id)
+            logger.info("[END_SESSION] Eager feedback generated for session_id=%s", session_id)
+        except Exception as exc:
+            logger.error("[END_SESSION] Eager feedback generation failed for session_id=%s: %s", session_id, exc)
+            # Non-fatal — feedback page will retry on load
+
+        return {
+            "status": "completed",
+            "completion_type": "manual",
+            "session_id": session_id,
+            "message": "Session ended successfully.",
+        }
+

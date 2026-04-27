@@ -323,6 +323,10 @@ import { UIStateManager } from './js/core/UIStateManager.js';
 
   // ── Session complete ──
   ws.onSessionComplete = function (data) {
+    if (isEndingSession) {
+      console.log('[Session] onSessionComplete suppressed — manual end in progress');
+      return;
+    }
     try {
       state.updateFromWsResponse(data);
       state.markComplete();
@@ -482,10 +486,89 @@ import { UIStateManager } from './js/core/UIStateManager.js';
 
   // Legacy modal buttons removed - Knowledge Cube handles interactions internally.
 
-  // ── View Feedback (session complete overlay) ──
+   // ── View Feedback (session complete overlay) ──
   if (dom.btnViewFeedback) {
     dom.btnViewFeedback.addEventListener('click', function () {
       window.location.href = 'feedback.html?sessionId=' + encodeURIComponent(state.sessionId);
+    });
+  }
+
+  // ── End Session Flow ──
+  var isEndingSession = false;
+  var endConfirmOverlay = document.getElementById('end-session-confirm-overlay');
+  var endLoadingOverlay = document.getElementById('end-session-loading-overlay');
+  var btnEndCancel = document.getElementById('btn-end-cancel');
+  var btnEndConfirm = document.getElementById('btn-end-confirm');
+  var btnFinish = document.getElementById('btn-finish');
+  var btnHeaderActions = document.getElementById('btn-header-actions');
+  var headerDropdown = document.getElementById('header-dropdown');
+
+  // Shared handler: show confirmation modal (or redirect if already complete)
+  function showEndSessionConfirm() {
+    console.log('[EndSession] "End Session" clicked');
+    // Hide dropdown if open
+    if (headerDropdown) headerDropdown.style.display = 'none';
+
+    // If already completed naturally, just redirect
+    if (state.isSessionComplete) {
+      console.log('[EndSession] Already completed naturally — redirecting');
+      window.location.href = 'feedback.html?sessionId=' + encodeURIComponent(state.sessionId);
+      return;
+    }
+
+    // Show confirmation modal
+    if (endConfirmOverlay) endConfirmOverlay.removeAttribute('hidden');
+  }
+
+  // Wire BOTH the main "End Session" button AND the dropdown "Finish Teaching"
+  if (btnHeaderActions) {
+    btnHeaderActions.addEventListener('click', function (e) {
+      e.stopPropagation();
+      showEndSessionConfirm();
+    });
+  }
+  if (btnFinish) {
+    btnFinish.addEventListener('click', function () {
+      showEndSessionConfirm();
+    });
+  }
+
+  // Cancel → hide modal
+  if (btnEndCancel && endConfirmOverlay) {
+    btnEndCancel.addEventListener('click', function () {
+      endConfirmOverlay.setAttribute('hidden', '');
+    });
+  }
+
+  // Confirm → end session
+  if (btnEndConfirm) {
+    btnEndConfirm.addEventListener('click', async function () {
+      if (isEndingSession) return; // Prevent double-click
+      isEndingSession = true;
+      ws._isEndingSession = true;
+      console.log('[EndSession] User confirmed. Disconnecting WS...');
+
+      // Hide confirmation, show loading
+      if (endConfirmOverlay) endConfirmOverlay.setAttribute('hidden', '');
+      if (endLoadingOverlay) endLoadingOverlay.removeAttribute('hidden');
+
+      // Disconnect WS first (suppresses reconnect via _isEndingSession)
+      if (ws && typeof ws.disconnect === 'function') {
+        ws.disconnect();
+      }
+
+      try {
+        var result = await window.LearnBackAPI.endSession(state.sessionId);
+        console.log('[EndSession] Success:', result);
+        console.log('[EndSession] Redirecting to feedback page.');
+        window.location.href = 'feedback.html?sessionId=' + encodeURIComponent(state.sessionId);
+      } catch (err) {
+        console.error('[EndSession] Failed:', err);
+        isEndingSession = false;
+        ws._isEndingSession = false;
+        if (endLoadingOverlay) endLoadingOverlay.setAttribute('hidden', '');
+        ui.appendKidoMessage('Something went wrong ending the session. Please try again.');
+      }
     });
   }
 

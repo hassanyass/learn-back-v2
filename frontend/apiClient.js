@@ -225,10 +225,14 @@
   function normalizeFeedbackPayload(payload, sessionId, sessionTitle) {
     var topics = Array.isArray(payload && payload.topics) ? payload.topics : [];
     return {
-      sessionId: sessionId || null,
-      sessionTitle: normalizeText(payload && (payload.sessionTitle || payload.session_title), sessionTitle || 'Machine Learning'),
-      overallMastery: clamp(Math.round(toNumber(payload && (payload.overallMastery || payload.overall_mastery), 0)), 0, 100),
-      topics: topics
+      sessionId: sessionId || (payload && payload.session_id) || null,
+      sessionTitle: normalizeText(payload && (payload.session_title || payload.sessionTitle), sessionTitle || 'Session Summary'),
+      completionType: normalizeText(payload && payload.completion_type, 'natural'),
+      overallMastery: clamp(Math.round(toNumber(payload && (payload.overall_mastery || payload.overallMastery), 0)), 0, 100),
+      durationMinutes: payload && payload.duration_minutes != null ? toNumber(payload.duration_minutes, null) : null,
+      topics: topics,
+      strengths: Array.isArray(payload && payload.strengths) ? payload.strengths : [],
+      weakAreas: Array.isArray(payload && (payload.weak_areas || payload.weakAreas)) ? (payload.weak_areas || payload.weakAreas) : []
     };
   }
 
@@ -423,6 +427,13 @@
 
     skipTopic: function (sessionId) {
       return request('/session/' + encodeURIComponent(sessionId) + '/skip-topic', {
+        method: 'POST'
+      });
+    },
+
+    endSession: function (sessionId) {
+      console.log('[EndSession] POST /session/' + sessionId + '/end — calling...');
+      return request('/session/' + encodeURIComponent(sessionId) + '/end', {
         method: 'POST'
       });
     },

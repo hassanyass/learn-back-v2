@@ -117,6 +117,9 @@
       outline: none;
       box-shadow: 0 0 0 2px #925E78;
     }
+
+    /* ── Spinner for loading overlays ─────────── */
+    @keyframes spin { 100% { transform: rotate(360deg); } }
   </style>
   <link rel="stylesheet" href="styles/main.css">
 </head>
@@ -330,7 +333,7 @@
           <div class="chat-pill">
             <div class="chat-pill__tools" aria-label="Chat tools">
               <button type="button" class="chat-pill__action" id="btn-request-graph" aria-label="View KIDO's Knowledge"
-                title="View KIDO's Knowledge Map">
+                title="Teach Kido in a different way">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                   stroke-linejoin="round" style="width:18px;height:18px;">
                   <!-- Cube / box icon (Lucide) -->
@@ -857,7 +860,77 @@
     </div>
   </div>
 
+  <!-- ═══ End Session Confirmation Modal ═══ -->
+  <div class="modal-overlay" id="end-session-confirm-overlay" hidden>
+    <div class="modal" style="max-width:440px; text-align:center; padding:32px 28px 28px;">
+      <!-- Icon -->
+      <div style="width:64px; height:64px; border-radius:50%; background:linear-gradient(135deg, #FEE2E2, #FECACA);
+                  display:flex; align-items:center; justify-content:center; margin:0 auto 20px;
+                  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.12);">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="1.8" stroke-linecap="round"
+          stroke-linejoin="round" style="width:28px; height:28px;">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="15" y1="9" x2="9" y2="15"></line>
+          <line x1="9" y1="9" x2="15" y2="15"></line>
+        </svg>
+      </div>
+      <!-- Title -->
+      <h2 class="modal__title" style="font-size:20px; font-weight:700; margin-bottom:8px;">End This Session?</h2>
+      <!-- Body -->
+      <p class="modal__body" style="font-size:14px; line-height:1.6; color:var(--text-muted, #64748B); max-width:340px; margin:0 auto;">
+        Your progress will be saved and Kido will prepare your personalized feedback report.
+        <strong style="color:var(--text-primary, #1E293B);">You won't be able to continue afterwards.</strong>
+      </p>
+      <!-- Info pills -->
+      <div style="display:flex; justify-content:center; gap:8px; margin-top:16px;">
+        <span style="display:inline-flex; align-items:center; gap:4px; padding:4px 10px; border-radius:20px;
+                     background:var(--bg-hover, #F1F5F9); font-size:11px; font-weight:500; color:var(--text-muted, #64748B);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+          </svg>
+          Progress saved
+        </span>
+        <span style="display:inline-flex; align-items:center; gap:4px; padding:4px 10px; border-radius:20px;
+                     background:var(--bg-hover, #F1F5F9); font-size:11px; font-weight:500; color:var(--text-muted, #64748B);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+          </svg>
+          Report generated
+        </span>
+      </div>
+      <!-- Actions -->
+      <div style="display:flex; gap:12px; margin-top:24px;">
+        <button class="btn" id="btn-end-cancel"
+          style="flex:1; padding:10px 16px; border-radius:10px; font-weight:600; font-size:14px;
+                 background:var(--bg-surface, #fff); border:1.5px solid var(--border, #E2E8F0);
+                 color:var(--text-primary, #334155); cursor:pointer; transition:all 0.15s ease;">
+          Cancel
+        </button>
+        <button class="btn" id="btn-end-confirm"
+          style="flex:1; padding:10px 16px; border-radius:10px; font-weight:600; font-size:14px;
+                 background:linear-gradient(135deg, #EF4444, #DC2626); color:#fff; border:none;
+                 cursor:pointer; transition:all 0.15s ease; box-shadow:0 2px 8px rgba(220,38,38,0.25);">
+          End Session
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ End Session Loading Overlay ═══ -->
+  <div class="modal-overlay" id="end-session-loading-overlay" hidden>
+    <div class="modal" style="max-width:380px; text-align:center; padding:40px 32px;">
+      <svg fill="none" stroke="var(--plum, #925E78)" stroke-width="2" viewBox="0 0 24 24" style="width:48px;height:48px;animation:spin 1s linear infinite;margin:0 auto 20px;">
+        <circle cx="12" cy="12" r="10" stroke-opacity="0.25"></circle>
+        <path d="M12 2A10 10 0 0 1 22 12"></path>
+      </svg>
+      <h2 class="modal__title">Preparing your feedback report...</h2>
+      <p class="modal__body" style="margin-top:8px;">This may take a few seconds while Kido reviews your session.</p>
+    </div>
+  </div>
+
   <!-- ═══ Phase 3: Session Complete Overlay ═══ -->
+
   <div class="modal-overlay" id="session-complete-overlay" hidden>
     <div class="modal" style="max-width:440px; text-align:center;">
       <div class="modal__icon-unified"
