@@ -3,18 +3,25 @@
    Interactive Duolingo-style Widgets
    ============================================================ */
 
+/* Widget wrapper in chat — ensures proper separation from followup messages */
+.message--ai-widget {
+  margin-bottom: 16px !important;
+  display: block;
+}
+
 .widget-container {
   background: #ffffff;
   border: 2px solid var(--border-light, #e2e8f0);
   border-radius: 16px;
   padding: 16px;
-  margin: 8px 0;
+  margin: 0;
   width: 100%;
   max-width: 100%;
   box-shadow: 0 4px 16px rgba(2, 43, 58, 0.04);
   font-family: inherit;
   transition: opacity 0.3s ease, transform 0.3s ease;
   box-sizing: border-box;
+  position: relative;
 }
 
 [data-theme="dark"] .widget-container {
@@ -479,9 +486,13 @@
   align-items: center;
   gap: 10px;
   padding: 8px 12px;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 600;
-  color: var(--text-primary);
+  color: #166534;
+  background: #dcfce7;
+  border: 1.5px solid #bbf7d0;
+  border-radius: 10px;
+  margin-bottom: 4px;
 }
 
 .widget-correct-step-num {

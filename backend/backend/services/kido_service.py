@@ -168,12 +168,6 @@ class KidoService:
         if parsed["widget_type"] not in valid_types:
             parsed["widget_type"] = "text"
 
-        # ── DEBUG: Print raw parsed BEFORE any widget_data nuking ──
-        print(f"[KIDO RAW] widget_type={parsed['widget_type']}, widget_data={parsed.get('widget_data')}")
-
-        # Preserve raw widget_data before enforcement can nuke it
-        # Session service uses this to recover forced widget data
-        parsed["_raw_widget_data"] = parsed.get("widget_data")
 
         # Enforce widget_data rules: null for text/math, required for process/comparison
         if parsed["widget_type"] in ("text", "math"):

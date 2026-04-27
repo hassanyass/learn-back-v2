@@ -90,21 +90,18 @@ _FORCED_WIDGET_INSTRUCTIONS: dict[str, str] = {
 
 
 def _check_forced_widget(state: dict[str, Any]) -> str | None:
-    print("🔥 ENTERED WIDGET CHECK", state.get("point_interaction_count"), state.get("current_point_index"))
     """TEST MODE: Return forced widget type slug, or None for default behavior.
 
-    Rules (per-topic, deterministic):
-      point_index == 0, interaction_count == 2  →  "process"
-      point_index == 1, interaction_count == 2  →  "comparison"
-      everything else                           →  None
+    Rules (absolute session counter, never resets):
+      session_interaction_count == 2  →  "process"
+      session_interaction_count == 4  →  "comparison"
+      everything else                 →  None
     """
-    count = state.get("point_interaction_count", 0)
-    if count != 1:
-        return None
-    pi = state.get("current_point_index", 0)
-    if pi == 0:
+    count = state.get("session_interaction_count", 0)
+    print(f"🔥 ENTERED WIDGET CHECK session_count={count}")
+    if count == 2:
         return "process"
-    if pi == 1:
+    if count == 4:
         return "comparison"
     return None
 
@@ -231,6 +228,78 @@ class SessionService:
         )
 
     # ------------------------------------------------------------------
+    # Widget Data Generation (dedicated LLM call)
+    # ------------------------------------------------------------------
+
+    _WIDGET_DATA_PROMPTS: dict[str, str] = {
+        "process": (
+            "You are a data generation module. Generate a JSON object for a "
+            '"sort the steps" quiz about: "{point}"\n\n'
+            "Return ONLY valid JSON in this exact format, nothing else:\n"
+            '{{"steps": [{{"id": "s1", "text": "..."}}, {{"id": "s2", "text": "..."}}, '
+            '{{"id": "s3", "text": "..."}}]}}\n\n'
+            "Rules:\n"
+            "- 3-5 steps in the CORRECT chronological order\n"
+            "- Each step is a short, clean sentence\n"
+            "- No numbering, no prefixes (Step, Process, First, etc.)\n"
+            "- No explanations\n"
+            "- ONLY return the JSON object, nothing else"
+        ),
+        "comparison": (
+            "You are a data generation module. Generate a JSON object for a "
+            '"category sorting" quiz about: "{point}"\n\n'
+            "Return ONLY valid JSON in this exact format, nothing else:\n"
+            '{{"categories": ["Category A", "Category B"], "items": ['
+            '{{"id": "i1", "text": "...", "category": "Category A"}}, '
+            '{{"id": "i2", "text": "...", "category": "Category B"}}, '
+            '{{"id": "i3", "text": "...", "category": "Category A"}}, '
+            '{{"id": "i4", "text": "...", "category": "Category B"}}]}}\n\n'
+            "Rules:\n"
+            "- Exactly 2 categories related to the topic\n"
+            "- 4-6 items, each assigned to one category\n"
+            "- category values MUST exactly match one of the category names\n"
+            "- ONLY return the JSON object, nothing else"
+        ),
+    }
+
+    async def _generate_widget_data(
+        self, widget_type: str, current_point: str,
+    ) -> dict | None:
+        """Make a SEPARATE LLM call to generate widget data.
+
+        This call uses NO Kido persona or system prompt — just a clean
+        data-generation prompt. This avoids the LLM ignoring widget
+        instructions when the Kido system prompt is dominant.
+        """
+        prompt_template = self._WIDGET_DATA_PROMPTS.get(widget_type)
+        if not prompt_template:
+            print(f"[WIDGET_GEN] No prompt template for widget_type={widget_type}")
+            return None
+
+        prompt = prompt_template.replace("{point}", current_point)
+        print(f"[WIDGET_GEN] Calling dedicated LLM for {widget_type} widget data...")
+
+        try:
+            raw = await self.kido.llm_manager.call_with_fallback(prompt)
+            print(f"[WIDGET_GEN] Raw LLM response: {raw[:300]}")
+
+            # Parse JSON from the response
+            json_match = re.search(r'\{[\s\S]*\}', raw)
+            if json_match:
+                data = json.loads(json_match.group())
+                print(f"[WIDGET_GEN] Parsed successfully: {list(data.keys())}")
+                return data
+            else:
+                print(f"[WIDGET_GEN] No JSON found in response")
+                return None
+        except json.JSONDecodeError as e:
+            print(f"[WIDGET_GEN] JSON parse error: {e}")
+            return None
+        except Exception as e:
+            print(f"[WIDGET_GEN] LLM call failed: {e}")
+            return None
+
+    # ------------------------------------------------------------------
     # Public API: Chat Message Pipeline
     # ------------------------------------------------------------------
 
@@ -261,16 +330,15 @@ class SessionService:
         print("🔥 HIT PROCESS_USER_MESSAGE")
         session = await self._get_session(session_id)
         state = self._ensure_state(session)
-        print(f"[STATE DEBUG] ENTRY: id={id(state)}, count={state.get('point_interaction_count')}, point={state.get('current_point_index')}")
+        print(f"[STATE DEBUG] ENTRY: id={id(state)}, count={state.get('session_interaction_count', 0)}, point={state.get('current_point_index')}")
 
-        # TEST MODE: increment per-point interaction counter and decide widget
+        # TEST MODE: increment absolute session counter and decide widget
         forced_widget: str | None = None
         if DETERMINISTIC_WIDGET_OVERRIDE:
-            state["point_interaction_count"] = state.get("point_interaction_count", 0) + 1
-            print(f"[STATE DEBUG] BEFORE DECISION: id={id(state)}, count={state.get('point_interaction_count')}, point={state.get('current_point_index')}")
-            print(f"[DEBUG_WIDGET] 1. BEFORE DECISION: point_interaction_count={state['point_interaction_count']}, current_point_index={state.get('current_point_index', 0)}")
+            state["session_interaction_count"] = state.get("session_interaction_count", 0) + 1
+            print(f"[STATE DEBUG] BEFORE DECISION: session_count={state['session_interaction_count']}, point={state.get('current_point_index')}")
             forced_widget = _check_forced_widget(state)
-            print(f"[DEBUG_WIDGET] 2. AFTER DECISION: forced_widget={forced_widget}")
+            print(f"[DEBUG_WIDGET] AFTER DECISION: forced_widget={forced_widget}")
 
         segments = await self._get_segments(session)
 
@@ -363,8 +431,7 @@ class SessionService:
                     }
 
             state["point_attempts"] = 0
-            if DETERMINISTIC_WIDGET_OVERRIDE:
-                state["point_interaction_count"] = 0
+            # NOTE: session_interaction_count is NEVER reset — it's absolute
             state["current_point_index"] += 1
 
             # Check: are ALL points in the current topic completed?
@@ -425,19 +492,15 @@ class SessionService:
         evaluator_label = label  # Use the validated label, not raw LLM output
         widget_type = evaluator_output.get("widget_type", "TEXT")
 
-        # ── TEST MODE: Injection Point A — force widget before Kido call ──
+        # ── TEST MODE: Injection Point A — log forced widget (do NOT inject into Kido prompt) ──
         widget_debug: dict[str, Any] | None = None
-        if DETERMINISTIC_WIDGET_OVERRIDE:
-            if forced_widget:
-                pi = state.get("current_point_index", 0)
-                count = state.get("point_interaction_count", 0)
-                logger.info(
-                    "[TEST_MODE] Widget forced: type=%s, point_index=%s, "
-                    "interaction_count=%s", forced_widget, pi, count,
-                )
-                widget_type = forced_widget.upper()
-                instruction_for_kido += _FORCED_WIDGET_INSTRUCTIONS[forced_widget]
+        if DETERMINISTIC_WIDGET_OVERRIDE and forced_widget:
+            logger.info(
+                "[TEST_MODE] Widget forced: type=%s, session_count=%s",
+                forced_widget, state.get("session_interaction_count", 0),
+            )
 
+        # --- 7. Call Kido (chat response only — no widget generation) ---
         kido_result = await self.kido.generate_response(
             session_state=state,
             evaluator_label=evaluator_label,
@@ -450,32 +513,22 @@ class SessionService:
         )
         kido_response = kido_result.get("kido_response", "")
 
-        # ── TEST MODE: Injection Point B — enforce widget after Kido call ──
+        # ── TEST MODE: Injection Point B — generate widget data via SEPARATE LLM call ──
         if DETERMINISTIC_WIDGET_OVERRIDE and forced_widget:
-            logger.info(
-                "[TEST_MODE] Kido raw output: widget_type=%s, widget_data=%s",
-                kido_result.get("widget_type"), kido_result.get("widget_data"),
-            )
-            # ALWAYS use forced type — never let Kido override
             widget_type = forced_widget.upper()
-            widget_data = kido_result.get("widget_data", None)
+            widget_data = await self._generate_widget_data(
+                forced_widget, current_point or "Unknown Point"
+            )
 
-            # Fallback: kido_service nukes widget_data when widget_type="text".
-            # We preserved the pre-nuke value in _raw_widget_data.
-            if widget_data is None and forced_widget == "process":
-                raw_wd = kido_result.get("_raw_widget_data")
-                if isinstance(raw_wd, dict) and isinstance(raw_wd.get("steps"), list):
-                    widget_data = raw_wd
-                    print(f"[RECOVERY] Recovered widget_data from _raw_widget_data: {len(raw_wd['steps'])} steps")
-                else:
-                    # Last resort: check top-level steps
-                    top_steps = kido_result.get("steps")
-                    if isinstance(top_steps, list) and len(top_steps) > 0:
-                        widget_data = {"steps": top_steps}
-                        print(f"[RECOVERY] Recovered widget_data from top-level steps: {len(top_steps)} steps")
+            # Normalize comparison: LLM system prompt uses "attributes",
+            # but frontend expects "items"
+            if forced_widget == "comparison" and isinstance(widget_data, dict):
+                if "attributes" in widget_data and "items" not in widget_data:
+                    widget_data["items"] = widget_data.pop("attributes")
+                    print(f"[NORMALIZE] Renamed 'attributes' → 'items'")
 
             # Backend sanitization: strip LLM prefixes from step text
-            if forced_widget == "process":
+            if forced_widget == "process" and widget_data:
                 widget_data = _sanitize_widget_steps(widget_data)
 
             validation_error = _validate_forced_widget_data(forced_widget, widget_data)
@@ -485,7 +538,7 @@ class SessionService:
                     validation_error,
                 )
             else:
-                logger.info("[TEST_MODE] Validation PASSED")
+                logger.info("[TEST_MODE] Validation PASSED ✅")
 
             # NEVER drop the widget — always attach debug for test visibility
             widget_debug = {
@@ -493,8 +546,7 @@ class SessionService:
                 "expected_type": forced_widget,
                 "validation_error": validation_error,
                 "trigger_rule": (
-                    f"point_index={state.get('current_point_index', 0)}, "
-                    f"interaction_count={state.get('point_interaction_count', 0)}"
+                    f"session_count={state.get('session_interaction_count', 0)}"
                 ),
             }
         else:
@@ -516,7 +568,7 @@ class SessionService:
             session.end_time = datetime.utcnow()
         await self.db.commit()
 
-        print(f"[STATE DEBUG] BEFORE RETURN: id={id(state)}, count={state.get('point_interaction_count')}, point={state.get('current_point_index')}")
+        print(f"[STATE DEBUG] BEFORE RETURN: session_count={state.get('session_interaction_count', 0)}, point={state.get('current_point_index')}")
         print(f"[DEBUG_WIDGET] 3. PAYLOAD RETURN: widget_type={widget_type.upper()}, widget_data={'<PRESENT>' if widget_data else 'None'}, widget_debug={widget_debug}")
 
         result = {
@@ -676,8 +728,7 @@ class SessionService:
         if point_completed:
             advanced = True
             state["point_attempts"] = 0
-            if DETERMINISTIC_WIDGET_OVERRIDE:
-                state["point_interaction_count"] = 0
+            # NOTE: session_interaction_count is NEVER reset
             state["current_point_index"] += 1
 
             # Check if all points in topic are done
@@ -827,8 +878,7 @@ class SessionService:
         state["current_topic_index"] += 1
         state["current_point_index"] = 0
         state["point_attempts"] = 0
-        if DETERMINISTIC_WIDGET_OVERRIDE:
-            state["point_interaction_count"] = 0
+        # NOTE: session_interaction_count is NEVER reset
 
         new_ti = state["current_topic_index"]
         session_complete = new_ti >= len(topics)

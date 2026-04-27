@@ -173,7 +173,8 @@ export class UIRenderer {
 
       function scrollDown() {
         if (dom.chatMessages) {
-          dom.chatMessages.scrollTo({ top: dom.chatMessages.scrollHeight, behavior: 'smooth' });
+          // Use instant scroll during typewriter to prevent animation stuttering/popping
+          dom.chatMessages.scrollTop = dom.chatMessages.scrollHeight;
         }
       }
 
@@ -1015,7 +1016,7 @@ export class UIRenderer {
     msgWrapper.style.marginBottom = '16px';
     var bubble = document.createElement('div');
     bubble.className = 'message__bubble message__bubble--app';
-    bubble.style.cssText = 'padding:0; overflow:visible; border-radius:16px; width:100%; max-width:100%; background:transparent; border:none; box-shadow:none;';
+    bubble.style.cssText = 'padding:0; overflow:auto; border-radius:16px; width:100%; max-width:100%; background:transparent; border:none; box-shadow:none;';
 
     // Build container
     var container = document.createElement('div');
@@ -1027,9 +1028,13 @@ export class UIRenderer {
     var title = document.createElement('h3');
     title.className = 'widget-title';
     var isProcess = (wType === 'process_sort' || wType === 'process');
+    var isComparison = (wType === 'comparison_sort' || wType === 'comparison');
     if (isProcess) {
       title.textContent = 'Arrange the steps in the correct order';
       instruction = 'Drag the cards and press Check Answer';
+    } else if (isComparison) {
+      title.textContent = 'Sort items into the correct categories';
+      instruction = 'Drag each item into its category, then press Check Answer';
     } else {
       title.textContent = wType.replace('_', ' ').toUpperCase();
     }
@@ -1052,7 +1057,7 @@ export class UIRenderer {
       this._renderFillBlank(payload, body);
     } else if (isProcess) {
       this._renderProcessSort(payload, body);
-    } else if (wType === 'comparison_sort' || wType === 'comparison') {
+    } else if (isComparison) {
       this._renderComparisonSort(payload, body);
     } else {
       // Fallback
@@ -1071,17 +1076,20 @@ export class UIRenderer {
     // Store callback reference for Next button
     self._widgetSubmitCallback = onSubmitCallback;
 
-    // Process widgets use LOCAL evaluation with 3 trials
-    if (isProcess) {
-      self._processTrialCount = 0;
-      self._processMaxTrials = 3;
+    // Process and Comparison widgets use LOCAL evaluation with 3 trials
+    if (isProcess || isComparison) {
+      self._widgetTrialCount = 0;
+      self._widgetMaxTrials = 3;
 
       submitBtn.onclick = function() {
         submitBtn.disabled = true;
         submitBtn.textContent = 'Checking...';
-        self._processTrialCount++;
-        // Trigger local evaluation
-        self._localProcessEvaluate(container, msgWrapper);
+        self._widgetTrialCount++;
+        if (isProcess) {
+          self._localProcessEvaluate(container, msgWrapper);
+        } else {
+          self._localComparisonEvaluate(container, msgWrapper);
+        }
       };
     } else {
       submitBtn.onclick = function() {
@@ -1106,10 +1114,10 @@ export class UIRenderer {
     // Track last rendered widget wrapper
     self._lastWidgetWrapper = msgWrapper;
 
-    // Scroll to bottom
-    requestAnimationFrame(function() {
-      dom.chatMessages.scrollTop = dom.chatMessages.scrollHeight;
-    });
+    // Scroll widget into view — use a small delay so DOM is ready
+    setTimeout(function() {
+      msgWrapper.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 100);
   }
 
   _renderMultipleChoice(payload, container) {
@@ -1322,7 +1330,7 @@ export class UIRenderer {
     }
 
     // Wrong — check if trials exhausted
-    var trialsLeft = self._processMaxTrials - self._processTrialCount;
+    var trialsLeft = self._widgetMaxTrials - self._widgetTrialCount;
 
     // Build action buttons
     var actions = document.createElement('div');
@@ -1351,7 +1359,7 @@ export class UIRenderer {
         submitBtn.onclick = function() {
           submitBtn.disabled = true;
           submitBtn.textContent = 'Checking...';
-          self._processTrialCount++;
+          self._widgetTrialCount++;
           self._localProcessEvaluate(widgetContainer, msgWrapper);
         };
         newFooter.appendChild(submitBtn);
@@ -1433,107 +1441,265 @@ export class UIRenderer {
     widgetContainer.appendChild(nextFooter);
   }
 
-  /** Scroll chat to bottom */
+  /** Scroll chat to bottom without jump */
   _scrollChatToBottom() {
     var dom = this.dom;
     if (dom.chatMessages) {
-      requestAnimationFrame(function() {
-        dom.chatMessages.scrollTop = dom.chatMessages.scrollHeight;
-      });
+      var lastMsg = dom.chatMessages.lastElementChild;
+      if (lastMsg) {
+        setTimeout(function() {
+          lastMsg.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }, 50);
+      }
     }
   }
 
   _renderComparisonSort(payload, container) {
     var self = this;
     self._currentWidgetState = { placements: {} };
-    
+
+    var categories = payload.categories || [];
+    var items = payload.items || [];
+
+    // Store correct category mapping for local evaluation
+    var correctMap = {};
+    items.forEach(function(item) {
+      correctMap[item.id] = item.category;
+    });
+    container.dataset.correctCategoryMap = JSON.stringify(correctMap);
+    container.dataset.categories = JSON.stringify(categories);
+
+    // Build drop zones
     var dropZonesWrap = document.createElement('div');
     dropZonesWrap.className = 'widget-drop-zones';
-    
-    var categories = payload.categories || [];
+
     categories.forEach(function(cat) {
       var zone = document.createElement('div');
       zone.className = 'widget-drop-zone';
       zone.dataset.category = cat;
-      
+
       var title = document.createElement('div');
       title.className = 'widget-drop-zone-title';
       title.textContent = cat;
       zone.appendChild(title);
-      
+
       zone.addEventListener('dragover', function(e) {
         e.preventDefault();
         zone.classList.add('drag-over');
       });
-      
+
       zone.addEventListener('dragleave', function() {
         zone.classList.remove('drag-over');
       });
-      
+
       zone.addEventListener('drop', function(e) {
         e.preventDefault();
         zone.classList.remove('drag-over');
         var itemId = e.dataTransfer.getData('text/plain');
-        var itemEl = document.querySelector('.widget-sort-item[data-id="' + itemId + '"]');
+        var itemEl = container.querySelector('.widget-sort-item[data-id="' + itemId + '"]');
         if (itemEl) {
           zone.appendChild(itemEl);
           self._currentWidgetState.placements[itemId] = cat;
         }
       });
-      
+
       dropZonesWrap.appendChild(zone);
     });
-    
+
     container.appendChild(dropZonesWrap);
-    
+
+    // Item bank
     var bank = document.createElement('div');
     bank.className = 'widget-bank';
     var bankTitle = document.createElement('div');
     bankTitle.className = 'widget-drop-zone-title';
     bankTitle.textContent = 'Item Bank';
     bank.appendChild(bankTitle);
-    
+
     bank.addEventListener('dragover', function(e) {
       e.preventDefault();
       bank.classList.add('drag-over');
     });
-    
+
     bank.addEventListener('dragleave', function() {
       bank.classList.remove('drag-over');
     });
-    
+
     bank.addEventListener('drop', function(e) {
       e.preventDefault();
       bank.classList.remove('drag-over');
       var itemId = e.dataTransfer.getData('text/plain');
-      var itemEl = document.querySelector('.widget-sort-item[data-id="' + itemId + '"]');
+      var itemEl = container.querySelector('.widget-sort-item[data-id="' + itemId + '"]');
       if (itemEl) {
         bank.appendChild(itemEl);
         delete self._currentWidgetState.placements[itemId];
       }
     });
-    
-    var items = payload.items || [];
+
     items.forEach(function(item) {
       var itemEl = document.createElement('div');
       itemEl.className = 'widget-sort-item';
       itemEl.draggable = true;
       itemEl.dataset.id = item.id;
       itemEl.textContent = item.text;
-      
+
       itemEl.addEventListener('dragstart', function(e) {
         e.dataTransfer.setData('text/plain', item.id);
         setTimeout(function() { itemEl.classList.add('is-dragging'); }, 0);
       });
-      
+
       itemEl.addEventListener('dragend', function() {
         itemEl.classList.remove('is-dragging');
       });
-      
+
       bank.appendChild(itemEl);
     });
-    
+
     container.appendChild(bank);
+  }
+
+  /**
+   * Local evaluation for comparison sort widget.
+   * Compares user placements with correct category mapping.
+   * Same 3-trial + Next button flow as process widget.
+   */
+  _localComparisonEvaluate(widgetContainer, msgWrapper) {
+    var self = this;
+    var body = widgetContainer.querySelector('.widget-body');
+    if (!body) return;
+
+    var correctMap = JSON.parse(body.dataset.correctCategoryMap || '{}');
+    var placements = self._currentWidgetState.placements || {};
+    var allItemIds = Object.keys(correctMap);
+
+    // Check if all items have been placed
+    var allPlaced = allItemIds.every(function(id) { return placements[id] !== undefined; });
+    if (!allPlaced) {
+      // Not all placed — show message and re-enable submit
+      var footer = widgetContainer.querySelector('.widget-footer');
+      if (footer) {
+        var btn = footer.querySelector('.widget-submit-btn');
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = 'Check Answer';
+        }
+      }
+      self._widgetTrialCount--; // Don't count this as a trial
+      alert('Please sort all items into categories first!');
+      return;
+    }
+
+    // Compare placements with correct map
+    var isCorrect = true;
+    var items = widgetContainer.querySelectorAll('.widget-sort-item');
+    for (var i = 0; i < items.length; i++) {
+      var itemId = items[i].dataset.id;
+      var userCat = placements[itemId];
+      var correctCat = correctMap[itemId];
+      items[i].classList.remove('is-correct', 'is-wrong');
+      if (userCat === correctCat) {
+        items[i].classList.add('is-correct');
+      } else {
+        items[i].classList.add('is-wrong');
+        isCorrect = false;
+      }
+      items[i].draggable = false;
+    }
+
+    // Remove existing footer
+    var footer = widgetContainer.querySelector('.widget-footer');
+    if (footer) footer.remove();
+    var oldActions = widgetContainer.querySelector('.widget-feedback-actions');
+    if (oldActions) oldActions.remove();
+    var oldSeq = widgetContainer.querySelector('.widget-correct-sequence');
+    if (oldSeq) oldSeq.remove();
+
+    if (isCorrect) {
+      self._showNextButton(widgetContainer, msgWrapper, null, null, true);
+      return;
+    }
+
+    // Wrong — check trials
+    var trialsLeft = self._widgetMaxTrials - self._widgetTrialCount;
+    var actions = document.createElement('div');
+    actions.className = 'widget-feedback-actions';
+
+    if (trialsLeft > 0) {
+      var retryBtn = document.createElement('button');
+      retryBtn.className = 'widget-retry-btn';
+      retryBtn.textContent = 'Try Again (' + trialsLeft + ' left)';
+      retryBtn.onclick = function() {
+        for (var i = 0; i < items.length; i++) {
+          items[i].classList.remove('is-correct', 'is-wrong');
+          items[i].draggable = true;
+        }
+        actions.remove();
+        var seq = widgetContainer.querySelector('.widget-correct-sequence');
+        if (seq) seq.remove();
+        // Re-add submit footer
+        var newFooter = document.createElement('div');
+        newFooter.className = 'widget-footer';
+        var submitBtn = document.createElement('button');
+        submitBtn.className = 'widget-submit-btn';
+        submitBtn.textContent = 'Check Answer';
+        submitBtn.onclick = function() {
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Checking...';
+          self._widgetTrialCount++;
+          self._localComparisonEvaluate(widgetContainer, msgWrapper);
+        };
+        newFooter.appendChild(submitBtn);
+        widgetContainer.appendChild(newFooter);
+        self._scrollChatToBottom();
+      };
+      actions.appendChild(retryBtn);
+    }
+
+    var showBtn = document.createElement('button');
+    showBtn.className = 'widget-show-correct-btn';
+    showBtn.textContent = 'Show Correct Answer';
+    showBtn.onclick = function() {
+      if (widgetContainer.querySelector('.widget-correct-sequence')) return;
+      var seq = document.createElement('div');
+      seq.className = 'widget-correct-sequence';
+      var seqTitle = document.createElement('div');
+      seqTitle.className = 'widget-correct-sequence-title';
+      seqTitle.textContent = 'Correct Sorting';
+      seq.appendChild(seqTitle);
+
+      var categories = JSON.parse(body.dataset.categories || '[]');
+      categories.forEach(function(cat) {
+        var catLabel = document.createElement('div');
+        catLabel.style.cssText = 'font-weight:700; font-size:0.8rem; margin:8px 0 4px; color:var(--text-secondary);';
+        catLabel.textContent = cat + ':';
+        seq.appendChild(catLabel);
+
+        allItemIds.forEach(function(id) {
+          if (correctMap[id] === cat) {
+            var stepDiv = document.createElement('div');
+            stepDiv.className = 'widget-correct-step';
+            var itemEl = widgetContainer.querySelector('.widget-sort-item[data-id="' + id + '"]');
+            stepDiv.innerHTML = '<span>' + (itemEl ? itemEl.textContent : id) + '</span>';
+            seq.appendChild(stepDiv);
+          }
+        });
+      });
+
+      widgetContainer.appendChild(seq);
+      actions.remove();
+      self._showNextButton(widgetContainer, msgWrapper, null, null, false);
+      self._scrollChatToBottom();
+    };
+    actions.appendChild(showBtn);
+
+    if (trialsLeft <= 0) {
+      widgetContainer.appendChild(actions);
+      self._showNextButton(widgetContainer, msgWrapper, null, null, false);
+    } else {
+      widgetContainer.appendChild(actions);
+    }
+
+    self._scrollChatToBottom();
   }
 
   // ── Session Complete Overlay ────────────────────────────────
