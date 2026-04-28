@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LearnBack — Learn by Teaching</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,700&display=swap" rel="stylesheet" />
+<style>
+/* ── Design Tokens (from variables.css) ─────────────────── */
+:root {
+  --navy: #022B3A;
+  --primary: #0f2a33;
+  --accent: #925e78;
+  --danger: #ef4444;
+  --navy-05: rgba(2,43,58,0.05);
+  --navy-10: rgba(2,43,58,0.10);
+  --navy-20: rgba(2,43,58,0.20);
+  --navy-40: rgba(2,43,58,0.40);
+  --navy-60: rgba(2,43,58,0.60);
+  --gold: #F6AE2D;
+  --gold-hover: #e59d1a;
+  --gold-glow: rgba(246,174,45,0.20);
+  --green: #5DA271;
+  --green-bg: rgba(93,162,113,0.10);
+  --plum: #925E78;
+  --plum-bg: rgba(146,94,120,0.08);
+  --plum-border: rgba(146,94,120,0.18);
+  --bg: #F3F4F6;
+  --surface: #FFFFFF;
+  --surface-kido: #FDF5F6;
+  --action-card-bg: #F6E8EA;
+  --text-primary: #022B3A;
+  --text-mid: rgba(2,43,58,0.60);
+  --text-soft: rgba(2,43,58,0.38);
+  --border: #E4E5EB;
+  --border-light: #EEEFF3;
+  --shadow-zone: 0 2px 8px rgba(2,43,58,0.04), 0 12px 32px rgba(2,43,58,0.06);
+  --shadow-card: 0 2px 8px rgba(2,43,58,0.06);
+  --shadow-sm: 0 1px 4px rgba(2,43,58,0.05);
+  --font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --fs-xs: 0.6875rem;
+  --fs-sm: 0.8125rem;
+  --fs-base: 0.875rem;
+  --fs-md: 1rem;
+  --fs-lg: 1.125rem;
+  --r-zone: 16px;
+  --r-card: 12px;
+  --r-pill: 100px;
+  --r-sm: 8px;
+  --r-xs: 6px;
+  --t-fast: 140ms ease;
+  --t-normal: 240ms ease;
+  --green-bg: rgba(93,162,113,0.10);
+  --session-success-bg: rgba(93,162,113,0.10);
+  --session-success-border: rgba(93,162,113,0.24);
+  --session-warning-bg: rgba(246,174,45,0.10);
+  --session-warning-border: rgba(246,174,45,0.24);
+  --session-danger-bg: rgba(239,68,68,0.10);
+  --session-danger-border: rgba(239,68,68,0.24);
+}
+
+/* ── Reset ────────────────────────────────────────────────── */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { font-size: 16px; -webkit-font-smoothing: antialiased; scroll-behavior: smooth; }
+body { font-family: var(--font); background: var(--bg); color: var(--text-primary); line-height: 1.5; overflow-x: hidden; }
+a { text-decoration: none; color: inherit; }
+button { font-family: inherit; cursor: pointer; border: none; background: none; }
+img { display: block; max-width: 100%; }
+
+/* ── Utility ──────────────────────────────────────────────── */
+.container { width: 100%; max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+.section { padding: 96px 0; }
+.section--tight { padding: 72px 0; }
+.tag {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 12px; border-radius: var(--r-pill);
+  font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
+}
+.tag--plum { background: var(--plum-bg); color: var(--plum); border: 1px solid var(--plum-border); }
+.tag--gold  { background: var(--gold-glow); color: #9b6a00; border: 1px solid rgba(246,174,45,0.30); }
+.tag--green { background: var(--green-bg); color: #2D6A40; border: 1px solid rgba(93,162,113,0.24); }
+
+.section-eyebrow { margin-bottom: 12px; }
+.section-title { font-size: clamp(1.75rem, 3.5vw, 2.5rem); font-weight: 800; line-height: 1.1; letter-spacing: -0.03em; color: var(--navy); }
+.section-body { font-size: 1rem; line-height: 1.75; color: var(--text-mid); max-width: 54ch; margin-top: 14px; }
+
+/* ── Buttons ──────────────────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 12px 24px; border-radius: 14px;
+  font-size: 0.925rem; font-weight: 700; letter-spacing: -0.01em;
+  transition: transform var(--t-fast), box-shadow var(--t-fast), filter var(--t-fast);
+  cursor: pointer;
+}
+.btn:hover { transform: translateY(-2px); }
+.btn:active { transform: translateY(1px); }
+
+.btn--primary {
+  background: linear-gradient(180deg, #0c3442 0%, var(--navy) 100%);
+  color: #fff;
+  box-shadow: 0 10px 28px rgba(2,43,58,0.20), 0 4px 0 #011a23;
+}
+.btn--primary:hover { box-shadow: 0 16px 36px rgba(2,43,58,0.26), 0 4px 0 #011a23; }
+
+.btn--gold {
+  background: linear-gradient(180deg, #ffbb3d 0%, var(--gold) 100%);
+  color: var(--navy);
+  box-shadow: 0 10px 24px rgba(246,174,45,0.28), 0 4px 0 #c48a1c;
+}
+.btn--gold:hover { filter: brightness(1.04); box-shadow: 0 14px 32px rgba(246,174,45,0.34), 0 4px 0 #c48a1c; }
+
+.btn--ghost {
+  background: transparent; color: var(--text-mid);
+  border: 1.5px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+.btn--ghost:hover { border-color: rgba(2,43,58,0.22); color: var(--navy); background: rgba(2,43,58,0.03); }
+
+.btn--sm { padding: 8px 16px; font-size: 0.8125rem; border-radius: 10px; }
+
+/* ── Nav ─────────────────────────────────────────────────── */
+.nav {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(243,244,246,0.84);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  height: 60px;
+  display: flex; align-items: center;
+}
+.nav__inner {
+  display: flex; align-items: center; justify-content: space-between; gap: 24px;
+  width: 100%; max-width: 1080px; margin: 0 auto; padding: 0 24px;
+}
+.nav__logo {
+  display: flex; align-items: center; gap: 10px;
+}
+.nav__logo-mark {
+  width: 32px; height: 32px; border-radius: 8px;
+  background: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+}
+.nav__logo-mark svg { width: 18px; height: 18px; }
+.nav__wordmark { font-size: 1.05rem; font-weight: 800; color: var(--navy); letter-spacing: -0.02em; }
+.nav__wordmark span { color: var(--plum); }
+.nav__links { display: flex; align-items: center; gap: 4px; }
+.nav__link {
+  padding: 6px 14px; border-radius: var(--r-pill);
+  font-size: var(--fs-sm); font-weight: 600; color: var(--text-mid);
+  transition: background var(--t-fast), color var(--t-fast);
+}
+.nav__link:hover { background: var(--navy-05); color: var(--navy); }
+.nav__cta { display: flex; align-items: center; gap: 8px; }
+
+/* ── Hero ─────────────────────────────────────────────────── */
+.hero {
+  padding: 80px 0 0;
+  position: relative;
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 70% 50% at 60% -10%, rgba(146,94,120,0.10), transparent),
+    radial-gradient(ellipse 50% 40% at 10% 80%, rgba(246,174,45,0.07), transparent);
+  pointer-events: none;
+}
+.hero__inner {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center;
+}
+.hero__text { position: relative; z-index: 1; }
+.hero__eyebrow { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; }
+.hero__title {
+  font-size: clamp(2.4rem, 4.5vw, 3.4rem);
+  font-weight: 800; line-height: 1.05; letter-spacing: -0.04em; color: var(--navy);
+}
+.hero__title em { font-style: normal; color: var(--plum); }
+.hero__subtitle {
+  font-size: 1.05rem; line-height: 1.72; color: var(--text-mid); margin-top: 16px; max-width: 46ch;
+}
+.hero__value-strip {
+  display: flex; flex-direction: column; gap: 10px; margin-top: 28px;
+}
+.hero__value-item {
+  display: flex; align-items: center; gap: 10px;
+  font-size: var(--fs-sm); font-weight: 600; color: var(--text-primary);
+}
+.hero__value-icon {
+  width: 28px; height: 28px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  font-size: 14px;
+}
+.hero__ctas { display: flex; gap: 12px; margin-top: 36px; flex-wrap: wrap; }
+.hero__visual {
+  position: relative;
+  padding-bottom: 40px;
+}
+
+/* ── Hero: Split Screen Demo ──────────────────────────────── */
+.hero-split {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1.5px solid var(--border);
+  box-shadow: 0 24px 72px rgba(2,43,58,0.14), 0 6px 0 rgba(2,43,58,0.06);
+  position: relative;
+}
+.hero-split__divider {
+  position: absolute; top: 0; bottom: 0; left: 50%;
+  width: 1px; background: var(--border); z-index: 10;
+}
+.hero-split__divider-label {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  padding: 4px 10px;
+  font-size: 10px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--text-soft); white-space: nowrap; z-index: 11;
+}
+
+.hero-panel {
+  background: var(--surface);
+  padding: 16px;
+  display: flex; flex-direction: column; gap: 10px;
+  min-height: 340px;
+}
+.hero-panel__label {
+  font-size: 9px; font-weight: 800; letter-spacing: 0.10em; text-transform: uppercase;
+  color: var(--text-soft); padding: 0 2px;
+}
+.hero-panel--right { background: var(--surface-kido); }
+
+/* Mini chat bubbles */
+.mini-bubble {
+  padding: 9px 13px; border-radius: 14px;
+  font-size: 0.78rem; line-height: 1.5; font-weight: 500; max-width: 88%;
+}
+.mini-bubble--ai {
+  background: linear-gradient(180deg, #fff 0%, #f7fafc 100%);
+  border: 1px solid rgba(2,43,58,0.08);
+  color: var(--text-primary); border-top-left-radius: 5px;
+  align-self: flex-start;
+}
+.mini-bubble--user {
+  background: linear-gradient(180deg, #0c3442 0%, var(--navy) 100%);
+  color: #fff; border-top-right-radius: 5px;
+  align-self: flex-end;
+}
+.mini-bubble--system {
+  background: var(--session-warning-bg);
+  border: 1px solid var(--session-warning-border);
+  color: #7a4e00; font-size: 0.72rem; font-weight: 600; align-self: flex-start;
+}
+.mini-chat { display: flex; flex-direction: column; gap: 8px; flex: 1; }
+
+/* Character block */
+.char-block {
+  display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 8px 0;
+}
+.char-face {
+  width: 64px; height: 64px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 32px;
+  border: 2px solid var(--plum-border);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+  transition: all 0.4s ease;
+  animation: charFloat 3s ease-in-out infinite;
+}
+@keyframes charFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+.char-state {
+  font-size: 9px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 3px 10px; border-radius: var(--r-pill);
+}
+.char-state--thinking { background: var(--plum-bg); color: var(--plum); }
+.char-state--correct  { background: var(--green-bg); color: #2D6A40; }
+.char-hud {
+  width: 100%; background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: var(--r-card); overflow: hidden; box-shadow: var(--shadow-sm);
+}
+.char-hud__header {
+  padding: 7px 12px;
+  background: var(--plum-bg); border-bottom: 1px solid var(--plum-border);
+  font-size: 9px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--plum);
+}
+.char-hud__body { padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.char-hud__label { display: flex; justify-content: space-between; font-size: 10px; font-weight: 600; color: var(--text-soft); }
+.char-hud__pct { font-weight: 800; color: var(--plum); }
+.char-hud__track {
+  width: 100%; height: 5px; background: rgba(146,94,120,0.12); border-radius: 100px; overflow: hidden;
+}
+.char-hud__fill {
+  height: 100%; width: 62%; background: var(--plum); border-radius: 100px;
+  animation: fillGrow 2.5s ease-out forwards;
+}
+@keyframes fillGrow { from{width:0%} to{width:62%} }
+
+/* ── Floating badge ───────────────────────────────────────── */
+.hero__badge {
+  position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: var(--r-pill); padding: 7px 14px;
+  box-shadow: var(--shadow-zone);
+  font-size: var(--fs-xs); font-weight: 700; color: var(--navy);
+  white-space: nowrap; z-index: 5;
+}
+.hero__badge-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px rgba(93,162,113,0.25); }
+
+/* ── Value Strip ──────────────────────────────────────────── */
+.value-strip {
+  padding: 32px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.value-strip__inner {
+  display: flex; align-items: center; justify-content: center; gap: 0; flex-wrap: wrap;
+}
+.value-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 36px;
+  font-size: var(--fs-sm); font-weight: 600; color: var(--text-mid);
+  border-right: 1px solid var(--border);
+}
+.value-item:last-child { border-right: none; }
+.value-item__icon { font-size: 1.1rem; }
+.value-item strong { color: var(--navy); }
+
+/* ── Interactive Preview ──────────────────────────────────── */
+.demo-wrap {
+  display: grid; grid-template-columns: 1fr 460px; gap: 48px; align-items: start;
+}
+.demo-window {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(2,43,58,0.10);
+}
+.demo-window__bar {
+  height: 44px; background: var(--navy);
+  display: flex; align-items: center; gap: 8px; padding: 0 16px;
+}
+.demo-dot { width: 10px; height: 10px; border-radius: 50%; }
+.demo-dot--r { background: #ef4444; }
+.demo-dot--y { background: var(--gold); }
+.demo-dot--g { background: var(--green); }
+.demo-window__title {
+  flex: 1; text-align: center;
+  font-size: var(--fs-xs); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.40);
+}
+
+.demo-chat {
+  padding: 20px; display: flex; flex-direction: column; gap: 12px; min-height: 320px;
+}
+.demo-input-row {
+  display: flex; gap: 8px; padding: 14px 16px;
+  border-top: 1px solid var(--border-light);
+  background: linear-gradient(180deg, transparent, rgba(255,255,255,0.6));
+}
+.demo-input {
+  flex: 1; padding: 10px 14px; border-radius: 14px;
+  border: 1px solid rgba(2,43,58,0.10);
+  font-size: var(--fs-sm); font-family: var(--font); color: var(--text-primary);
+  background: #f8f9fb; outline: none;
+}
+.demo-send {
+  width: 38px; height: 38px; border-radius: 11px;
+  background: var(--navy); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0;
+  transition: transform var(--t-fast);
+}
+.demo-send:hover { transform: translateY(-1px); }
+
+/* Typing dots */
+.typing-dots { display: inline-flex; align-items: center; gap: 4px; height: 20px; }
+.typing-dots span {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: rgba(2,43,58,0.30);
+  animation: tBounce 1.4s infinite ease-in-out both;
+}
+.typing-dots span:nth-child(1){animation-delay:-0.32s}
+.typing-dots span:nth-child(2){animation-delay:-0.16s}
+@keyframes tBounce{0%,80%,100%{transform:translateY(0);opacity:.35}40%{transform:translateY(-4px);opacity:1}}
+
+/* Demo state indicator */
+.demo-state {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px; border-radius: 10px;
+  font-size: var(--fs-xs); font-weight: 700;
+  border: 1px solid var(--border);
+  width: fit-content; align-self: flex-start;
+}
+.demo-state--thinking { background: var(--plum-bg); border-color: var(--plum-border); color: var(--plum); }
+.demo-state--correct  { background: var(--green-bg); border-color: var(--session-success-border); color: #2D6A40; }
+.demo-state--warn     { background: var(--session-warning-bg); border-color: var(--session-warning-border); color: #7a4e00; }
+
+/* Loop steps */
+.loop-steps { display: flex; flex-direction: column; gap: 0; }
+.loop-step {
+  display: flex; gap: 16px; padding-bottom: 28px; position: relative;
+}
+.loop-step:last-child { padding-bottom: 0; }
+.loop-step__line {
+  position: absolute; left: 19px; top: 40px; bottom: 0;
+  width: 1.5px; background: var(--border);
+}
+.loop-step:last-child .loop-step__line { display: none; }
+.loop-step__num {
+  width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+  background: var(--surface); border: 2px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.8125rem; font-weight: 800; color: var(--text-mid);
+  position: relative; z-index: 1;
+  transition: all var(--t-normal);
+}
+.loop-step.is-active .loop-step__num {
+  background: var(--navy); border-color: var(--navy); color: #fff;
+  box-shadow: 0 4px 14px rgba(2,43,58,0.20);
+}
+.loop-step__content { flex: 1; padding-top: 8px; }
+.loop-step__title { font-size: var(--fs-base); font-weight: 700; color: var(--navy); }
+.loop-step__body { font-size: var(--fs-sm); line-height: 1.6; color: var(--text-mid); margin-top: 4px; }
+
+/* ── How It Works ─────────────────────────────────────────── */
+.steps-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-top: 48px; }
+.step-card {
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: 16px; padding: 24px 20px;
+  position: relative; overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--t-normal), box-shadow var(--t-normal);
+}
+.step-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-zone); }
+.step-card__num {
+  position: absolute; top: -12px; right: 16px;
+  font-size: 4rem; font-weight: 800; color: var(--navy-05);
+  line-height: 1; pointer-events: none; user-select: none;
+}
+.step-card__icon {
+  width: 44px; height: 44px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.3rem; margin-bottom: 14px;
+}
+.step-card__icon--navy { background: var(--navy); }
+.step-card__icon--plum { background: var(--plum-bg); border: 1px solid var(--plum-border); }
+.step-card__icon--gold  { background: var(--gold-glow); border: 1px solid rgba(246,174,45,0.25); }
+.step-card__icon--green { background: var(--green-bg); border: 1px solid rgba(93,162,113,0.24); }
+.step-card__title { font-size: var(--fs-md); font-weight: 700; color: var(--navy); margin-bottom: 6px; }
+.step-card__body  { font-size: var(--fs-sm); line-height: 1.65; color: var(--text-mid); }
+
+/* Arrow connectors */
+.steps-arrows { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; padding: 0 80px; margin-top: 8px; }
+.step-arrow { display: flex; justify-content: center; color: var(--border); font-size: 1.2rem; }
+.step-arrow:last-child { opacity: 0; }
+
+/* ── Comparison ───────────────────────────────────────────── */
+.comparison-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+  border-radius: 20px; overflow: hidden;
+  border: 1.5px solid var(--border);
+  box-shadow: var(--shadow-zone);
+  margin-top: 48px;
+}
+.cmp-col__header {
+  padding: 20px 28px;
+  display: flex; align-items: center; gap: 10px;
+  font-size: var(--fs-sm); font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+}
+.cmp-col--old .cmp-col__header  { background: #f8f9fb; border-bottom: 1px solid var(--border); color: var(--text-mid); }
+.cmp-col--new .cmp-col__header  { background: var(--navy); border-bottom: 1px solid rgba(255,255,255,0.10); color: rgba(255,255,255,0.80); }
+.cmp-col--new { background: var(--navy); }
+.cmp-col__body { display: flex; flex-direction: column; }
+.cmp-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 28px; border-bottom: 1px solid var(--border);
+  font-size: var(--fs-sm); font-weight: 600;
+}
+.cmp-col--old .cmp-row { color: var(--text-mid); background: var(--surface); }
+.cmp-col--old .cmp-row:nth-child(odd) { background: #fafafa; }
+.cmp-col--new .cmp-row { color: rgba(255,255,255,0.80); border-bottom-color: rgba(255,255,255,0.06); }
+.cmp-col--new .cmp-row:nth-child(odd) { background: rgba(255,255,255,0.03); }
+.cmp-row:last-child { border-bottom: none; }
+.cmp-icon { font-size: 0.9rem; flex-shrink: 0; }
+
+/* ── Feature Cards ────────────────────────────────────────── */
+.features-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 16px; margin-top: 48px; }
+.feature-card {
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: 20px; padding: 28px;
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--t-normal), box-shadow var(--t-normal);
+  position: relative; overflow: hidden;
+}
+.feature-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-zone); }
+.feature-card__icon {
+  width: 48px; height: 48px; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center; font-size: 1.4rem;
+  margin-bottom: 16px;
+}
+.feature-card__title { font-size: 1rem; font-weight: 700; color: var(--navy); margin-bottom: 8px; }
+.feature-card__body  { font-size: var(--fs-sm); line-height: 1.7; color: var(--text-mid); }
+.feature-card--accent { border-color: var(--plum-border); background: var(--surface-kido); }
+.feature-card--accent::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, var(--plum), rgba(146,94,120,0));
+}
+
+/* ── Science Callout ──────────────────────────────────────── */
+.science-card {
+  background: var(--navy); border-radius: 24px;
+  padding: 56px 64px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center;
+  overflow: hidden; position: relative;
+  box-shadow: 0 24px 64px rgba(2,43,58,0.20);
+}
+.science-card::before {
+  content: '';
+  position: absolute; top: -50%; right: -20%;
+  width: 400px; height: 400px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(146,94,120,0.18), transparent 70%);
+  pointer-events: none;
+}
+.science-card__tag { background: rgba(255,255,255,0.10); color: rgba(255,255,255,0.70); border: 1px solid rgba(255,255,255,0.14); }
+.science-card__title { font-size: clamp(1.5rem,3vw,2.1rem); font-weight: 800; letter-spacing: -0.03em; color: #fff; margin-top: 14px; line-height: 1.1; }
+.science-card__body { font-size: 0.95rem; line-height: 1.75; color: rgba(255,255,255,0.60); margin-top: 14px; }
+.science-stats { display: flex; flex-direction: column; gap: 16px; }
+.science-stat {
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 14px; padding: 18px 20px;
+}
+.science-stat__num { font-size: 2rem; font-weight: 800; color: var(--gold); letter-spacing: -0.04em; line-height: 1; }
+.science-stat__label { font-size: var(--fs-sm); color: rgba(255,255,255,0.55); margin-top: 4px; font-weight: 500; }
+
+/* ── Feedback CTA ─────────────────────────────────────────── */
+.feedback-band {
+  background: var(--action-card-bg);
+  border: 1.5px solid var(--plum-border);
+  border-radius: 24px;
+  padding: 48px 56px;
+  display: flex; align-items: center; justify-content: space-between; gap: 40px;
+  position: relative; overflow: hidden;
+}
+.feedback-band::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, var(--plum), rgba(146,94,120,0.30), transparent);
+}
+.feedback-band__left { flex: 1; }
+.feedback-band__title { font-size: 1.5rem; font-weight: 800; color: var(--navy); letter-spacing: -0.03em; }
+.feedback-band__body { font-size: var(--fs-sm); color: var(--text-mid); line-height: 1.7; margin-top: 8px; max-width: 46ch; }
+.feedback-band__actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* ── Privacy & Contact ────────────────────────────────────── */
+.meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 48px; }
+.meta-card {
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: 16px; padding: 24px 28px;
+  box-shadow: var(--shadow-sm);
+}
+.meta-card__title { font-size: 0.95rem; font-weight: 700; color: var(--navy); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.meta-item { display: flex; align-items: center; gap: 10px; font-size: var(--fs-sm); color: var(--text-mid); margin-bottom: 8px; font-weight: 500; }
+.meta-item__dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+.meta-link { color: var(--plum); font-weight: 600; border-bottom: 1.5px solid var(--plum-border); padding-bottom: 1px; transition: border-color var(--t-fast); }
+.meta-link:hover { border-color: var(--plum); }
+
+/* ── Footer ───────────────────────────────────────────────── */
+.footer {
+  border-top: 1px solid var(--border); padding: 36px 0;
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;
+}
+.footer__copy { font-size: var(--fs-xs); color: var(--text-soft); font-weight: 500; }
+.footer__links { display: flex; gap: 20px; }
+.footer__link { font-size: var(--fs-xs); color: var(--text-soft); font-weight: 600; transition: color var(--t-fast); }
+.footer__link:hover { color: var(--navy); }
+.footer__stack { display: flex; align-items: center; gap: 6px; font-size: var(--fs-xs); color: var(--text-soft); }
+.stack-pill {
+  padding: 2px 8px; border-radius: var(--r-pill);
+  background: var(--navy-05); border: 1px solid var(--border);
+  font-size: 10px; font-weight: 700; color: var(--text-mid);
+}
+
+/* ── Entrance Animations ──────────────────────────────────── */
+@keyframes fadeUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
+@keyframes fadeIn  { from{opacity:0} to{opacity:1} }
+
+.anim-fade-up { animation: fadeUp 0.6s ease-out both; }
+.anim-fade-up[data-delay="1"] { animation-delay: 0.1s; }
+.anim-fade-up[data-delay="2"] { animation-delay: 0.2s; }
+.anim-fade-up[data-delay="3"] { animation-delay: 0.3s; }
+.anim-fade-up[data-delay="4"] { animation-delay: 0.4s; }
+.anim-fade-up[data-delay="5"] { animation-delay: 0.5s; }
+
+/* Scroll reveal */
+.reveal { opacity: 0; transform: translateY(20px); transition: opacity 0.55s ease, transform 0.55s ease; }
+.reveal.is-visible { opacity: 1; transform: translateY(0); }
+
+/* ── Responsive ───────────────────────────────────────────── */
+@media(max-width:900px){
+  .hero__inner { grid-template-columns: 1fr; }
+  .hero-split { display: none; }
+  .demo-wrap { grid-template-columns: 1fr; }
+  .steps-grid { grid-template-columns: repeat(2,1fr); }
+  .science-card { grid-template-columns: 1fr; padding: 40px 32px; gap: 32px; }
+  .features-grid { grid-template-columns: 1fr; }
+  .comparison-grid { grid-template-columns: 1fr; }
+  .meta-grid { grid-template-columns: 1fr; }
+  .feedback-band { flex-direction: column; padding: 36px 28px; }
+  .cmp-col--old { display: none; }
+}
+@media(max-width:600px){
+  .steps-grid { grid-template-columns: 1fr; }
+  .nav__links { display: none; }
+  .section { padding: 64px 0; }
+  .hero { padding: 48px 0 0; }
+  .hero__ctas { flex-direction: column; }
+  .value-item { padding: 12px 20px; border-right: none; border-bottom: 1px solid var(--border); width: 100%; }
+}
+
+/* ── About section accent ─────────────────────────────────── */
+.about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; }
+.about-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+.about-pill {
+  padding: 6px 14px; border-radius: var(--r-pill);
+  background: var(--surface); border: 1.5px solid var(--border);
+  font-size: var(--fs-xs); font-weight: 700; color: var(--text-mid);
+  box-shadow: var(--shadow-sm);
+}
+.about-visual {
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: 20px; padding: 28px; box-shadow: var(--shadow-zone);
+}
+.about-visual__title { font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-soft); margin-bottom: 16px; }
+.protege-steps { display: flex; flex-direction: column; gap: 10px; }
+.protege-step {
+  display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+  background: #fafafa; border: 1.5px solid var(--border);
+  border-radius: 10px; font-size: var(--fs-sm); font-weight: 600; color: var(--text-primary);
+}
+.protege-step__icon { font-size: 1rem; flex-shrink: 0; }
+.protege-arrow { text-align: center; color: var(--plum); font-size: 0.75rem; }
+
+@media(max-width:760px){ .about-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<!-- ── NAV ─────────────────────────────────────────────────── -->
+<nav class="nav">
+  <div class="nav__inner">
+    <a href="#" class="nav__logo">
+      <div class="nav__logo-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <span class="nav__wordmark">Learn<span>Back</span></span>
+    </a>
+    <div class="nav__links">
+      <a href="#how-it-works" class="nav__link">How It Works</a>
+      <a href="#features" class="nav__link">Features</a>
+      <a href="#science" class="nav__link">Science</a>
+      <a href="#feedback" class="nav__link">Beta</a>
+    </div>
+    <div class="nav__cta">
+      <a href="#feedback" class="btn btn--ghost btn--sm">Give Feedback</a>
+      <a href="#demo" class="btn btn--primary btn--sm">Try Demo</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ── HERO ────────────────────────────────────────────────── -->
+<section class="hero">
+  <div class="container">
+    <div class="hero__inner">
+      <div class="hero__text">
+        <div class="hero__eyebrow anim-fade-up">
+          <span class="tag tag--plum">✦ AI-Powered Learning</span>
+          <span class="tag tag--green">🔬 Research-Backed</span>
+        </div>
+        <h1 class="hero__title anim-fade-up" data-delay="1">
+          Learn by Teaching.<br><em>See It. Feel It.</em><br>Improve It.
+        </h1>
+        <p class="hero__subtitle anim-fade-up" data-delay="2">
+          An AI-powered learning experience where you teach concepts, interact with a live character, and instantly discover what you truly understand — not just what you think you do.
+        </p>
+        <div class="hero__value-strip anim-fade-up" data-delay="3">
+          <div class="hero__value-item">
+            <div class="hero__value-icon" style="background:var(--plum-bg)">🧠</div>
+            <span>Detect <strong>hidden misconceptions</strong> instantly</span>
+          </div>
+          <div class="hero__value-item">
+            <div class="hero__value-icon" style="background:var(--gold-glow)">🎮</div>
+            <span>Learn through <strong>interaction</strong>, not memorization</span>
+          </div>
+          <div class="hero__value-item">
+            <div class="hero__value-icon" style="background:var(--green-bg)">📊</div>
+            <span>Get <strong>real-time feedback</strong> on your understanding</span>
+          </div>
+        </div>
+        <div class="hero__ctas anim-fade-up" data-delay="4">
+          <a href="#demo" class="btn btn--primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Try Live Demo
+          </a>
+          <a href="#how-it-works" class="btn btn--ghost">Watch How It Works →</a>
+        </div>
+      </div>
+
+      <!-- Split screen preview -->
+      <div class="hero__visual anim-fade-up" data-delay="3">
+        <div class="hero-split">
+          <div class="hero-panel">
+            <div class="hero-panel__label">You — Student</div>
+            <div class="mini-chat">
+              <div class="mini-bubble mini-bubble--ai">
+                Explain why <strong>mitosis</strong> and <strong>meiosis</strong> are different. Teach me like I'm confused.
+              </div>
+              <div class="mini-bubble mini-bubble--user">
+                Mitosis makes identical copies for growth, but meiosis makes 4 unique cells for reproduction…
+              </div>
+              <div class="mini-bubble mini-bubble--system">
+                💡 Hint: You mentioned "unique" — can you say why?
+              </div>
+              <div class="mini-bubble mini-bubble--user">
+                Because meiosis shuffles genes through crossing over!
+              </div>
+              <div class="mini-bubble mini-bubble--ai" style="border-color:rgba(93,162,113,0.35);background:rgba(93,162,113,0.06);color:#166534">
+                ✓ Correct! Crossing over is the key distinction. Well taught.
+              </div>
+            </div>
+          </div>
+          <div class="hero-split__divider">
+            <div class="hero-split__divider-label">Live Reaction</div>
+          </div>
+          <div class="hero-panel hero-panel--right">
+            <div class="hero-panel__label">KIDO — AI Learner</div>
+            <div class="char-block">
+              <div class="char-face" id="charFace">🤔</div>
+              <div class="char-state char-state--thinking" id="charState">Thinking…</div>
+            </div>
+            <div class="char-hud">
+              <div class="char-hud__header">Understanding Progress</div>
+              <div class="char-hud__body">
+                <div class="char-hud__label"><span>Mitosis vs Meiosis</span><span class="char-hud__pct" id="hudPct">62%</span></div>
+                <div class="char-hud__track"><div class="char-hud__fill" id="hudFill"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="hero__badge">
+          <div class="hero__badge-dot"></div>
+          Demo running live · No login required
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── VALUE STRIP ─────────────────────────────────────────── -->
+<div class="value-strip" style="margin-top:40px">
+  <div class="value-strip__inner">
+    <div class="value-item"><span class="value-item__icon">⚡</span><span>Instant misconception detection</span></div>
+    <div class="value-item"><span class="value-item__icon">🎭</span><span>Reactive AI character (KIDO)</span></div>
+    <div class="value-item"><span class="value-item__icon">📈</span><span>Concept-level progress tracking</span></div>
+    <div class="value-item"><span class="value-item__icon">🔬</span><span>Based on the Protégé Effect</span></div>
+  </div>
+</div>
+
+<!-- ── INTERACTIVE DEMO ────────────────────────────────────── -->
+<section class="section" id="demo">
+  <div class="container">
+    <div class="demo-wrap">
+      <!-- Left: steps -->
+      <div>
+        <div class="section-eyebrow reveal"><span class="tag tag--plum">🎮 Interactive Demo</span></div>
+        <h2 class="section-title reveal" data-delay="1">Experience the<br>Learning Loop</h2>
+        <p class="section-body reveal" data-delay="2">In under 10 seconds, you'll feel the difference between passive study and active teaching. Try the mock interaction and watch KIDO react.</p>
+
+        <div class="loop-steps" style="margin-top:36px">
+          <div class="loop-step is-active reveal" data-delay="2">
+            <div class="loop-step__line"></div>
+            <div class="loop-step__num">1</div>
+            <div class="loop-step__content">
+              <div class="loop-step__title">AI asks a question</div>
+              <div class="loop-step__body">KIDO poses a targeted concept from your study material — no guessing.</div>
+            </div>
+          </div>
+          <div class="loop-step reveal" data-delay="3">
+            <div class="loop-step__line"></div>
+            <div class="loop-step__num">2</div>
+            <div class="loop-step__content">
+              <div class="loop-step__title">You teach the concept</div>
+              <div class="loop-step__body">Type your explanation in plain English — like you're teaching a friend.</div>
+            </div>
+          </div>
+          <div class="loop-step reveal" data-delay="4">
+            <div class="loop-step__line"></div>
+            <div class="loop-step__num">3</div>
+            <div class="loop-step__content">
+              <div class="loop-step__title">Character reacts in real-time</div>
+              <div class="loop-step__body">KIDO shows confusion, understanding, or doubt — live visual feedback.</div>
+            </div>
+          </div>
+          <div class="loop-step reveal" data-delay="5">
+            <div class="loop-step__num">4</div>
+            <div class="loop-step__content">
+              <div class="loop-step__title">Gaps revealed. Progress tracked.</div>
+              <div class="loop-step__body">Misconceptions surface immediately. Your concept score updates in real time.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: mock chat window -->
+      <div class="reveal" data-delay="2">
+        <div class="demo-window">
+          <div class="demo-window__bar">
+            <div class="demo-dot demo-dot--r"></div>
+            <div class="demo-dot demo-dot--y"></div>
+            <div class="demo-dot demo-dot--g"></div>
+            <div class="demo-window__title">LearnBack Session</div>
+          </div>
+          <div class="demo-chat" id="demoChat">
+            <div class="demo-state demo-state--thinking">
+              <span>🤔</span> KIDO is waiting for your explanation
+            </div>
+            <div class="mini-bubble mini-bubble--ai" style="font-size:0.88rem">
+              Hey! Teach me: what is <strong>Newton's Second Law</strong>? Explain it simply — pretend I've never heard of it.
+            </div>
+          </div>
+          <div class="demo-input-row">
+            <input class="demo-input" id="demoInput" placeholder="Type your explanation here…" />
+            <button class="demo-send" id="demoSend" onclick="runDemo()">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+          </div>
+        </div>
+        <p style="font-size:var(--fs-xs);color:var(--text-soft);text-align:center;margin-top:12px;font-weight:600">
+          ✦ Click Send to see KIDO react — this is a scripted preview
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── HOW IT WORKS ────────────────────────────────────────── -->
+<section class="section" id="how-it-works" style="background:var(--surface);border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
+  <div class="container">
+    <div style="text-align:center">
+      <div class="section-eyebrow reveal"><span class="tag tag--gold">🔄 How It Works</span></div>
+      <h2 class="section-title reveal" style="margin:0 auto">From Passive Study → Active Mastery</h2>
+      <p class="section-body reveal" style="margin:14px auto 0;text-align:center">Four steps. One powerful shift in how you learn.</p>
+    </div>
+    <div class="steps-grid">
+      <div class="step-card reveal" data-delay="1">
+        <div class="step-card__num">1</div>
+        <div class="step-card__icon step-card__icon--navy">📄</div>
+        <div class="step-card__title">Upload Content</div>
+        <div class="step-card__body">Add your lecture slides, notes, or topic list. LearnBack extracts the core concepts automatically.</div>
+      </div>
+      <div class="step-card reveal" data-delay="2">
+        <div class="step-card__num">2</div>
+        <div class="step-card__icon step-card__icon--plum">🤖</div>
+        <div class="step-card__title">AI Challenges You</div>
+        <div class="step-card__body">KIDO asks smart, targeted questions designed to expose the edges of what you truly know.</div>
+      </div>
+      <div class="step-card reveal" data-delay="3">
+        <div class="step-card__num">3</div>
+        <div class="step-card__icon step-card__icon--gold">✍️</div>
+        <div class="step-card__title">You Teach the AI</div>
+        <div class="step-card__body">Explain concepts in your own words. Teaching forces your brain to reconstruct — not just recall.</div>
+      </div>
+      <div class="step-card reveal" data-delay="4">
+        <div class="step-card__num">4</div>
+        <div class="step-card__icon step-card__icon--green">📊</div>
+        <div class="step-card__title">Get Instant Feedback</div>
+        <div class="step-card__body">See mistakes surface in real-time, fix misconceptions, and track your mastery across every session.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── COMPARISON ─────────────────────────────────────────── -->
+<section class="section" id="comparison">
+  <div class="container">
+    <div style="text-align:center">
+      <div class="section-eyebrow reveal"><span class="tag tag--plum">⚡ See the Difference</span></div>
+      <h2 class="section-title reveal" style="margin:0 auto">Traditional Learning vs LearnBack</h2>
+    </div>
+    <div class="comparison-grid reveal">
+      <div class="cmp-col cmp-col--old">
+        <div class="cmp-col__header">
+          <span>📖</span> Traditional Study
+        </div>
+        <div class="cmp-col__body">
+          <div class="cmp-row"><span class="cmp-icon">❌</span> Passive reading & highlighting</div>
+          <div class="cmp-row"><span class="cmp-icon">❌</span> Illusion of understanding</div>
+          <div class="cmp-row"><span class="cmp-icon">❌</span> No real-time feedback</div>
+          <div class="cmp-row"><span class="cmp-icon">❌</span> Gaps only found during exam</div>
+          <div class="cmp-row"><span class="cmp-icon">❌</span> Zero engagement signal</div>
+          <div class="cmp-row"><span class="cmp-icon">❌</span> Progress invisible until test</div>
+        </div>
+      </div>
+      <div class="cmp-col cmp-col--new">
+        <div class="cmp-col__header">
+          <span style="color:var(--gold)">✦</span> LearnBack
+        </div>
+        <div class="cmp-col__body">
+          <div class="cmp-row"><span class="cmp-icon">✅</span> Active teaching & explanation</div>
+          <div class="cmp-row"><span class="cmp-icon">✅</span> Real comprehension exposed</div>
+          <div class="cmp-row"><span class="cmp-icon">✅</span> Instant AI evaluation</div>
+          <div class="cmp-row"><span class="cmp-icon">✅</span> Misconceptions surface live</div>
+          <div class="cmp-row"><span class="cmp-icon">✅</span> Character reacts in real-time</div>
+          <div class="cmp-row"><span class="cmp-icon">✅</span> Concept mastery tracked per-session</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FEATURES ────────────────────────────────────────────── -->
+<section class="section" id="features" style="background:var(--surface);border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
+  <div class="container">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center">
+      <div>
+        <div class="section-eyebrow reveal"><span class="tag tag--plum">🧩 Features</span></div>
+        <h2 class="section-title reveal">Built for<br>real understanding</h2>
+        <p class="section-body reveal">Every feature is designed around one goal: helping you know <em>what</em> you actually know — before the exam does.</p>
+      </div>
+      <div></div>
+    </div>
+    <div class="features-grid" style="margin-top:40px">
+      <div class="feature-card feature-card--accent reveal" data-delay="1">
+        <div class="feature-card__icon" style="background:var(--plum-bg);border:1px solid var(--plum-border)">🎭</div>
+        <div class="feature-card__title">AI Learner Character (KIDO)</div>
+        <div class="feature-card__body">KIDO responds to your explanations in real-time — showing confusion, understanding, or doubt. Visual feedback you can feel, not just read.</div>
+      </div>
+      <div class="feature-card reveal" data-delay="2">
+        <div class="feature-card__icon" style="background:var(--session-danger-bg);border:1px solid var(--session-danger-border)">🔍</div>
+        <div class="feature-card__title">Adaptive Misconception Detection</div>
+        <div class="feature-card__body">Powered by the same AI that evaluates your answer at the concept level — not just keyword matching. It knows <em>why</em> you're wrong.</div>
+      </div>
+      <div class="feature-card reveal" data-delay="3">
+        <div class="feature-card__icon" style="background:var(--gold-glow);border:1px solid rgba(246,174,45,0.25)">🎮</div>
+        <div class="feature-card__title">Interactive Learning Loop</div>
+        <div class="feature-card__body">Ask → Teach → React → Improve. A closed feedback loop that keeps you active, never passive. Designed like a game, built for retention.</div>
+      </div>
+      <div class="feature-card reveal" data-delay="4">
+        <div class="feature-card__icon" style="background:var(--green-bg);border:1px solid rgba(93,162,113,0.24)">📈</div>
+        <div class="feature-card__title">Concept-Level Progress Insights</div>
+        <div class="feature-card__body">Track mastery for each concept across every session. Know exactly which topics need more work — before you sit the exam.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── SCIENCE ─────────────────────────────────────────────── -->
+<section class="section" id="science">
+  <div class="container">
+    <div class="science-card reveal">
+      <div>
+        <div class="section-eyebrow"><span class="tag tag--plum science-card__tag">🧬 The Science</span></div>
+        <h2 class="science-card__title">Backed by<br>Cognitive Science</h2>
+        <p class="science-card__body">
+          LearnBack is built on the <strong style="color:rgba(255,255,255,0.85)">Protégé Effect</strong> — the well-documented phenomenon where teaching a concept forces deeper encoding in memory. Explaining to others reveals exactly where your understanding breaks down, in ways passive reading never can.
+        </p>
+        <div class="about-pills" style="margin-top:20px">
+          <div class="about-pill" style="background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.12);color:rgba(255,255,255,0.55)">Protégé Effect</div>
+          <div class="about-pill" style="background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.12);color:rgba(255,255,255,0.55)">Retrieval Practice</div>
+          <div class="about-pill" style="background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.12);color:rgba(255,255,255,0.55)">Elaborative Interrogation</div>
+          <div class="about-pill" style="background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.12);color:rgba(255,255,255,0.55)">Metacognitive Monitoring</div>
+        </div>
+      </div>
+      <div class="science-stats">
+        <div class="science-stat">
+          <div class="science-stat__num">2×</div>
+          <div class="science-stat__label">Better retention vs passive re-reading, per learning science research</div>
+        </div>
+        <div class="science-stat">
+          <div class="science-stat__num">90%</div>
+          <div class="science-stat__label">Of misconceptions go undetected until exam — LearnBack surfaces them earlier</div>
+        </div>
+        <div class="science-stat">
+          <div class="science-stat__num">Real-time</div>
+          <div class="science-stat__label">Feedback loop — no waiting for results, no guessing if you understood</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── ABOUT ────────────────────────────────────────────────── -->
+<section class="section" style="background:var(--surface);border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
+  <div class="container">
+    <div class="about-grid">
+      <div>
+        <div class="section-eyebrow reveal"><span class="tag tag--gold">🧬 About the Project</span></div>
+        <h2 class="section-title reveal">Built for<br>Deeper Learning</h2>
+        <p class="section-body reveal">
+          LearnBack addresses one of self-learning's biggest problems: students finish a chapter feeling confident, only to discover gaps on the exam. We built an AI system that identifies those gaps <em>before</em> it's too late.
+        </p>
+        <div class="about-pills reveal" style="margin-top:24px">
+          <div class="about-pill">Misconception Detection</div>
+          <div class="about-pill">Adaptive AI Feedback</div>
+          <div class="about-pill">Concept Mapping</div>
+          <div class="about-pill">Real-Time Evaluation</div>
+        </div>
+        <div style="margin-top:24px;display:flex;align-items:center;gap:8px;flex-wrap:wrap" class="reveal">
+          <span style="font-size:var(--fs-xs);font-weight:700;color:var(--text-soft);text-transform:uppercase;letter-spacing:0.08em">Stack:</span>
+          <span class="stack-pill">Claude AI</span>
+          <span class="stack-pill">D3.js</span>
+          <span class="stack-pill">Lottie</span>
+          <span class="stack-pill">Vanilla JS</span>
+          <span class="stack-pill">7-1 CSS</span>
+        </div>
+      </div>
+      <div class="about-visual reveal" data-delay="2">
+        <div class="about-visual__title">The Protégé Effect in Practice</div>
+        <div class="protege-steps">
+          <div class="protege-step"><span class="protege-step__icon">📖</span> Read a concept passively</div>
+          <div class="protege-arrow">↓ feels understood</div>
+          <div class="protege-step"><span class="protege-step__icon">🧠</span> Try to explain it to someone</div>
+          <div class="protege-arrow">↓ gaps become visible</div>
+          <div class="protege-step"><span class="protege-step__icon">🔍</span> Misconceptions are exposed</div>
+          <div class="protege-arrow">↓ fix them now, not during exam</div>
+          <div class="protege-step" style="border-color:rgba(93,162,113,0.40);background:var(--green-bg)"><span class="protege-step__icon">✅</span> Deeper, lasting understanding</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FEEDBACK CTA ────────────────────────────────────────── -->
+<section class="section--tight" id="feedback">
+  <div class="container">
+    <div class="feedback-band reveal">
+      <div class="feedback-band__left">
+        <div class="section-eyebrow" style="margin-bottom:10px"><span class="tag tag--plum">🧪 Beta Testing</span></div>
+        <div class="feedback-band__title">Help Us Improve LearnBack</div>
+        <p class="feedback-band__body">Try the demo and share your feedback to help us refine how AI detects misconceptions and improves engagement. Your input directly shapes the next version.</p>
+      </div>
+      <div class="feedback-band__actions">
+        <a href="#demo" class="btn btn--primary">Try the Demo</a>
+        <a href="mailto:hello@learnback.ai" class="btn btn--gold">Give Feedback ✦</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── PRIVACY & CONTACT ───────────────────────────────────── -->
+<section class="section--tight" style="padding-top:0">
+  <div class="container">
+    <div class="meta-grid reveal">
+      <div class="meta-card">
+        <div class="meta-card__title">🔒 Privacy First</div>
+        <div class="meta-item"><div class="meta-item__dot"></div>No personal data stored</div>
+        <div class="meta-item"><div class="meta-item__dot"></div>Demo environment only</div>
+        <div class="meta-item"><div class="meta-item__dot"></div>No third-party tracking</div>
+        <div class="meta-item"><div class="meta-item__dot"></div>Session data cleared on close</div>
+      </div>
+      <div class="meta-card">
+        <div class="meta-card__title">📬 Get In Touch</div>
+        <div class="meta-item"><div class="meta-item__dot"></div>Email: <a class="meta-link" href="mailto:hello@learnback.ai">hello@learnback.ai</a></div>
+        <div class="meta-item"><div class="meta-item__dot"></div>Built for academic research & demo purposes</div>
+        <div class="meta-item"><div class="meta-item__dot"></div>Open to collaboration and feedback</div>
+        <div class="meta-item"><div class="meta-item__dot"></div>Questions? We respond within 24h</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FOOTER ──────────────────────────────────────────────── -->
+<footer style="border-top:1px solid var(--border);padding:32px 0">
+  <div class="container">
+    <div class="footer" style="border:none;padding:0">
+      <div class="footer__copy">© 2025 LearnBack. Built with 💙 for better learning.</div>
+      <div class="footer__stack">
+        <span>Powered by</span>
+        <span class="stack-pill">Claude AI</span>
+        <span class="stack-pill">D3.js</span>
+        <span class="stack-pill">Lottie</span>
+      </div>
+      <div class="footer__links">
+        <a href="#" class="footer__link">Privacy</a>
+        <a href="#" class="footer__link">About</a>
+        <a href="mailto:hello@learnback.ai" class="footer__link">Contact</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* ── Scroll Reveal ─────────────────────────────────────────── */
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if(e.isIntersecting) { e.target.classList.add('is-visible'); }
+  });
+}, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+/* ── Hero Character Animation ─────────────────────────────── */
+const states = [
+  { face:'🤔', label:'Thinking…',  cls:'char-state--thinking', pct:'32%',  hudColor:'var(--plum)' },
+  { face:'😐', label:'Confused…',  cls:'char-state--thinking', pct:'48%',  hudColor:'var(--plum)' },
+  { face:'🤨', label:'Getting it…',cls:'char-state--thinking', pct:'62%',  hudColor:'var(--plum)' },
+  { face:'😊', label:'Understood!',cls:'char-state--correct',  pct:'84%',  hudColor:'var(--green)' },
+];
+let si = 0;
+function cycleChar() {
+  const s = states[si % states.length];
+  const face  = document.getElementById('charFace');
+  const state = document.getElementById('charState');
+  const pct   = document.getElementById('hudPct');
+  const fill  = document.getElementById('hudFill');
+  if(face)  face.textContent = s.face;
+  if(state) { state.className = 'char-state ' + s.cls; state.textContent = s.label; }
+  if(pct)   pct.textContent = s.pct;
+  if(fill)  { fill.style.width = s.pct; fill.style.background = s.hudColor; }
+  si++;
+}
+setInterval(cycleChar, 2200);
+
+/* ── Demo Chat Interaction ─────────────────────────────────── */
+let demoStep = 0;
+const demoResponses = [
+  {
+    userMsg: null, // uses input value
+    aiMsg: '🤔 Hmm, I think I get the basics — but what exactly does "proportional" mean here? Can you give me an example?',
+    state: { cls:'demo-state--thinking', icon:'🤔', label:'KIDO needs more detail' }
+  },
+  {
+    userMsg: 'Like, if you push a 2kg box with 10N force, it accelerates at 5 m/s². Double the force = double the acceleration!',
+    aiMsg: '✓ That makes sense now! So F = ma means force equals mass times acceleration. You explained it really clearly!',
+    state: { cls:'demo-state--correct', icon:'😊', label:'KIDO understood!' }
+  }
+];
+
+function runDemo() {
+  const input = document.getElementById('demoInput');
+  const chat  = document.getElementById('demoChat');
+  const val   = input.value.trim();
+
+  if (demoStep === 0 && !val) {
+    input.style.borderColor = 'rgba(239,68,68,0.50)';
+    input.placeholder = 'Type something first…';
+    setTimeout(() => { input.style.borderColor = ''; input.placeholder = 'Type your explanation here…'; }, 1800);
+    return;
+  }
+
+  const msg = val || demoResponses[demoStep]?.userMsg;
+
+  // Add user bubble
+  if (msg) {
+    const ub = document.createElement('div');
+    ub.className = 'mini-bubble mini-bubble--user';
+    ub.style.cssText = 'align-self:flex-end;font-size:0.88rem;margin-left:auto';
+    ub.textContent = msg;
+    chat.appendChild(ub);
+    input.value = '';
+  }
+
+  // Typing indicator
+  const typing = document.createElement('div');
+  typing.className = 'mini-bubble mini-bubble--ai';
+  typing.style.cssText = 'font-size:0.88rem;';
+  typing.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
+  chat.appendChild(typing);
+  chat.scrollTop = chat.scrollHeight;
+
+  setTimeout(() => {
+    const resp = demoResponses[Math.min(demoStep, demoResponses.length - 1)];
+    typing.textContent = resp.aiMsg;
+    typing.style.borderColor = demoStep === 1 ? 'rgba(93,162,113,0.35)' : '';
+    typing.style.background  = demoStep === 1 ? 'rgba(93,162,113,0.06)' : '';
+    typing.style.color        = demoStep === 1 ? '#166534' : '';
+
+    // Update state badge
+    const existingState = chat.querySelector('.demo-state');
+    if (existingState) {
+      existingState.className = 'demo-state ' + resp.state.cls;
+      existingState.innerHTML = `<span>${resp.state.icon}</span> ${resp.state.label}`;
+    }
+
+    chat.scrollTop = chat.scrollHeight;
+    demoStep++;
+
+    if (demoStep >= demoResponses.length) {
+      setTimeout(() => {
+        const done = document.createElement('div');
+        done.style.cssText = 'text-align:center;font-size:var(--fs-xs);color:var(--text-soft);font-weight:600;padding:8px 0';
+        done.textContent = '✦ Demo complete — try the full version!';
+        chat.appendChild(done);
+        chat.scrollTop = chat.scrollHeight;
+        document.getElementById('demoSend').disabled = true;
+        document.getElementById('demoInput').disabled = true;
+      }, 600);
+    }
+  }, 1400);
+}
+
+document.getElementById('demoInput')?.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); runDemo(); }
+});
+</script>
+</body>
+</html>

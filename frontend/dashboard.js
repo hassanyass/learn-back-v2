@@ -458,23 +458,22 @@
     }
 
     try {
-      var me = await window.LearnBackAPI.request('/auth/me');
+      var user = await window.LearnBackAPI.request('/auth/me');
       // Update stored user details from backend
-      if (me && me.username) {
+      if (user && user.username) {
         try {
-          window.localStorage.setItem('learnback_user', JSON.stringify({
-            user_id: me.user_id,
-            username: me.username,
-            has_seen_walkthrough: me.has_seen_walkthrough
-          }));
+          window.localStorage.setItem('learnback_user', JSON.stringify(user));
         } catch (_) { /* ignore */ }
 
         // Refresh the UI with the server-authoritative name
-        state.dashboard.user.firstName = me.username.split(' ')[0] || 'Teacher';
+        state.dashboard.user.firstName = user.username.split(' ')[0] || 'Teacher';
         initWelcome();
-      }
 
-      // Walkthrough logic removed — will be re-implemented in a later phase.
+        // Walkthrough logic
+        if (user.has_seen_walkthrough === false && window.LearnBackWalkthrough) {
+          window.LearnBackWalkthrough.startTour({ replay: false });
+        }
+      }
     } catch (error) {
       // 401 is handled by apiClient.js (auto-redirect)
       // For other errors, don't block the dashboard
