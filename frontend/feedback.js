@@ -474,9 +474,6 @@ document.addEventListener('DOMContentLoaded', function () {
     renderMisconceptions(summary);
     renderTopicCards(summary);
     wireFooterActions(sessionId);
-    if (window.LearnBackWalkthrough) {
-      window.LearnBackWalkthrough.bind('feedback.html');
-    }
   }
 
   initFeedback();

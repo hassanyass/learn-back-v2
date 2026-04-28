@@ -135,43 +135,5 @@
       actionLabel: 'Click Start Demo Session',
       endSegment: true
     },
-    {
-      id: 'feedback_mastery',
-      segment: 'feedback',
-      route: 'feedback.html',
-      target: '#fb-mastery-card',
-      mandatory: true,
-      title: 'Your teaching impact',
-      description: 'This section shows how much Kido improved during the session and highlights areas that may need more practice.',
-      action: 'highlight',
-      placement: 'bottom'
-    },
-    {
-      id: 'feedback_misconceptions',
-      segment: 'feedback',
-      route: 'feedback.html',
-      target: '#fb-map-toggle',
-      mandatory: true,
-      title: 'Review misconceptions',
-      description: 'Open this section to review what Kido misunderstood and identify areas for improvement in future sessions.',
-      action: 'pulse',
-      placement: 'top',
-      requireAction: true,
-      actionLabel: 'Click View Session Misconceptions'
-    },
-    {
-      id: 'feedback_survey',
-      segment: 'feedback',
-      route: 'feedback.html',
-      target: '#btn-user-survey',
-      mandatory: true,
-      title: 'Help us improve',
-      description: 'Please complete the feedback survey. Your input will help us improve LearnBack for future learners.',
-      action: 'highlight',
-      placement: 'top',
-      requireAction: true,
-      actionLabel: 'Click Complete Survey',
-      endSegment: true
-    }
   ];
 })();

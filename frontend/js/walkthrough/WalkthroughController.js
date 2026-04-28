@@ -40,7 +40,6 @@
   function segmentForRoute(route) {
     if (route === 'dashboard.html') return 'dashboard';
     if (route === 'start_session.html') return 'choice';
-    if (route === 'feedback.html') return 'feedback';
     return null;
   }
 
@@ -301,14 +300,14 @@
     }
     if (step.endSegment === true) {
       saveState(state);
-      completeTour({ skipBackend: step.segment !== 'feedback' });
+      completeTour({ skipBackend: true });
       return;
     }
 
     var nextIdx = nextRenderableIndex(state, state.stepIndex);
     if (nextIdx === -1) {
       saveState(state);
-      completeTour({ skipBackend: step.segment !== 'feedback' });
+      completeTour({ skipBackend: true });
       return;
     }
 
@@ -361,7 +360,7 @@
     }
 
     if (current && current.endSegment === true && delta > 0) {
-      completeTour({ skipBackend: current.segment !== 'feedback' });
+      completeTour({ skipBackend: true });
       return;
     }
 
@@ -369,7 +368,7 @@
     if (nextIndex < 0) nextIndex = 0;
     var nextStepObj = getStep(nextIndex);
     if (nextIndex >= steps.length || (current && nextStepObj && nextStepObj.segment !== current.segment)) {
-      completeTour({ skipBackend: !current || current.segment !== 'feedback' });
+      completeTour({ skipBackend: true });
       return;
     }
 
@@ -470,7 +469,7 @@
 
     if (step.requireAction) {
       if (step.allowNext === true) {
-        completeTour({ skipBackend: step.segment !== 'feedback' });
+        completeTour({ skipBackend: true });
         return;
       }
       move(1);
