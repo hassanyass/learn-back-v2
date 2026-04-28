@@ -1168,7 +1168,16 @@ class SessionService:
         return result
 
     async def _get_segments(self, session: LearningSession) -> list[dict[str, Any]]:
-        """Retrieve the segmented curriculum for this session's slide deck."""
+        """Retrieve the segmented curriculum for this session's slide deck.
+
+        Demo sessions embed their curriculum directly in session_state.topics
+        and have no SlideDeck row.  _resolve_current_point already reads from
+        state["topics"] first, so returning [] here is safe and correct.
+        """
+        state = session.session_state or {}
+        if state.get("source_type") == "demo":
+            return []
+
         if session.slide_deck_id is not None:
             stmt = (
                 select(SlideDeck)

@@ -6,7 +6,6 @@
   var steps = window.LearnBackWalkthroughSteps || [];
   var currentRoute = null;
   var renderTimer = null;
-  var sessionMessageCount = 0;
 
   function routeFromLocation() {
     var name = window.location.pathname.split('/').pop() || 'dashboard.html';
@@ -41,7 +40,6 @@
   function segmentForRoute(route) {
     if (route === 'dashboard.html') return 'dashboard';
     if (route === 'start_session.html') return 'choice';
-    if (route === 'session.html') return 'session';
     if (route === 'feedback.html') return 'feedback';
     return null;
   }
@@ -95,11 +93,7 @@
 
   function isAwaitingTrigger(step) {
     if (!step) return false;
-    if (step.hidden === true) return true;
-    if (step.triggerOn === 'message_count') {
-      return sessionMessageCount < (step.triggerCount || 1);
-    }
-    return false;
+    return step.hidden === true;
   }
 
   function findStepIndexById(id) {
@@ -159,18 +153,6 @@
     }
 
     renderStep(step, state);
-  }
-
-  function maybeRenderOnTrigger() {
-    var state = readState();
-    if (!state || !state.active) return;
-    var step = getStep(state.stepIndex);
-    if (!step || step.route !== currentRoute) return;
-    if (step.hidden === true) return;
-    if (step.triggerOn === 'message_count'
-      && sessionMessageCount >= (step.triggerCount || 1)) {
-      renderCurrentWithRetry();
-    }
   }
 
   function bind(route) {
@@ -423,14 +405,6 @@
   }
 
   function notify(eventName, payload) {
-    if (eventName === 'session_message_sent') {
-      sessionMessageCount += 1;
-      maybeRenderOnTrigger();
-    }
-    if (eventName === 'session_message_count' && payload && Number.isFinite(payload.count)) {
-      sessionMessageCount = payload.count;
-      maybeRenderOnTrigger();
-    }
     if (eventName === 'upload_content_ready') {
       startSegment('content-preview', { stepIndex: firstIndexForSegment('content-preview') });
     }

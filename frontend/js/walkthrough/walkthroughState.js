@@ -2,7 +2,7 @@
   'use strict';
 
   var STORAGE_KEY = 'learnback_walkthrough_state';
-  var VERSION = 1;
+  var VERSION = 2;
 
   function now() {
     return Date.now();

@@ -725,13 +725,17 @@ export class UIRenderer {
 
     var type = (widgetType || 'TEXT').toUpperCase();
     if (type === 'TEXT' || type === 'MIND_MAP') {
-      btn.disabled = true;
+      // Keep the button enabled so the legacy API fallback path is still reachable.
+      // Only remove the active glow — visual dimming signals "no widget ready".
+      btn.disabled = false;
       btn.classList.remove('cube-active');
       btn.style.opacity = '0.4';
+      btn.style.cursor = 'default';
     } else {
       btn.disabled = false;
       btn.classList.add('cube-active');
       btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
     }
   }
 

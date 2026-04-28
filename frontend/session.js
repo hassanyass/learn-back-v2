@@ -120,6 +120,7 @@ import { UIStateManager } from './js/core/UIStateManager.js';
   ui.updateBktProgress(state.getAggregatedBkt());
   ui.updateHud('waiting');
   ui.updateConceptCard({ text: "I'm ready to learn! Explain the topic to me.", type: 'waiting', delta: 0 });
+  ui.setCubeState('TEXT'); // start dimmed; activates when backend sends a non-TEXT widget
 
   // ── 5b. SLIDE DECK VIEWER — Initialize PDF from bootstrap ──
   (function initSlideViewer() {
@@ -183,7 +184,6 @@ import { UIStateManager } from './js/core/UIStateManager.js';
   // ═══════════════════════════════════════════════════════════
 
   var ws = new WebSocketManager(sessionId);
-  var walkthroughBound = false;
 
   // ── Connection state handler ──
   ws.onConnectionChange = function (connState) {
@@ -193,10 +193,6 @@ import { UIStateManager } from './js/core/UIStateManager.js';
       ui.setChatLockout(false);
       ui.updateHud('waiting');
       console.log('[Session] WebSocket connected. Chat enabled.');
-      if (!walkthroughBound && window.LearnBackWalkthrough) {
-        walkthroughBound = true;
-        window.LearnBackWalkthrough.bind('session.html');
-      }
     }
   };
 
@@ -229,6 +225,8 @@ import { UIStateManager } from './js/core/UIStateManager.js';
 
       // Update all UI components
       ui.appendKidoMessage(data.kido_response || "I'm thinking...").then(function () {
+        ui.setChatLockout(false);
+      }).catch(function () {
         ui.setChatLockout(false);
       });
 
@@ -295,9 +293,20 @@ import { UIStateManager } from './js/core/UIStateManager.js';
       },
       function() {
         try {
+          // Guard: if WS is not connected, ws.send() silently returns (no throw)
+          // but still sets the lockout — causing a permanent freeze.
+          if (!ws.isConnected) {
+            ui.setChatLockout(false);
+            ui.updateHud('waiting');
+            ui.appendKidoMessage("Connection lost. Please refresh the page and try again.");
+            return;
+          }
+
           var payload = { type: 'mind_map_submit', corrections: _pendingCorrections };
-          if (targetIdx !== null && targetIdx !== undefined) {
-            payload.target_topic_index = parseInt(targetIdx, 10);
+          var parsedTargetIdx = (targetIdx !== null && targetIdx !== undefined)
+            ? parseInt(targetIdx, 10) : null;
+          if (parsedTargetIdx !== null && !isNaN(parsedTargetIdx)) {
+            payload.target_topic_index = parsedTargetIdx;
           }
           console.log('[MindMap] Continue clicked! Sending WS payload:', JSON.stringify(payload));
           ws.send(payload);
@@ -305,6 +314,16 @@ import { UIStateManager } from './js/core/UIStateManager.js';
           ui.setChatLockout(true);
           ui.updateHud('thinking');
           state.clearMindMap();
+
+          // Optimistically update the topic highlight so it changes immediately
+          // rather than waiting for the backend session_state in the response.
+          if (parsedTargetIdx !== null && !isNaN(parsedTargetIdx)) {
+            state.currentTopicIndex = parsedTargetIdx;
+          } else if (targetIdx === undefined || targetIdx === null) {
+            // Checkpoint flow: next topic is currentTopicIndex already advanced by backend
+            // during the checkpoint response — nothing to optimistically override.
+          }
+          ui.renderTopicList(state.getTopicTitles(), state.currentTopicIndex, state.skippedIndices || []);
         } catch (err) {
           console.error('[MindMap] FATAL ERROR in onContinueCallback:', err, err.stack);
           ui.setChatLockout(false);
@@ -324,6 +343,10 @@ import { UIStateManager } from './js/core/UIStateManager.js';
       ui.appendKidoMessage(data.kido_response || 'Check my Mind Map!').then(function () {
         displayMindMap(data.mind_map_data || [], nextTopicIdx);
         ui.setChatLockout(true);
+      }).catch(function (err) {
+        console.error('[Session] appendKidoMessage failed in onMindMap:', err);
+        ui.setChatLockout(false);
+        ui.updateHud('waiting');
       });
     } catch (err) {
       console.error('[Session] FATAL in onMindMap:', err, err.stack);
@@ -359,6 +382,9 @@ import { UIStateManager } from './js/core/UIStateManager.js';
   // ── WS error ──
   ws.onError = function (detail) {
     console.error('[Session] WS error:', detail);
+    // Unlock chat so the user is never permanently stuck after a WS failure.
+    ui.setChatLockout(false);
+    ui.updateHud('waiting');
   };
 
   // Open the connection
@@ -426,9 +452,6 @@ import { UIStateManager } from './js/core/UIStateManager.js';
 
     // Send over WebSocket
     ws.send({ type: 'chat', text: text });
-    if (window.LearnBackWalkthrough) {
-      window.LearnBackWalkthrough.notify('session_message_sent');
-    }
 
     // Clear input
     if (dom.chatInputField) {
@@ -677,10 +700,11 @@ import { UIStateManager } from './js/core/UIStateManager.js';
         ui.updateHud('thinking');
         var response = await window.LearnBackAPI.fetchMindMap(state.sessionId);
         displayMindMap(response.mind_map_data);
+        // Chat stays locked until user clicks Continue → backend responds → onKidoResponse unlocks.
       } catch (err) {
         console.error('[Session] fetchMindMap error:', err);
         ui.appendKidoMessage("Hmm, I don't have enough notes to show my mind map yet. Keep teaching and I'll build it as I learn!");
-      } finally {
+        ui.setChatLockout(false);
         ui.updateHud('waiting');
       }
     });
