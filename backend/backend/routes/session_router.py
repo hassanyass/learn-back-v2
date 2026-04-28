@@ -16,16 +16,24 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime
+from copy import deepcopy
+from datetime import datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.core.db import get_db
-from backend.models.core import LearningSession, SlideDeck
+from backend.core.usage_limits import (
+    MAX_ACTIVE_SESSIONS_PER_USER,
+    MAX_MESSAGES_PER_SESSION,
+    MAX_SESSIONS_PER_DAY,
+    MESSAGE_LIMIT_WARNING_REMAINING,
+    STALE_ACTIVE_SESSION_TIMEOUT_MINUTES,
+)
+from backend.models.core import LearningSession, SessionMessage, SlideDeck
 from backend.schemas.api_schemas import (
     ChatPayload,
     DemoSessionRequest,
@@ -112,18 +120,65 @@ def _build_session_state(segments: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-async def _guard_concurrent_session(db: AsyncSession, user_id: int) -> None:
-    """Reject if user already has an in_progress session."""
-    existing = (await db.execute(
+def _utc_day_bounds(now: datetime) -> tuple[datetime, datetime]:
+    start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    return start, start + timedelta(days=1)
+
+
+async def _guard_session_creation_limits(db: AsyncSession, user_id: int) -> None:
+    """Reject session creation when testing-phase user limits are reached."""
+    now = datetime.utcnow()
+    stale_cutoff = now - timedelta(minutes=STALE_ACTIVE_SESSION_TIMEOUT_MINUTES)
+
+    active_sessions = (await db.execute(
         select(LearningSession).where(
             LearningSession.user_id == user_id,
             LearningSession.status == "in_progress",
-        ).limit(1)
-    )).scalar_one_or_none()
-    if existing:
+        )
+    )).scalars().all()
+
+    for existing in active_sessions:
+        last_seen = existing.start_time or existing.created_at
+        if existing.id not in _active_connections and last_seen < stale_cutoff:
+            state = existing.session_state or {}
+            state["completion_type"] = "abandoned"
+            existing.session_state = deepcopy(state)
+            existing.status = "completed"
+            existing.end_time = now
+
+    if active_sessions:
+        await db.commit()
+
+    active_count = (await db.execute(
+        select(func.count()).select_from(LearningSession).where(
+            LearningSession.user_id == user_id,
+            LearningSession.status == "in_progress",
+        )
+    )).scalar_one()
+    if active_count >= MAX_ACTIVE_SESSIONS_PER_USER:
         raise HTTPException(
             status_code=409,
-            detail="You already have an active session. Please end or complete it first.",
+            detail={
+                "code": "ACTIVE_SESSION_LIMIT_REACHED",
+                "message": "You already have an active session. Please end or complete it first.",
+            },
+        )
+
+    day_start, day_end = _utc_day_bounds(now)
+    sessions_today = (await db.execute(
+        select(func.count()).select_from(LearningSession).where(
+            LearningSession.user_id == user_id,
+            LearningSession.created_at >= day_start,
+            LearningSession.created_at < day_end,
+        )
+    )).scalar_one()
+    if sessions_today >= MAX_SESSIONS_PER_DAY:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "code": "DAILY_SESSION_LIMIT_REACHED",
+                "message": "You've reached today's session limit. Please start a new session tomorrow.",
+            },
         )
 
 
@@ -151,7 +206,7 @@ async def create_session(
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
     """Create a new learning session for the requested slide deck."""
-    await _guard_concurrent_session(db, user_id)
+    await _guard_session_creation_limits(db, user_id)
 
     stmt = (
         select(SlideDeck)
@@ -209,7 +264,7 @@ async def create_demo_session(
     Bypasses ingestion entirely. Uses the exact same BKT initialization
     and session_state structure as upload-based sessions.
     """
-    await _guard_concurrent_session(db, user_id)
+    await _guard_session_creation_limits(db, user_id)
 
     demo = get_demo_content(payload.demo_id)
     if not demo:
@@ -393,9 +448,46 @@ async def session_websocket(websocket: WebSocket, session_id: int) -> None:
                         if not user_text:
                             continue
 
+                        user_message_count = (await db.execute(
+                            select(func.count()).select_from(SessionMessage).where(
+                                SessionMessage.session_id == session_id,
+                                SessionMessage.sender_role == "user",
+                            )
+                        )).scalar_one()
+                        if user_message_count >= MAX_MESSAGES_PER_SESSION:
+                            await db.refresh(session)
+                            state = session.session_state or {}
+                            state["completion_type"] = "message_limit"
+                            session.session_state = deepcopy(state)
+                            session.status = "completed"
+                            session.end_time = datetime.utcnow()
+                            await db.commit()
+
+                            await websocket.send_json({
+                                "type": "session_complete",
+                                "data": {
+                                    "completion_type": "message_limit",
+                                    "reason": "SESSION_MESSAGE_LIMIT_REACHED",
+                                    "kido_response": (
+                                        "You've reached the message limit for this session. "
+                                        "You can end this session and view feedback, or start "
+                                        "a new session tomorrow."
+                                    ),
+                                    "next_actions": [
+                                        "END_SESSION_VIEW_FEEDBACK",
+                                        "START_NEW_SESSION_TOMORROW",
+                                    ],
+                                },
+                            })
+                            await websocket.close(code=1000)
+                            return
+
                         result = await service.process_user_message(
                             session_id=session_id,
                             user_text=user_text,
+                        )
+                        remaining_messages = (
+                            MAX_MESSAGES_PER_SESSION - (user_message_count + 1)
                         )
 
                         # Check if session completed
@@ -424,6 +516,16 @@ async def session_websocket(websocket: WebSocket, session_id: int) -> None:
                         # TEST MODE: include widget debug info if present
                         if result.get("widget_debug"):
                             response_data["widget_debug"] = result["widget_debug"]
+
+                        if 0 < remaining_messages <= MESSAGE_LIMIT_WARNING_REMAINING:
+                            response_data["quota_warning"] = {
+                                "code": "SESSION_MESSAGE_LIMIT_NEAR",
+                                "remaining_messages": remaining_messages,
+                                "detail": (
+                                    f"You have {remaining_messages} messages left in this "
+                                    "session. Try to wrap up your explanation soon."
+                                ),
+                            }
 
                         # Include checkpoint data if present
                         if result.get("topic_checkpoint"):
@@ -535,8 +637,12 @@ async def session_websocket(websocket: WebSocket, session_id: int) -> None:
                     logger.error("LLM exhaustion: %s", exc)
                     await db.rollback()
                     await websocket.send_json({
-                        "type": "error",
-                        "detail": "All AI providers are currently unavailable. Please try again shortly.",
+                        "type": "llm_unavailable",
+                        "code": "AI_PROVIDER_LIMIT_REACHED",
+                        "detail": (
+                            "Kido is temporarily busy because our AI provider limit was reached. "
+                            "Please try again in a few minutes."
+                        ),
                     })
                 except Exception as exc:
                     logger.error("Unexpected error in WS loop: %s", exc)

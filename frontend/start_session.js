@@ -99,6 +99,9 @@
         demoData = list[0];
         renderPreview(demoData);
         showState('preview');
+        if (window.LearnBackWalkthrough) {
+          window.LearnBackWalkthrough.notify('demo_preview_ready');
+        }
       })
       .catch(function (err) {
         console.error('[StartSession] Demo fetch failed:', err);
@@ -176,7 +179,10 @@
 
         // Show inline error
         var detail = (err && err.message) || 'Failed to create session.';
-        if (detail.indexOf('active session') !== -1) {
+        var code = err && err.payload && err.payload.detail && err.payload.detail.code;
+        if (code === 'DAILY_SESSION_LIMIT_REACHED') {
+          alert('You reached today\'s session limit. Please come back tomorrow to continue testing LearnBack.');
+        } else if (detail.indexOf('active session') !== -1 || code === 'ACTIVE_SESSION_LIMIT_REACHED') {
           alert('You already have an active session. Please end it first from the session page.');
         } else {
           alert('Error: ' + detail);
@@ -203,5 +209,8 @@
 
   // Initial state
   showState('choices');
+  if (window.LearnBackWalkthrough) {
+    window.LearnBackWalkthrough.bind('start_session.html');
+  }
 
 })();

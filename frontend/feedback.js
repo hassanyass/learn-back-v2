@@ -405,6 +405,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function wireFooterActions(sessionId) {
+    var SURVEY_URL = 'https://forms.gle/REPLACE_WITH_SURVEY_URL';
     var current = window.SessionStore && window.SessionStore.getSession ? window.SessionStore.getSession() : null;
     if (current && current.sessionId === sessionId && window.SessionStore) {
       window.SessionStore.clearSession();
@@ -421,6 +422,16 @@ document.addEventListener('DOMContentLoaded', function () {
     if (retryButton) {
       retryButton.addEventListener('click', function () {
         window.location.href = 'upload_slides.html';
+      });
+    }
+
+    var surveyButton = el('btn-user-survey');
+    if (surveyButton) {
+      surveyButton.href = SURVEY_URL;
+      surveyButton.addEventListener('click', function () {
+        if (SURVEY_URL.indexOf('REPLACE_WITH_SURVEY_URL') !== -1) {
+          alert('Survey link is not configured yet.');
+        }
       });
     }
 
@@ -463,6 +474,9 @@ document.addEventListener('DOMContentLoaded', function () {
     renderMisconceptions(summary);
     renderTopicCards(summary);
     wireFooterActions(sessionId);
+    if (window.LearnBackWalkthrough) {
+      window.LearnBackWalkthrough.bind('feedback.html');
+    }
   }
 
   initFeedback();

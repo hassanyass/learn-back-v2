@@ -183,6 +183,7 @@ import { UIStateManager } from './js/core/UIStateManager.js';
   // ═══════════════════════════════════════════════════════════
 
   var ws = new WebSocketManager(sessionId);
+  var walkthroughBound = false;
 
   // ── Connection state handler ──
   ws.onConnectionChange = function (connState) {
@@ -192,6 +193,10 @@ import { UIStateManager } from './js/core/UIStateManager.js';
       ui.setChatLockout(false);
       ui.updateHud('waiting');
       console.log('[Session] WebSocket connected. Chat enabled.');
+      if (!walkthroughBound && window.LearnBackWalkthrough) {
+        walkthroughBound = true;
+        window.LearnBackWalkthrough.bind('session.html');
+      }
     }
   };
 
@@ -421,6 +426,9 @@ import { UIStateManager } from './js/core/UIStateManager.js';
 
     // Send over WebSocket
     ws.send({ type: 'chat', text: text });
+    if (window.LearnBackWalkthrough) {
+      window.LearnBackWalkthrough.notify('session_message_sent');
+    }
 
     // Clear input
     if (dom.chatInputField) {

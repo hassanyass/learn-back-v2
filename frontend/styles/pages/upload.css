@@ -3,6 +3,29 @@
    Inherits base design system from styles.css
    ============================================ */
 
+.upload-page {
+    height: 100vh;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    overscroll-behavior: none;
+    background: var(--bg);
+}
+
+.upload-workspace {
+    flex: 1;
+    min-height: 0;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 40px 20px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    -webkit-overflow-scrolling: touch;
+}
+
 /* Step Indicator */
 .step-indicator {
     display: flex;

@@ -20,6 +20,12 @@
          ============================================ -->
     <header class="nav-bar">
         <div class="nav-bar__left">
+            <a href="dashboard.html" class="nav-bar__back" aria-label="Back to dashboard">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M15 18l-6-6 6-6"></path>
+                </svg>
+            </a>
             <img src="Logo/Transparent2.png" alt="LearnBack Logo" class="nav-bar__brand-img logo-light"
                 style="height: 44px; width: auto; margin-left: -4px;">
             <img src="Logo/transparent_dark_mode.png" alt="LearnBack Logo" class="nav-bar__brand-img logo-dark"
@@ -29,7 +35,6 @@
         </div>
 
         <div class="nav-bar__right" style="display:flex;align-items:center;gap:12px;">
-            <a href="dashboard.html" class="btn btn--neutral" style="font-size:var(--fs-sm);">Back to Dashboard</a>
             <button type="button" class="btn btn-theme-toggle" id="btn-theme-toggle" aria-label="Toggle dark mode">
                 <svg class="theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                     stroke-linecap="round" stroke-linejoin="round" style="display:none;">
@@ -138,6 +143,10 @@
     </div>
 
     <script src="apiClient.js?v=5"></script>
+    <script src="js/walkthrough/walkthroughState.js"></script>
+    <script src="js/walkthrough/walkthroughSteps.js"></script>
+    <script src="js/walkthrough/walkthroughRenderer.js"></script>
+    <script src="js/walkthrough/WalkthroughController.js"></script>
     <script src="start_session.js?v=1"></script>
 </body>
 

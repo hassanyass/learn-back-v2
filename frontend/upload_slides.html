@@ -15,12 +15,18 @@
   <link rel="stylesheet" href="styles/main.css">
 </head>
 
-<body data-theme="light">
+<body class="upload-page" data-theme="light">
     <!-- ============================================
          HEADER WITH LOGO
          ============================================ -->
     <header class="nav-bar">
         <div class="nav-bar__left">
+            <a href="start_session.html" class="nav-bar__back" aria-label="Back to start session options">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M15 18l-6-6 6-6"></path>
+                </svg>
+            </a>
             <img src="Logo/Transparent2.png" alt="LearnBack Logo" class="nav-bar__brand-img logo-light"
                 style="height: 44px; width: auto; margin-left: -4px;">
             <img src="Logo/transparent_dark_mode.png" alt="LearnBack Logo" class="nav-bar__brand-img logo-dark"
@@ -73,8 +79,7 @@
         </div>
     </header>
 
-    <div class="workspace"
-        style="justify-content: center; align-items: flex-start; padding: 40px 20px; overflow-y: auto;">
+    <div class="workspace upload-workspace">
 
         <!-- ============================================
              SCREEN 1: UPLOAD SLIDE
@@ -239,6 +244,10 @@
 
     <script src="apiClient.js?v=4"></script>
     <script src="sessionStore.js?v=4"></script>
+    <script src="js/walkthrough/walkthroughState.js"></script>
+    <script src="js/walkthrough/walkthroughSteps.js"></script>
+    <script src="js/walkthrough/walkthroughRenderer.js"></script>
+    <script src="js/walkthrough/WalkthroughController.js"></script>
     <script src="app.js?v=4"></script>
 </body>
 

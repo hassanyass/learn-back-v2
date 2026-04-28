@@ -422,18 +422,30 @@ async function startProcessing() {
         setTimeout(() => {
             AppState.isProcessing = false;
             navigateToScreen('content');
+            if (window.LearnBackWalkthrough) {
+                window.LearnBackWalkthrough.notify('upload_content_ready');
+            }
         }, 800);
 
     } catch (error) {
         clearInterval(progressInterval);
         console.error('Upload error:', error);
         AppState.isProcessing = false;
+        const detail = error && error.payload && error.payload.detail;
+        const code = detail && detail.code;
+        const errorMessage = String(error && error.message ? error.message : '');
         
         // Show validation failed specifically if it's a known bad file type
-        if (error.message.includes('Unsupported') || error.message.includes('Could not extract')) {
-            showValidationFailedState(error.message);
+        if (code === 'UPLOAD_LIMIT_REACHED' || code === 'DAILY_UPLOAD_LIMIT_REACHED') {
+            showError(
+                'Upload limit reached',
+                'You can keep exploring LearnBack with demo content. Go back and choose Try Demo Content.'
+            );
+            navigateToScreen('upload');
+        } else if (errorMessage.includes('Unsupported') || errorMessage.includes('Could not extract')) {
+            showValidationFailedState(errorMessage);
         } else {
-            showError('Processing Error', error.message);
+            showError('Processing Error', errorMessage || 'Failed to process slides. Please try again.');
             navigateToScreen('upload'); // Go back to start
         }
     }
@@ -719,6 +731,9 @@ function init() {
     initializeUploadHandlers();
     initializeButtonHandlers();
     navigateToScreen('upload');
+    if (window.LearnBackWalkthrough) {
+        window.LearnBackWalkthrough.bind('upload_slides.html');
+    }
 }
 
 document.addEventListener('DOMContentLoaded', init);

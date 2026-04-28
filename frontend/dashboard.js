@@ -464,7 +464,8 @@
         try {
           window.localStorage.setItem('learnback_user', JSON.stringify({
             user_id: me.user_id,
-            username: me.username
+            username: me.username,
+            has_seen_walkthrough: me.has_seen_walkthrough
           }));
         } catch (_) { /* ignore */ }
 
@@ -499,19 +500,32 @@
     });
   }
 
+  function wireWalkthrough() {
+    var btn = document.getElementById('btn-view-walkthrough');
+    if (btn && window.LearnBackWalkthrough) {
+      btn.addEventListener('click', function () {
+        window.LearnBackWalkthrough.replayTour();
+      });
+    }
+  }
+
   async function init() {
     initTheme();
     wireDashboardTabs();
     wireFilters();
     wireActionCards();
     wireLogout();
+    wireWalkthrough();
 
     // Validate token with the backend (non-blocking — UI renders first)
     state.dashboard = await loadDashboardState();
     renderDashboard();
 
     // Fire session validation after initial render so the page feels fast
-    validateSession();
+    await validateSession();
+    if (window.LearnBackWalkthrough) {
+      window.LearnBackWalkthrough.maybeStart('dashboard.html');
+    }
   }
 
   document.addEventListener("DOMContentLoaded", () => {
