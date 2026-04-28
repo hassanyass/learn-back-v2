@@ -1,0 +1,74 @@
+#session-intro-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 99999;
+}
+
+#session-intro-card {
+  pointer-events: auto;
+  width: 320px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1), 0 4px 10px rgba(0, 0, 0, 0.05);
+  padding: 20px;
+  position: absolute;
+  transition: all 0.3s ease;
+  font-family: inherit;
+}
+
+.session-intro-text {
+  font-size: 14px;
+  color: #334155;
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.session-intro-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.session-intro-btn {
+  background: #925E78;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.session-intro-btn:hover {
+  background: #7a4e64;
+}
+
+/* Position classes */
+.intro-pos-right {
+  right: 40px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.intro-pos-left {
+  left: 40px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.intro-pos-chat-pill {
+  left: 50%;
+  bottom: 140px;
+  transform: translateX(-50%);
+}
+
+.intro-pos-center {
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}

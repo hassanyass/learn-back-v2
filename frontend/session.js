@@ -15,6 +15,7 @@ import { WebSocketManager } from './js/core/WebSocketManager.js';
 import { UIRenderer } from './js/core/UIRenderer.js';
 import { dom } from './js/core/dom.js';
 import { UIStateManager } from './js/core/UIStateManager.js';
+import { initSessionIntroWalkthrough } from './js/walkthrough/sessionIntroWalkthrough.js';
 
 (async function () {
   'use strict';
@@ -769,5 +770,8 @@ import { UIStateManager } from './js/core/UIStateManager.js';
       }
     });
   }
+
+  // Initialize walkthrough if first time
+  initSessionIntroWalkthrough();
 
 })();
