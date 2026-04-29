@@ -615,3 +615,27 @@
     padding: 10px 24px;
     font-size: var(--fs-md);
 }
+
+/* ============================================
+   Upload Flow Responsiveness
+   ============================================ */
+.upload-page .zone {
+    padding: 40px 32px;
+}
+
+@media (max-width: 480px) {
+    .upload-page .zone {
+        padding: 24px 16px;
+    }
+    
+    .content-actions {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .content-actions .btn,
+    .button-group .btn {
+        width: 100%;
+        min-height: 44px;
+    }
+}

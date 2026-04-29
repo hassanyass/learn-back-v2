@@ -20,11 +20,13 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .nav-bar__back {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -71,6 +73,11 @@
   font-weight: 800;
   color: var(--navy);
   letter-spacing: 0.2px;
+  flex-shrink: 0;
+}
+
+.nav-bar__brand-img {
+  flex-shrink: 0;
 }
 
 .nav-bar__divider {
@@ -84,6 +91,10 @@
   font-size: var(--fs-xs);
   color: var(--text-soft);
   font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .nav-bar__center {
@@ -127,6 +138,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-shrink: 0;
 }
 
 .nav-bar__avatar {
@@ -147,7 +159,9 @@
 /* ── HEADER DROPDOWN ── */
 .header-actions-wrapper {
   position: relative;
-  display: inline-block;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .header-dropdown {
@@ -232,4 +246,120 @@
 
 @media (max-width: 820px) {
   .nav-bar__center { display: none; }
+}
+
+@media (max-width: 768px) {
+  #btn-mobile-kido,
+  #btn-mobile-plan,
+  #btn-mobile-controls {
+    display: inline-flex !important;
+    min-width: 44px;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    padding: 0 !important;
+  }
+  
+  #btn-mobile-kido svg,
+  #btn-mobile-plan svg,
+  #btn-mobile-controls svg {
+    width: 20px !important;
+    height: 20px !important;
+  }
+
+  /* Phase E: Mobile Controls Dropdown */
+  #header-actions-wrap {
+    display: none !important;
+    position: absolute;
+    top: 56px;
+    right: 8px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    padding: 12px;
+    border-radius: 12px;
+    z-index: 200;
+    min-width: 180px;
+  }
+
+  #header-actions-wrap.is-open {
+    display: flex !important;
+  }
+
+  #btn-header-actions {
+    width: 100%;
+    margin-top: 8px;
+  }
+
+  .nav-bar__avatar {
+    display: none !important;
+  }
+
+  /* Phase D: Compress session header for mobile */
+  .nav-bar {
+    padding: 0 10px;
+    gap: 4px;
+  }
+
+  .nav-bar__left {
+    gap: 4px;
+    overflow: hidden;
+  }
+
+  .nav-bar__right {
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  /* Hide text labels inside Mute and Theme buttons */
+  #text-mute-sounds,
+  .theme-toggle-text {
+    display: none !important;
+  }
+
+  /* Reduce Mute and Theme button padding to icon-only */
+  #btn-mute-sounds,
+  .btn-theme-toggle {
+    padding: 6px !important;
+    min-width: 44px;
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  #btn-mute-sounds svg,
+  .btn-theme-toggle svg {
+    margin-right: 0 !important;
+  }
+
+  /* Shrink End Session button */
+  #btn-header-actions {
+    padding: 6px 10px !important;
+    font-size: 12px !important;
+  }
+
+  #btn-header-actions svg {
+    margin-left: 2px !important;
+  }
+
+  /* Shrink avatar */
+  .nav-bar__avatar {
+    margin-left: 4px;
+  }
+
+  /* Hide session divider and title on very small screens */
+  .nav-bar__divider {
+    display: none;
+  }
+
+  .nav-bar__session {
+    display: none;
+  }
+
+  /* Hide logo on smallest screens to save space */
+  .nav-bar__brand-img {
+    height: 34px !important;
+  }
 }

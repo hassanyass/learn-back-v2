@@ -184,7 +184,7 @@
       + (step.cardSize === 'compact' ? ' walkthrough-card--compact' : '')
       + (step.cardSize === 'pop' ? ' walkthrough-card--pop' : '');
 
-    if (!target || step.placement === 'center' || step.action === 'modal' || window.innerWidth < 760) {
+    if (!target || step.placement === 'center' || step.action === 'modal' || window.innerWidth <= 768) {
       card.style.top = '';
       card.style.left = '';
       card.style.right = '';
@@ -292,7 +292,17 @@
     overlay.classList.toggle('walkthrough-overlay--targeted', !shouldBlurBackdrop);
     document.documentElement.classList.add('walkthrough-active');
     if (target && step.action !== 'modal') {
-      target.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'center' });
+      var rect = target.getBoundingClientRect();
+      var isVisible = (
+        rect.top >= 0 &&
+        rect.left >= 0 &&
+        rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+        rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+      );
+
+      if (!isVisible) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
       target.classList.add('walkthrough-target', 'walkthrough-target--' + (step.action || 'highlight'));
     }
 

@@ -192,7 +192,7 @@
             user_id: me && me.user_id ? me.user_id : null,
             username: me && me.username ? me.username : null
           });
-          window.location.href = 'dashboard';
+          window.location.href = 'dashboard.html';
         } catch (err) {
           console.error("Login fetch error:", err);
           var loginErrorText = document.getElementById('login-error-text');
@@ -250,7 +250,7 @@
           });
 
           setTimeout(function () {
-            window.location.href = 'dashboard';
+            window.location.href = 'dashboard.html';
           }, 800);
         } catch (err) {
           console.error("Register fetch error:", err);
@@ -278,7 +278,7 @@
       window.localStorage.removeItem(TOKEN_KEY);
       window.localStorage.removeItem(USER_KEY);
     } else if (window.localStorage.getItem(TOKEN_KEY)) {
-      window.location.href = 'dashboard';
+      window.location.href = 'dashboard.html';
     }
   } catch (_) { /* ignore */ }
 })();

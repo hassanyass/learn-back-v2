@@ -19,6 +19,13 @@
   <div class="dashboard-shell">
     <header class="nav-bar dashboard-nav-bar">
       <div class="nav-bar__left">
+        <button type="button" class="mobile-menu-toggle" id="btn-mobile-menu" aria-label="Open navigation menu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
         <img src="logo/Transparent2.png" alt="LearnBack" class="nav-bar__brand-img logo-light" style="height:44px;width:auto;margin-left:-4px;">
         <img src="logo/transparent_dark_mode.png" alt="LearnBack" class="nav-bar__brand-img logo-dark" style="height:44px;width:auto;margin-left:-4px;">
         <span class="nav-bar__divider"></span>
@@ -49,6 +56,7 @@
       </div>
     </header>
 
+    <div class="sidebar-backdrop" id="sidebar-backdrop" aria-hidden="true"></div>
     <div class="dashboard-body">
       <aside class="dashboard-sidebar" aria-label="Main navigation">
         <div class="dashboard-sidebar__brand">
@@ -104,7 +112,7 @@
                 </div>
                 <div class="dashboard-home__cta">
                   <h2 class="visually-hidden">Start teaching</h2>
-                  <button type="button" class="dashboard-action-card dashboard-action-card--primary" id="btn-start-session">
+                  <a href="start_session.html" class="dashboard-action-card dashboard-action-card--primary" id="btn-start-session" style="text-decoration:none;">
                     <span class="dashboard-action-card__icon" aria-hidden="true">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
                     </span>
@@ -113,7 +121,7 @@
                       <span class="dashboard-action-card__desc">Upload your slides or try our demo content to start teaching Kido.</span>
                     </span>
                     <span class="dashboard-action-card__chev" aria-hidden="true">→</span>
-                  </button>
+                  </a>
                 </div>
               </div>
             </section>

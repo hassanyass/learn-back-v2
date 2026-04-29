@@ -97,10 +97,7 @@
 
   function routeTo(route) {
     if (!route || route === currentRoute) return;
-    /* Strip .html suffix so Vercel cleanUrls serves the correct page.
-       Works transparently on local dev too (browser follows the redirect). */
-    var dest = route.replace(/\.html$/, '');
-    window.location.href = dest || route;
+    window.location.href = route;
   }
 
   function isAwaitingTrigger(step) {
@@ -160,12 +157,36 @@
       return;
     }
 
-    if (step.target && !document.querySelector(step.target) && tries < 20) {
-      window.clearTimeout(renderTimer);
-      renderTimer = window.setTimeout(function () {
-        renderCurrentWithRetry(tries + 1);
-      }, 150);
-      return;
+    if (step.target) {
+      var el = document.querySelector(step.target);
+      var isSidebarHidden = window.innerWidth <= 1024 && !document.body.classList.contains('is-sidebar-open');
+      var isInsideSidebar = el && el.closest('.dashboard-sidebar');
+
+      // CHUNK 7: Session drawer/modal awareness
+      var isMobile = window.innerWidth <= 768;
+      var isInsideLeftDrawer = isMobile && el && el.closest('.zone--left');
+      var isInsideRightDrawer = isMobile && el && el.closest('.zone--right');
+      var isLeftDrawerClosed = isMobile && !document.querySelector('.zone--left.is-open');
+      var isRightDrawerClosed = isMobile && !document.querySelector('.zone--right.is-open');
+      var isSlideModalActive = isMobile && document.querySelector('#chat-panel.slides-open');
+      var isInsideSlideModal = isMobile && el && el.closest('#slide-deck-view');
+
+      // Pause: target inside closed drawer
+      var isDrawerBlocked = (isInsideLeftDrawer && isLeftDrawerClosed)
+        || (isInsideRightDrawer && isRightDrawerClosed);
+
+      // Pause: target behind active slide modal (but not inside it)
+      var isModalBlocked = isSlideModalActive && el && !isInsideSlideModal;
+
+      if ((!el && tries < 20) || (isInsideSidebar && isSidebarHidden) || isDrawerBlocked || isModalBlocked) {
+        window.clearTimeout(renderTimer);
+        if ((isInsideSidebar && isSidebarHidden) || isDrawerBlocked || isModalBlocked) Renderer.destroy();
+        renderTimer = window.setTimeout(function () {
+          var shouldRetryWithoutIncrement = (isInsideSidebar && isSidebarHidden) || isDrawerBlocked || isModalBlocked;
+          renderCurrentWithRetry(shouldRetryWithoutIncrement ? tries : tries + 1);
+        }, 150);
+        return;
+      }
     }
 
     renderStep(step, state);

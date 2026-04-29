@@ -114,6 +114,11 @@ export const dom = {
   btnHeaderActions: document.getElementById('btn-header-actions'),
   headerDropdown: document.getElementById('header-dropdown'),
   sessionTitle: document.querySelector('.nav-bar__session'),
+  
+  // Mobile Toggles
+  btnMobileKido: document.getElementById('btn-mobile-kido'),
+  btnMobilePlan: document.getElementById('btn-mobile-plan'),
+  sessionBackdrop: document.getElementById('session-backdrop'),
 
   modalCrossroads: document.getElementById('modal-crossroads'),
   btnModalSaveCrossroads: document.getElementById('btn-modal-save-crossroads'),

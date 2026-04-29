@@ -102,7 +102,7 @@
       window.localStorage.removeItem(STORAGE_KEYS.token);
       window.localStorage.removeItem(STORAGE_KEYS.user);
     } catch (_) { /* ignore */ }
-    window.location.href = 'auth';
+    window.location.href = 'auth.html';
   }
 
   function ApiError(message, options) {
@@ -179,7 +179,7 @@
           /* Mark that we bounced due to a 401 so auth.js can clear the stale
              token instead of immediately redirecting back to dashboard. */
           try { window.sessionStorage.setItem('lb_auth_bounce', '1'); } catch (_) {}
-          window.location.href = 'auth';
+          window.location.href = 'auth.html';
           return;
         }
       }

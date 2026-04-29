@@ -1061,7 +1061,50 @@ body.dashboard-page .filter-pill {
   border-top: none;
 }
 
+/* ── Mobile Sidebar Overlays & Toggles ───────────────────── */
+.mobile-menu-toggle {
+  display: none;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin-right: 8px;
+  padding: 0;
+}
+
+.mobile-menu-toggle svg {
+  width: 24px;
+  height: 24px;
+}
+
+.sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 43, 58, 0.4);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  z-index: 900;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+  pointer-events: none;
+}
+
+body.is-sidebar-open .sidebar-backdrop {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
 @media (max-width: 1024px) {
+  .mobile-menu-toggle {
+    display: flex;
+  }
+
   .dashboard-home {
     flex-direction: column;
     text-align: center;
@@ -1084,46 +1127,28 @@ body.dashboard-page .filter-pill {
   }
 
   .dashboard-sidebar {
-    position: relative;
-    top: auto;
-    height: auto;
-    max-height: none;
-    min-height: auto;
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 280px;
+    z-index: 1000;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15);
+    border-radius: 0;
     margin: 0;
-    padding: 14px 16px;
-    gap: 14px;
+  }
+
+  body.is-sidebar-open .dashboard-sidebar {
+    transform: translateX(0);
   }
 
   .dashboard-calendar-wrap {
-    max-width: none;
-    justify-self: stretch;
+    max-width: 280px;
+    justify-self: center;
   }
 
-  .dashboard-sidebar__brand {
-    flex: 1;
-    min-width: 140px;
-    border-bottom: none;
-    padding-bottom: 0;
-  }
-
-  .dashboard-nav {
-    flex-direction: row;
-    flex-wrap: wrap;
-    flex: 1 1 100%;
-    order: 3;
-  }
-
-  .dashboard-nav__link.is-active {
-    font-weight: 700;
-  }
-
-  .dashboard-sidebar__user {
-    margin-top: 0;
-    order: 2;
-  }
 
   .dashboard-gamify__row {
     grid-template-columns: 1fr;

@@ -106,18 +106,95 @@
   .zone--right { flex: 0 0 22%; }
 }
 
-@media (max-width: 820px) {
-  .workspace { flex-wrap: wrap; padding: 14px; gap: 12px; }
-  .zone--left { flex: 0 0 30%; max-height: 260px; }
-  .zone--center { flex: 1 1 60%; }
-  .zone--right { flex: 0 0 100%; max-height: 220px; }
+/* Desktop-only: zone--left needs relative positioning for its children */
+@media (min-width: 769px) {
+  .zone--left {
+    position: relative;
+  }
 }
 
-@media (max-width: 600px) {
-  .workspace { flex-direction: column; padding: 10px; gap: 10px; }
-  .zone--left { flex: 0 0 auto; max-height: 160px; }
-  .zone--center { flex: 1 1 auto; }
-  .zone--right { flex: 0 0 auto; max-height: 220px; }
+/* Phase A: Replace orphaned Tailwind utilities on layout containers */
+#chat-panel {
+  min-height: 0;
+}
+
+@media (max-width: 768px) {
+  #center-resizer { display: none !important; }
+
+  .workspace {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    padding: 0;
+    gap: 0;
+  }
+  
+  /* CHUNK 2: Full-Screen Chat */
+  .zone--center {
+    flex: 1 1 100%;
+    width: 100%;
+    max-width: 100%;
+    border-radius: 0;
+    border: none;
+  }
+  
+  /* Left and Right Drawers: completely hidden by default */
+  .zone--left,
+  .zone--right {
+    display: none !important;
+    position: fixed !important;
+    top: 56px;
+    bottom: 0;
+    width: 85vw;
+    max-width: 340px;
+    height: calc(100vh - 56px);
+    z-index: 50;
+    border-radius: 0;
+    overflow-y: auto;
+    background: var(--surface);
+    border: none !important;
+    box-shadow: none;
+    flex-direction: column;
+  }
+
+  .zone--left {
+    left: 0;
+  }
+
+  .zone--right {
+    right: 0;
+  }
+
+  /* When open: show as fixed overlay */
+  .zone--left.is-open {
+    display: flex !important;
+    border-right: 1px solid var(--border) !important;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.18);
+  }
+
+  .zone--right.is-open {
+    display: flex !important;
+    border-left: 1px solid var(--border) !important;
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.18);
+  }
+  
+  /* CHUNK 5: Slide Modal (Full-screen overlay) */
+  #slide-deck-view {
+    display: none !important;
+  }
+  
+  #chat-panel.slides-open #slide-deck-view {
+    display: flex !important;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100% !important;
+    height: 100% !important;
+    z-index: 1000;
+    max-width: none !important;
+    border-radius: 0 !important;
+  }
 }
 
 /* HOTFIX: Constrain Header SVGs */
@@ -131,76 +208,60 @@
 }
 
 /* HOTFIX: Enforce Zone Surfaces */
-.zone {
-  background-color: var(--surface) !important;
-  box-shadow: var(--shadow-zone) !important;
-  border: 1px solid var(--border) !important;
-}
-
-/* Phase 12 Hotfixes */
-
-/* ANCHOR COLLAPSE BUTTON */
-.zone__header {
-  position: relative !important;
-  padding-right: 48px !important; /* Make room for the button */
-}
-
-.panel-collapse-btn {
-  position: absolute !important;
-  right: 12px !important;
-  top: 50% !important;
-  transform: translateY(-50%) !important;
-  width: 28px !important;
-  height: 28px !important;
-  display: flex !important;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--r-xs) !important;
-  background: var(--navy-05) !important;
-  z-index: 20;
-}
-
-
-/* =========================================
-   PHASE 13: COLLAPSE BTN ANCHOR
-   ========================================= */
-
-.zone__header {
-  position: relative !important;
-  padding-right: 48px !important;
-}
-
-.panel-collapse-btn {
-  position: absolute !important;
-  right: 12px !important;
-  top: 50% !important;
-  transform: translateY(-50%) !important;
+@media (min-width: 769px) {
+  .zone {
+    background-color: var(--surface) !important;
+    box-shadow: var(--shadow-zone) !important;
+    border: 1px solid var(--border) !important;
+  }
 }
 
 /* =========================================
-   PHASE 13: TOTAL RECOVERY & FUNCTIONAL RESTORE
+   DESKTOP-ONLY: Collapse Button System
    ========================================= */
+@media (min-width: 769px) {
+  .zone__header {
+    position: relative !important;
+    padding-right: 48px !important;
+  }
 
-/* Step 2: Header Naming & Collapse Button Anchor */
-.zone__header {
-  position: relative !important;
-  padding-right: 48px !important;
+  .zone__header .panel-collapse-btn {
+    position: absolute !important;
+    right: 12px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    margin-top: 0 !important;
+    width: 28px !important;
+    height: 28px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: var(--r-xs) !important;
+    background: var(--navy-05) !important;
+    z-index: 20 !important;
+  }
+
+  .zone.is-collapsed .panel-collapse-btn {
+    transform: translateY(-50%) scaleX(-1) !important;
+  }
 }
-.zone__header .panel-collapse-btn {
-  position: absolute !important;
-  right: 12px !important;
-  top: 50% !important;
-  transform: translateY(-50%) !important;
-  margin-top: 0 !important;
-  width: 28px !important;
-  height: 28px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  border-radius: var(--r-xs) !important;
-  background: var(--navy-05) !important;
-  z-index: 20 !important;
-}
-.zone.is-collapsed .panel-collapse-btn {
-  transform: translateY(-50%) scaleX(-1) !important;
+
+/* ── MOBILE: Hide all desktop panel chrome ── */
+@media (max-width: 768px) {
+  .panel-collapse-btn {
+    display: none !important;
+  }
+
+  .zone__header {
+    padding-right: 16px !important;
+  }
+
+  .zone.is-collapsed {
+    width: 85% !important;
+    max-width: 340px !important;
+  }
+
+  .kido-stub, .plan-stub, .progress-stub {
+    display: none !important;
+  }
 }

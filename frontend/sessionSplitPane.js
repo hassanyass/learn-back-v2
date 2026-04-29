@@ -133,6 +133,13 @@
       rightPanel.style.display = 'none';
     }
 
+    if (window.innerWidth <= 768) {
+      if (window.SessionDrawers) {
+        window.SessionDrawers.closeAll();
+        window.SessionDrawers.setScrollLock(true); // CHUNK 6: Lock background
+      }
+    }
+
     requestAnimationFrame(function () {
       var metrics = getMetrics();
       setSplitColumns(metrics.totalWidth * 0.48);
@@ -158,6 +165,12 @@
       rightPanel.style.display = '';
     }
 
+    if (window.innerWidth <= 768) {
+      if (window.SessionDrawers) {
+        window.SessionDrawers.setScrollLock(false); // CHUNK 6: Unlock background
+      }
+    }
+
     setSlidePointerInteractivity(true);
 
     if (window.LearnBackPDF && typeof window.LearnBackPDF.close === 'function') {
@@ -172,6 +185,8 @@
 
   function startDrag(clientX) {
     if (!isOpen()) return;
+    if (window.innerWidth <= 768) return; // Disable dragging on mobile
+
     dragState.active = true;
     chatPanel.classList.add('is-resizing');
     document.body.style.cursor = 'col-resize';

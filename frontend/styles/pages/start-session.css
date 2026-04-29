@@ -184,8 +184,8 @@
 }
 
 .demo-preview__back {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border-radius: var(--r-sm);
   border: 1px solid var(--border);
   background: var(--surface);
@@ -324,6 +324,11 @@
   font-size: var(--fs-xs);
   font-weight: 700;
   cursor: pointer;
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   transition: background var(--t-fast);
 }
 
@@ -332,7 +337,13 @@
 }
 
 /* ── Responsive ── */
-@media (max-width: 640px) {
+@media (max-width: 768px) {
+  .choice-container {
+    padding: 32px 20px 48px;
+  }
+}
+
+@media (max-width: 480px) {
   .choice-container {
     padding: 24px 16px 48px;
   }

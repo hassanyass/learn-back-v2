@@ -416,6 +416,7 @@
 /* -----------------------------------------
    6. COLLAPSED WORKFLOW STATE
    ----------------------------------------- */
+@media (min-width: 769px) {
 #ai-panel.is-collapsed,
 #right-panel.is-collapsed {
   width: 72px;
@@ -538,9 +539,15 @@
   align-items: center;
   gap: 8px;
   padding: 0 16px !important;
-  padding-right: 50px !important;
   min-height: 56px;
   background: var(--surface);
+}
+
+@media (min-width: 769px) {
+  .zone--left .zone__header,
+  .zone--right .zone__header {
+    padding-right: 50px !important;
+  }
 }
 
 .zone--left .panel-collapse-btn--left,
@@ -614,6 +621,7 @@
 #right-panel.is-collapsed .zone__header-icon {
   display: none;
 }
+} /* END OF MIN-WIDTH: 769PX */
 
 /* -----------------------------------------
    8. SUB-VIEWS (KWL / MISCONCEPTIONS / SLIDES)

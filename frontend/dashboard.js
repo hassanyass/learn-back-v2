@@ -9,13 +9,13 @@
   // ── Auth Guard ──────────────────────────────────────────────
   // Redirect to login if no JWT token is present
   if (window.LearnBackAPI && typeof window.LearnBackAPI.isLoggedIn === 'function' && !window.LearnBackAPI.isLoggedIn()) {
-    window.location.href = 'auth';
+    window.location.href = 'auth.html';
     return;
   }
   if (!window.LearnBackAPI) {
     try {
       if (!window.localStorage.getItem('learnback_token')) {
-        window.location.href = 'auth';
+        window.location.href = 'auth.html';
         return;
       }
     } catch (_) { /* proceed */ }
@@ -297,9 +297,9 @@
 
       button.addEventListener('click', function () {
         if (sessionRecord.status === 'in_progress') {
-          window.location.href = 'session?sessionId=' + encodeURIComponent(sessionRecord.id);
+          window.location.href = 'session.html?sessionId=' + encodeURIComponent(sessionRecord.id);
         } else {
-          window.location.href = 'feedback?sessionId=' + encodeURIComponent(sessionRecord.id);
+          window.location.href = 'feedback.html?sessionId=' + encodeURIComponent(sessionRecord.id);
         }
       });
 
@@ -343,7 +343,7 @@
     var start = document.getElementById('btn-start-session');
     if (start) {
       start.addEventListener('click', function () {
-        window.location.href = 'start_session';
+        window.location.href = 'start_session.html';
       });
     }
   }
@@ -494,8 +494,50 @@
           window.localStorage.removeItem('learnback_token');
           window.localStorage.removeItem('learnback_user');
         } catch (_) { /* ignore */ }
-        window.location.href = 'auth';
+        window.location.href = 'auth.html';
       }
+    });
+  }
+
+  function wireSidebarToggle() {
+    var toggleBtn = document.getElementById('btn-mobile-menu');
+    var backdrop = document.getElementById('sidebar-backdrop');
+    var navLinks = document.querySelectorAll('.dashboard-nav__link, .dashboard-logout-btn');
+    
+    if (!toggleBtn || !backdrop) return;
+
+    function closeSidebar() {
+      document.body.classList.remove('is-sidebar-open');
+      document.body.style.overflow = '';
+    }
+
+    function openSidebar() {
+      document.body.classList.add('is-sidebar-open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    toggleBtn.addEventListener('click', function() {
+      if (document.body.classList.contains('is-sidebar-open')) {
+        closeSidebar();
+      } else {
+        openSidebar();
+      }
+    });
+
+    backdrop.addEventListener('click', closeSidebar);
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && document.body.classList.contains('is-sidebar-open')) {
+        closeSidebar();
+      }
+    });
+
+    navLinks.forEach(function(link) {
+      link.addEventListener('click', function() {
+        if (window.innerWidth <= 1024) {
+          closeSidebar();
+        }
+      });
     });
   }
 
@@ -503,6 +545,10 @@
     var btn = document.getElementById('btn-view-walkthrough');
     if (!btn) return;
     btn.addEventListener('click', function () {
+      /* Close sidebar first per contract rules */
+      document.body.classList.remove('is-sidebar-open');
+      document.body.style.overflow = '';
+      
       /* Check at click-time, not at init-time — controller loads async via defer */
       if (window.LearnBackWalkthrough && typeof window.LearnBackWalkthrough.replayTour === 'function') {
         window.LearnBackWalkthrough.replayTour();
@@ -512,6 +558,7 @@
 
   async function init() {
     initTheme();
+    wireSidebarToggle();
     wireDashboardTabs();
     wireFilters();
     wireActionCards();

@@ -9,11 +9,29 @@
 
   /* ── Helper: expand the right panel if it is collapsed ── */
   function ensureRightPanelOpen() {
+    if (window.innerWidth <= 768 && window.SessionDrawers) {
+      window.SessionDrawers.openDrawer('right-panel');
+      return;
+    }
     var iconBar = document.getElementById('right-icon-bar');
     if (!iconBar) return;
     var visible = window.getComputedStyle(iconBar).display !== 'none';
     if (visible) {
       var btn = document.getElementById('btn-expand-right');
+      if (btn) btn.click();
+    }
+  }
+
+  function ensureLeftPanelOpen() {
+    if (window.innerWidth <= 768 && window.SessionDrawers) {
+      window.SessionDrawers.openDrawer('ai-panel');
+      return;
+    }
+    var iconBar = document.getElementById('left-icon-bar');
+    if (!iconBar) return;
+    var visible = window.getComputedStyle(iconBar).display !== 'none';
+    if (visible) {
+      var btn = document.getElementById('btn-expand-left');
       if (btn) btn.click();
     }
   }
@@ -31,7 +49,8 @@
       placement: 'right',
       placementFallbacks: ['bottom', 'left'],
       cardSize: 'compact',
-      spotlightPadding: 8
+      spotlightPadding: 8,
+      beforeRender: ensureLeftPanelOpen
     },
 
     /* ── 2. Center: Chat area ─────────────────────────── */
@@ -46,7 +65,12 @@
       placement: 'left',
       placementFallbacks: ['right', 'bottom'],
       cardSize: 'compact',
-      spotlightPadding: 8
+      spotlightPadding: 8,
+      beforeRender: function() {
+        if (window.innerWidth <= 768 && window.SessionDrawers) {
+          window.SessionDrawers.closeAll();
+        }
+      }
     },
 
     /* ── 3. Knowledge Cube button ─────────────────────── */

@@ -7,7 +7,7 @@
 .walkthrough-overlay {
   position: fixed;
   inset: 0;
-  z-index: 10000;
+  z-index: 800;
   pointer-events: none;
   font-family: var(--font-sans, 'Plus Jakarta Sans', sans-serif);
 }
@@ -326,23 +326,23 @@ html[data-theme="dark"] .walkthrough-card {
   }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 768px) {
   .walkthrough-card {
-    inset: auto 16px 16px 16px;
-    width: auto;
+    inset: auto 16px 16px 16px !important;
+    width: auto !important;
     max-height: min(76vh, 620px);
-    transform: none;
+    transform: none !important;
   }
 
   .walkthrough-card--compact {
-    width: auto;
+    width: auto !important;
     max-height: min(70vh, 560px);
     border-radius: 20px;
     padding: 16px;
   }
 
   .walkthrough-card--pop {
-    width: auto;
+    width: auto !important;
     max-height: min(60vh, 420px);
     border-radius: 18px;
     padding: 14px 16px;

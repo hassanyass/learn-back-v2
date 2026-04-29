@@ -642,7 +642,13 @@ import { UIStateManager } from './js/core/UIStateManager.js';
   // ── Right-panel collapse toggle ──
   var btnCollapseRight = document.getElementById('btn-collapse-right');
   if (btnCollapseRight) {
-    btnCollapseRight.addEventListener('click', function () {
+    btnCollapseRight.addEventListener('click', function (e) {
+      if (window.innerWidth <= 768 && window.SessionDrawers) {
+        e.preventDefault();
+        e.stopPropagation();
+        window.SessionDrawers.closeAll();
+        return;
+      }
       var panel = document.getElementById('right-panel');
       if (panel) panel.classList.toggle('is-collapsed');
       uiManager.setRightPanelView('status');
@@ -651,9 +657,30 @@ import { UIStateManager } from './js/core/UIStateManager.js';
 
   var btnCollapseLeft = document.getElementById('btn-collapse-left');
   if (btnCollapseLeft) {
-    btnCollapseLeft.addEventListener('click', function () {
+    btnCollapseLeft.addEventListener('click', function (e) {
+      if (window.innerWidth <= 768 && window.SessionDrawers) {
+        e.preventDefault();
+        e.stopPropagation();
+        window.SessionDrawers.closeAll();
+        return;
+      }
       var panel = document.getElementById('ai-panel');
       if (panel) panel.classList.toggle('is-collapsed');
+    });
+  }
+
+  // ── Mobile Controls Menu ──
+  var btnMobileControls = document.getElementById('btn-mobile-controls');
+  var headerActionsWrap = document.getElementById('header-actions-wrap');
+  if (btnMobileControls && headerActionsWrap) {
+    btnMobileControls.addEventListener('click', function(e) {
+      e.stopPropagation();
+      headerActionsWrap.classList.toggle('is-open');
+    });
+    document.addEventListener('click', function(e) {
+      if (!headerActionsWrap.contains(e.target) && e.target !== btnMobileControls) {
+        headerActionsWrap.classList.remove('is-open');
+      }
     });
   }
 
@@ -769,6 +796,80 @@ import { UIStateManager } from './js/core/UIStateManager.js';
       }
     });
   }
+
+  // ── Mobile Drawers (CHUNK 3 & 4) ──
+  function setScrollLock(locked) {
+    if (locked) {
+      document.body.style.overflow = 'hidden';
+      // Fallback: prevent touchmove on chat if we wanted to be more explicit,
+      // but overflow:hidden is acceptable as per rule if limited to background
+    } else {
+      document.body.style.overflow = '';
+    }
+  }
+
+  function closeAllDrawers() {
+    var aiPanel = document.getElementById('ai-panel');
+    var rightPanel = document.getElementById('right-panel');
+    var backdrop = document.getElementById('session-backdrop');
+    if (aiPanel) aiPanel.classList.remove('is-open');
+    if (rightPanel) rightPanel.classList.remove('is-open');
+    if (backdrop) {
+      backdrop.style.opacity = '0';
+      setTimeout(function() { backdrop.style.display = 'none'; }, 300);
+    }
+    setScrollLock(false);
+  }
+
+  function openDrawer(panelId) {
+    closeAllDrawers(); // Enforce Mutex
+    var panel = document.getElementById(panelId);
+    var backdrop = document.getElementById('session-backdrop');
+    if (panel) {
+      panel.classList.add('is-open');
+    }
+    if (backdrop) {
+      backdrop.style.display = 'block';
+      setTimeout(function() { backdrop.style.opacity = '1'; }, 10);
+    }
+    setScrollLock(true);
+  }
+
+  if (dom.btnMobileKido) {
+    dom.btnMobileKido.addEventListener('click', function(e) {
+      e.preventDefault();
+      var panel = document.getElementById('ai-panel');
+      if (panel && panel.classList.contains('is-open')) {
+        closeAllDrawers();
+      } else {
+        openDrawer('ai-panel');
+      }
+    });
+  }
+
+  if (dom.btnMobilePlan) {
+    dom.btnMobilePlan.addEventListener('click', function(e) {
+      e.preventDefault();
+      var panel = document.getElementById('right-panel');
+      if (panel && panel.classList.contains('is-open')) {
+        closeAllDrawers();
+      } else {
+        openDrawer('right-panel');
+      }
+    });
+  }
+
+  if (dom.sessionBackdrop) {
+    dom.sessionBackdrop.addEventListener('click', function() {
+      closeAllDrawers();
+    });
+  }
+
+  window.SessionDrawers = {
+    openDrawer: openDrawer,
+    closeAll: closeAllDrawers,
+    setScrollLock: setScrollLock
+  };
 
   // Trigger the new full session walkthrough on first visit
   // (WalkthroughController guards via localStorage 'session_walkthrough_seen')

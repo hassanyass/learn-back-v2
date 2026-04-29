@@ -7,13 +7,13 @@
 
   // ── Auth Guard ──────────────────────────────────────────────
   if (window.LearnBackAPI && typeof window.LearnBackAPI.isLoggedIn === 'function' && !window.LearnBackAPI.isLoggedIn()) {
-    window.location.href = 'auth';
+    window.location.href = 'auth.html';
     return;
   }
   if (!window.LearnBackAPI) {
     try {
       if (!window.localStorage.getItem('learnback_token')) {
-        window.location.href = 'auth';
+        window.location.href = 'auth.html';
         return;
       }
     } catch (_) { /* proceed */ }
@@ -74,7 +74,7 @@
 
   // ── Upload Flow ──────────────────────────────────────────────
   dom.btnUpload.addEventListener('click', function () {
-    window.location.href = 'upload_slides';
+    window.location.href = 'upload_slides.html';
   });
 
   // ── Demo Flow: Fetch Content ─────────────────────────────────
@@ -169,7 +169,7 @@
         if (!sessionId) {
           throw new Error('No session ID returned');
         }
-        window.location.href = 'session?sessionId=' + encodeURIComponent(sessionId);
+        window.location.href = 'session.html?sessionId=' + encodeURIComponent(sessionId);
       })
       .catch(function (err) {
         console.error('[StartSession] Demo session creation failed:', err);
