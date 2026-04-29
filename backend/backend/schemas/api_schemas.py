@@ -53,6 +53,9 @@ class SessionCreateRequest(BaseModel):
     document_id: int = Field(..., ge=1)
 
 
+class DemoSessionRequest(BaseModel):
+    demo_id: str = Field(..., min_length=1)
+
 # ──────────────────────────────────────────────────────────────────────
 # WebSocket Payload Schemas (Phase 3D)
 # ──────────────────────────────────────────────────────────────────────

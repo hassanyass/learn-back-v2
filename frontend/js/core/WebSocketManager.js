@@ -30,14 +30,22 @@ export class WebSocketManager {
     this.onConnectionChange = null; // (state: 'connecting'|'connected'|'disconnected'|'reconnecting') => void
   }
 
-  /** Build the WS URL based on current hostname. */
+  /** Build the WS URL based on config or hostname fallback. */
   _buildUrl() {
-    var host = window.location.hostname;
-    var wsHost = (host === '127.0.0.1' || host === 'localhost')
-      ? '127.0.0.1:8002'
-      : window.location.host;
-    var protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    var base = protocol + '://' + wsHost + '/ws/session/' + this.sessionId;
+    var cfg = window.__LEARNBACK_CONFIG__;
+    var wsBase;
+    if (cfg && cfg.WS_BASE_URL) {
+      wsBase = cfg.WS_BASE_URL;
+    } else {
+      // Fallback if config.js didn't load
+      var host = window.location.hostname;
+      var wsHost = (host === '127.0.0.1' || host === 'localhost')
+        ? '127.0.0.1:8002'
+        : window.location.host;
+      var protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+      wsBase = protocol + '://' + wsHost;
+    }
+    var base = wsBase + '/ws/session/' + this.sessionId;
 
     // Attach JWT for backend authentication (session_router requires ?token=).
     var token = '';

@@ -343,7 +343,7 @@
     var start = document.getElementById('btn-start-session');
     if (start) {
       start.addEventListener('click', function () {
-        window.location.href = 'upload_slides.html';
+        window.location.href = 'start_session.html';
       });
     }
   }
@@ -458,22 +458,22 @@
     }
 
     try {
-      var me = await window.LearnBackAPI.request('/auth/me');
+      var user = await window.LearnBackAPI.request('/auth/me');
       // Update stored user details from backend
-      if (me && me.username) {
+      if (user && user.username) {
         try {
-          window.localStorage.setItem('learnback_user', JSON.stringify({
-            user_id: me.user_id,
-            username: me.username
-          }));
+          window.localStorage.setItem('learnback_user', JSON.stringify(user));
         } catch (_) { /* ignore */ }
 
         // Refresh the UI with the server-authoritative name
-        state.dashboard.user.firstName = me.username.split(' ')[0] || 'Teacher';
+        state.dashboard.user.firstName = user.username.split(' ')[0] || 'Teacher';
         initWelcome();
-      }
 
-      // Walkthrough logic removed — will be re-implemented in a later phase.
+        // Walkthrough logic
+        if (user.has_seen_walkthrough === false && window.LearnBackWalkthrough) {
+          window.LearnBackWalkthrough.startTour({ replay: false });
+        }
+      }
     } catch (error) {
       // 401 is handled by apiClient.js (auto-redirect)
       // For other errors, don't block the dashboard
@@ -499,19 +499,32 @@
     });
   }
 
+  function wireWalkthrough() {
+    var btn = document.getElementById('btn-view-walkthrough');
+    if (btn && window.LearnBackWalkthrough) {
+      btn.addEventListener('click', function () {
+        window.LearnBackWalkthrough.replayTour();
+      });
+    }
+  }
+
   async function init() {
     initTheme();
     wireDashboardTabs();
     wireFilters();
     wireActionCards();
     wireLogout();
+    wireWalkthrough();
 
     // Validate token with the backend (non-blocking — UI renders first)
     state.dashboard = await loadDashboardState();
     renderDashboard();
 
     // Fire session validation after initial render so the page feels fast
-    validateSession();
+    await validateSession();
+    if (window.LearnBackWalkthrough) {
+      window.LearnBackWalkthrough.maybeStart('dashboard.html');
+    }
   }
 
   document.addEventListener("DOMContentLoaded", () => {

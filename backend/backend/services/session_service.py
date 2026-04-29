@@ -16,7 +16,7 @@ import asyncio
 import json
 import re
 
-print("🔥 SESSION SERVICE LOADED - NEW CODE ACTIVE")
+print("[SESSION_SERVICE] Module loaded")
 import logging
 import os
 from copy import deepcopy
@@ -39,11 +39,11 @@ MAX_ATTEMPTS_PER_POINT: int = 5
 OVERALL_BKT_COMPLETION_THRESHOLD: float = 0.95
 
 # ──────────────────────────────────────────────────────────────────────
-# TEST MODE: DETERMINISTIC_WIDGET_OVERRIDE
-# When True, forces specific widget types at specific points for
-# controlled frontend testing.  Set to False for production.
+# HYBRID WIDGET TRIGGERS
+# Deterministic triggers fire at fixed interaction counts (Q2, Q4)
+# using a dedicated widget-generation LLM call.
+# All other interactions fall through to Kido's natural response.
 # ──────────────────────────────────────────────────────────────────────
-DETERMINISTIC_WIDGET_OVERRIDE: bool = True
 
 _FORCED_WIDGET_INSTRUCTIONS: dict[str, str] = {
     "process": (
@@ -332,13 +332,11 @@ class SessionService:
         state = self._ensure_state(session)
         print(f"[STATE DEBUG] ENTRY: id={id(state)}, count={state.get('session_interaction_count', 0)}, point={state.get('current_point_index')}")
 
-        # TEST MODE: increment absolute session counter and decide widget
-        forced_widget: str | None = None
-        if DETERMINISTIC_WIDGET_OVERRIDE:
-            state["session_interaction_count"] = state.get("session_interaction_count", 0) + 1
-            print(f"[STATE DEBUG] BEFORE DECISION: session_count={state['session_interaction_count']}, point={state.get('current_point_index')}")
-            forced_widget = _check_forced_widget(state)
-            print(f"[DEBUG_WIDGET] AFTER DECISION: forced_widget={forced_widget}")
+        # HYBRID: always increment absolute session counter and check triggers
+        state["session_interaction_count"] = state.get("session_interaction_count", 0) + 1
+        print(f"[STATE DEBUG] BEFORE DECISION: session_count={state['session_interaction_count']}, point={state.get('current_point_index')}")
+        forced_widget = _check_forced_widget(state)
+        print(f"[DEBUG_WIDGET] AFTER DECISION: forced_widget={forced_widget}")
 
         segments = await self._get_segments(session)
 
@@ -493,11 +491,10 @@ class SessionService:
         evaluator_label = label  # Use the validated label, not raw LLM output
         widget_type = evaluator_output.get("widget_type", "TEXT")
 
-        # ── TEST MODE: Injection Point A — log forced widget (do NOT inject into Kido prompt) ──
-        widget_debug: dict[str, Any] | None = None
-        if DETERMINISTIC_WIDGET_OVERRIDE and forced_widget:
+        # ── HYBRID: Log forced widget decision ──
+        if forced_widget:
             logger.info(
-                "[TEST_MODE] Widget forced: type=%s, session_count=%s",
+                "[HYBRID] Widget forced: type=%s, session_count=%s",
                 forced_widget, state.get("session_interaction_count", 0),
             )
 
@@ -514,8 +511,8 @@ class SessionService:
         )
         kido_response = kido_result.get("kido_response", "")
 
-        # ── TEST MODE: Injection Point B — generate widget data via SEPARATE LLM call ──
-        if DETERMINISTIC_WIDGET_OVERRIDE and forced_widget:
+        # ── HYBRID: Forced widget takes priority, otherwise Kido decides ──
+        if forced_widget:
             widget_type = forced_widget.upper()
             widget_data = await self._generate_widget_data(
                 forced_widget, current_point or "Unknown Point"
@@ -535,24 +532,23 @@ class SessionService:
             validation_error = _validate_forced_widget_data(forced_widget, widget_data)
             if validation_error:
                 logger.error(
-                    "[TEST_MODE] Validation FAILED: %s  — widget still returned for visibility",
+                    "[HYBRID] Validation FAILED: %s  — widget still returned",
                     validation_error,
                 )
             else:
-                logger.info("[TEST_MODE] Validation PASSED ✅")
-
-            # NEVER drop the widget — always attach debug for test visibility
-            widget_debug = {
-                "forced": True,
-                "expected_type": forced_widget,
-                "validation_error": validation_error,
-                "trigger_rule": (
-                    f"session_count={state.get('session_interaction_count', 0)}"
-                ),
-            }
+                logger.info("[HYBRID] Validation PASSED")
         else:
             widget_type = kido_result.get("widget_type", widget_type.lower())
             widget_data = kido_result.get("widget_data", None)
+            validation_error = None
+
+        # ── HYBRID: Always attach widget debug for testing visibility ──
+        widget_debug: dict[str, Any] = {
+            "interaction_count": state.get("session_interaction_count", 0),
+            "forced_widget": forced_widget,
+            "forced": forced_widget is not None,
+            "validation_error": validation_error if forced_widget else None,
+        }
 
         # --- 8. Persist Kido message ---
         await self._persist_message(
@@ -588,8 +584,7 @@ class SessionService:
             "topic_checkpoint": topic_checkpoint,
             "mind_map_data": mind_map_data,
         }
-        if widget_debug is not None:
-            result["widget_debug"] = widget_debug
+        result["widget_debug"] = widget_debug
         return result
 
     # ------------------------------------------------------------------
@@ -1173,7 +1168,16 @@ class SessionService:
         return result
 
     async def _get_segments(self, session: LearningSession) -> list[dict[str, Any]]:
-        """Retrieve the segmented curriculum for this session's slide deck."""
+        """Retrieve the segmented curriculum for this session's slide deck.
+
+        Demo sessions embed their curriculum directly in session_state.topics
+        and have no SlideDeck row.  _resolve_current_point already reads from
+        state["topics"] first, so returning [] here is safe and correct.
+        """
+        state = session.session_state or {}
+        if state.get("source_type") == "demo":
+            return []
+
         if session.slide_deck_id is not None:
             stmt = (
                 select(SlideDeck)

@@ -960,6 +960,7 @@
 
   <!-- Decoupled utilities (no session logic) -->
   <script src="audioManager.js"></script>
+  <script src="config.js"></script>
   <script src="apiClient.js"></script>
   <script src="sessionStore.js"></script>
   <script src="pdfViewer.js"></script>
@@ -982,6 +983,17 @@
       window.KidoLottie = lottie;
     }
   </script>
+
+  <!-- Session Walkthrough (uses shared engine from dashboard) -->
+  <script src="js/walkthrough/walkthroughState.js" defer></script>
+  <script src="js/walkthrough/walkthroughSteps.js" defer></script>
+  <script src="js/walkthrough/sessionWalkthroughSteps.js" defer></script>
+  <script src="js/walkthrough/walkthroughRenderer.js" defer></script>
+  <script src="js/walkthrough/WalkthroughController.js" defer></script>
+
+  <!-- Session Intro Walkthrough Container -->
+  <div id="session-intro-container"></div>
+
 
 </body>
 

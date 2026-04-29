@@ -1,0 +1,342 @@
+/* ============================================================
+   LearnBack — Start Session Choice Page
+   Reuses dashboard design system tokens and patterns.
+   ============================================================ */
+
+.choice-page {
+  min-height: 100vh;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+.choice-container {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 48px 20px 64px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
+}
+
+.choice-zone {
+  width: 100%;
+  max-width: 560px;
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-zone);
+  box-shadow: var(--shadow-card);
+  padding: 40px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.choice-header {
+  text-align: center;
+}
+
+.choice-title {
+  font-size: clamp(1.4rem, 2.5vw, 1.75rem);
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.03em;
+  margin: 0 0 8px;
+}
+
+.choice-subtitle {
+  font-size: var(--fs-sm);
+  color: var(--text-mid);
+  margin: 0;
+  line-height: 1.55;
+}
+
+.choice-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ── Choice Card — mirrors .dashboard-action-card pattern ── */
+.choice-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  padding: 20px 22px;
+  border-radius: var(--r-zone);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--t-normal), border-color var(--t-fast), transform var(--t-fast);
+}
+
+.choice-card:hover {
+  box-shadow: var(--shadow-card);
+  border-color: rgba(146, 94, 120, 0.35);
+  transform: translateY(-1px);
+}
+
+.choice-card:active {
+  transform: translateY(0);
+  opacity: 0.96;
+}
+
+.choice-card--primary {
+  border-color: rgba(146, 94, 120, 0.35);
+  background: var(--navy);
+}
+
+.choice-card--primary .choice-card__icon {
+  background: var(--plum);
+  color: #fff;
+}
+
+.choice-card--primary .choice-card__title,
+.choice-card--primary .choice-card__desc {
+  color: #F3F4F6;
+}
+
+.choice-card--demo {
+  border-color: rgba(93, 162, 113, 0.35);
+}
+
+.choice-card--demo .choice-card__icon {
+  background: rgba(93, 162, 113, 0.15);
+  color: var(--state-mastered);
+}
+
+.choice-card__icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--r-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.choice-card__icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.choice-card__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.choice-card__title {
+  font-size: var(--fs-md);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.choice-card__desc {
+  font-size: var(--fs-sm);
+  color: var(--text-mid);
+  line-height: 1.45;
+}
+
+.choice-card__chev {
+  font-size: 1.25rem;
+  color: var(--plum);
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+
+/* ── Demo Preview Panel ─────────────────────────────────── */
+.demo-preview {
+  display: none;
+  flex-direction: column;
+  gap: 20px;
+  animation: demo-slide-in 0.35s ease;
+}
+
+.demo-preview.is-visible {
+  display: flex;
+}
+
+@keyframes demo-slide-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.demo-preview__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.demo-preview__back {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-mid);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--t-fast), color var(--t-fast);
+}
+
+.demo-preview__back:hover {
+  background: var(--plum-bg);
+  color: var(--plum);
+}
+
+.demo-preview__back svg {
+  width: 18px;
+  height: 18px;
+}
+
+.demo-preview__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.demo-preview__title {
+  font-size: var(--fs-md);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 2px;
+}
+
+.demo-preview__meta {
+  font-size: var(--fs-xs);
+  color: var(--text-soft);
+  font-weight: 600;
+}
+
+/* ── Topic List (reuses .syllabus-card from upload.css) ── */
+.demo-topics {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ── Start Demo CTA ── */
+.demo-start-btn {
+  width: 100%;
+  padding: 16px 24px;
+  border-radius: var(--r-zone);
+  border: none;
+  background: var(--plum);
+  color: #fff;
+  font-size: var(--fs-md);
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  box-shadow: 0 4px 16px rgba(146, 94, 120, 0.3);
+  transition: box-shadow var(--t-fast), opacity var(--t-fast), transform var(--t-fast);
+}
+
+.demo-start-btn:hover:not(:disabled) {
+  box-shadow: 0 6px 24px rgba(146, 94, 120, 0.4);
+  transform: translateY(-1px);
+}
+
+.demo-start-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.demo-start-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* ── Loading Spinner ── */
+.demo-loading {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 20px;
+  font-size: var(--fs-sm);
+  color: var(--text-mid);
+}
+
+.demo-loading.is-visible {
+  display: flex;
+}
+
+.demo-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border);
+  border-top-color: var(--plum);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Error State ── */
+.demo-error {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 20px;
+  text-align: center;
+  font-size: var(--fs-sm);
+  color: var(--danger);
+}
+
+.demo-error.is-visible {
+  display: flex;
+}
+
+.demo-error__retry {
+  padding: 8px 18px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-primary);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background var(--t-fast);
+}
+
+.demo-error__retry:hover {
+  background: var(--plum-bg);
+}
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+  .choice-container {
+    padding: 24px 16px 48px;
+  }
+  .choice-zone {
+    padding: 28px 20px;
+  }
+}

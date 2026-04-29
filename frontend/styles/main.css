@@ -26,6 +26,7 @@
 @import 'components/mindmap.css';
 @import 'components/modals.css';
 @import 'components/widgets.css';
+@import 'components/walkthrough.css';
 /* Note: forms.css is intentionally omitted until built */
 
 /* 5. Pages (Specific View Overrides) */
@@ -34,6 +35,7 @@
 @import 'pages/feedback.css';
 @import 'pages/upload.css';
 @import 'pages/auth.css';
+@import 'pages/start-session.css';
 
 /* 6. Utilities (Helper Classes - Must load last) */
 @import 'utilities/colors.css';

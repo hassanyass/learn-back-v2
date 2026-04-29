@@ -13,6 +13,7 @@
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
   z-index: 100;
+  position: relative;
 }
 
 .nav-bar__left {
@@ -22,15 +23,30 @@
 }
 
 .nav-bar__back {
-  display: flex;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
   color: var(--text-mid);
-  transition: color var(--t-fast);
+  text-decoration: none;
+  box-shadow: var(--shadow-sm);
+  transition: background var(--t-fast), border-color var(--t-fast), color var(--t-fast), transform var(--t-fast);
 }
 
 .nav-bar__back:hover {
+  background: var(--plum-bg);
+  border-color: rgba(146, 94, 120, 0.35);
   color: var(--navy);
+  transform: translateX(-1px);
+}
+
+.nav-bar__back:active {
+  transform: translateX(-1px) scale(0.98);
 }
 
 .nav-bar__back svg {

@@ -1,0 +1,2 @@
+# Netlify redirects — serve index.html for unmatched routes
+/* /index.html 200

@@ -1,3 +1,21 @@
 {
-  "cleanUrls": true
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/dashboard", "destination": "/dashboard.html" },
+    { "source": "/auth", "destination": "/auth.html" },
+    { "source": "/session", "destination": "/session.html" },
+    { "source": "/feedback", "destination": "/feedback.html" },
+    { "source": "/upload", "destination": "/upload_slides.html" },
+    { "source": "/start", "destination": "/start_session.html" }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+      ]
+    }
+  ]
 }

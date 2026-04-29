@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LearnBack — Sign In</title>
+  <title>LearnBack - Sign In</title>
   <meta name="description" content="Sign in or create your LearnBack account to start teaching Kido.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,127 +14,118 @@
 </head>
 
 <body class="auth-page" data-theme="light">
-
   <div class="auth-shell">
-
-    <!-- ── Brand Sidebar ────────────────────────────────── -->
-    <aside class="auth-brand">
-      <img src="Logo/transparent_dark_mode.png" alt="LearnBack" class="auth-brand__logo">
-      <h1 class="auth-brand__title">LearnBack</h1>
-      <p class="auth-brand__sub">Teach to learn — the Feynman-powered platform that makes you the teacher.</p>
-      <div class="auth-brand__accent"></div>
+    <aside class="auth-visual">
+      <div class="auth-visual__media">
+        <img src="Components/auth.png" alt="LearnBack study illustration" class="auth-visual__image">
+      </div>
     </aside>
 
-    <!-- ── Form Side ────────────────────────────────────── -->
     <div class="auth-form-side">
-
-      <!-- ===== LOGIN VIEW ===== -->
-      <div id="login-view" class="auth-view is-active">
-        <div class="auth-form-header">
-          <h2 class="auth-form-header__title" id="login-heading">Welcome back</h2>
-          <p class="auth-form-header__sub">Sign in to continue your teaching journey.</p>
-        </div>
-
-        <!-- Error banner -->
-        <div class="auth-error-banner" id="login-error" role="alert">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10" />
-            <path d="M12 8v4" stroke-linecap="round" />
-            <circle cx="12" cy="16" r="1" fill="currentColor" />
-          </svg>
-          <span id="login-error-text"></span>
-        </div>
-
-        <form class="auth-form" id="login-form" novalidate>
-          <div class="auth-field">
-            <label class="auth-field__label" for="login-email">Email</label>
-            <input class="auth-field__input" type="email" id="login-email" name="email"
-              placeholder="you@example.com" autocomplete="email" required>
-            <span class="auth-field__error" id="login-email-error"></span>
+      <div class="auth-form-card">
+        <div id="login-view" class="auth-view is-active">
+          <div class="auth-form-header">
+            <h2 class="auth-form-header__title" id="login-heading">Welcome back</h2>
+            <p class="auth-form-header__sub">Sign in to continue your teaching journey.</p>
           </div>
 
-          <div class="auth-field">
-            <label class="auth-field__label" for="login-password">Password</label>
-            <input class="auth-field__input" type="password" id="login-password" name="password"
-              placeholder="••••••••" autocomplete="current-password" required>
-            <span class="auth-field__error" id="login-password-error"></span>
+          <div class="auth-error-banner" id="login-error" role="alert">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 8v4" stroke-linecap="round" />
+              <circle cx="12" cy="16" r="1" fill="currentColor" />
+            </svg>
+            <span id="login-error-text"></span>
           </div>
 
-          <button type="submit" class="auth-submit" id="login-submit">
-            <span class="spinner"></span>
-            <span class="auth-submit__text">Sign in</span>
-          </button>
-        </form>
+          <form class="auth-form" id="login-form" novalidate>
+            <div class="auth-field">
+              <label class="auth-field__label" for="login-email">Email</label>
+              <input class="auth-field__input" type="email" id="login-email" name="email"
+                placeholder="you@example.com" autocomplete="email" required>
+              <span class="auth-field__error" id="login-email-error"></span>
+            </div>
 
-        <p class="auth-toggle">
-          Don't have an account?
-          <a href="#" class="auth-toggle__link" id="show-register">Create one</a>
-        </p>
+            <div class="auth-field">
+              <label class="auth-field__label" for="login-password">Password</label>
+              <input class="auth-field__input" type="password" id="login-password" name="password"
+                placeholder="Enter your password" autocomplete="current-password" required>
+              <span class="auth-field__error" id="login-password-error"></span>
+            </div>
+
+            <button type="submit" class="auth-submit" id="login-submit">
+              <span class="spinner"></span>
+              <span class="auth-submit__text">Sign in</span>
+            </button>
+          </form>
+
+          <p class="auth-toggle">
+            Don't have an account?
+            <a href="#" class="auth-toggle__link" id="show-register">Create one</a>
+          </p>
+        </div>
+
+        <div id="register-view" class="auth-view">
+          <div class="auth-form-header">
+            <h2 class="auth-form-header__title" id="register-heading">Create your account</h2>
+            <p class="auth-form-header__sub">Sign up and start teaching with Kido today.</p>
+          </div>
+
+          <div class="auth-error-banner" id="register-error" role="alert">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 8v4" stroke-linecap="round" />
+              <circle cx="12" cy="16" r="1" fill="currentColor" />
+            </svg>
+            <span id="register-error-text"></span>
+          </div>
+
+          <div class="auth-success-banner" id="register-success" role="status">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M9 12l2 2 4-4" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            <span>Account created! Signing you in...</span>
+          </div>
+
+          <form class="auth-form" id="register-form" novalidate>
+            <div class="auth-field">
+              <label class="auth-field__label" for="register-username">Username</label>
+              <input class="auth-field__input" type="text" id="register-username" name="username"
+                placeholder="Your name" autocomplete="name" required>
+              <span class="auth-field__error" id="register-username-error"></span>
+            </div>
+
+            <div class="auth-field">
+              <label class="auth-field__label" for="register-email">Email</label>
+              <input class="auth-field__input" type="email" id="register-email" name="email"
+                placeholder="you@example.com" autocomplete="email" required>
+              <span class="auth-field__error" id="register-email-error"></span>
+            </div>
+
+            <div class="auth-field">
+              <label class="auth-field__label" for="register-password">Password</label>
+              <input class="auth-field__input" type="password" id="register-password" name="password"
+                placeholder="Min. 8 characters" autocomplete="new-password" required minlength="8">
+              <span class="auth-field__error" id="register-password-error"></span>
+            </div>
+
+            <button type="submit" class="auth-submit" id="register-submit">
+              <span class="spinner"></span>
+              <span class="auth-submit__text">Create account</span>
+            </button>
+          </form>
+
+          <p class="auth-toggle">
+            Already have an account?
+            <a href="#" class="auth-toggle__link" id="show-login">Sign in</a>
+          </p>
+        </div>
       </div>
-
-      <!-- ===== REGISTER VIEW ===== -->
-      <div id="register-view" class="auth-view">
-        <div class="auth-form-header">
-          <h2 class="auth-form-header__title" id="register-heading">Create your account</h2>
-          <p class="auth-form-header__sub">Sign up and start teaching Kido today.</p>
-        </div>
-
-        <!-- Error banner -->
-        <div class="auth-error-banner" id="register-error" role="alert">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10" />
-            <path d="M12 8v4" stroke-linecap="round" />
-            <circle cx="12" cy="16" r="1" fill="currentColor" />
-          </svg>
-          <span id="register-error-text"></span>
-        </div>
-
-        <!-- Success banner (shows after successful register) -->
-        <div class="auth-success-banner" id="register-success" role="status">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10" />
-            <path d="M9 12l2 2 4-4" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
-          <span>Account created! Signing you in…</span>
-        </div>
-
-        <form class="auth-form" id="register-form" novalidate>
-          <div class="auth-field">
-            <label class="auth-field__label" for="register-username">Username</label>
-            <input class="auth-field__input" type="text" id="register-username" name="username"
-              placeholder="Your name" autocomplete="name" required>
-            <span class="auth-field__error" id="register-username-error"></span>
-          </div>
-
-          <div class="auth-field">
-            <label class="auth-field__label" for="register-email">Email</label>
-            <input class="auth-field__input" type="email" id="register-email" name="email"
-              placeholder="you@example.com" autocomplete="email" required>
-            <span class="auth-field__error" id="register-email-error"></span>
-          </div>
-
-          <div class="auth-field">
-            <label class="auth-field__label" for="register-password">Password</label>
-            <input class="auth-field__input" type="password" id="register-password" name="password"
-              placeholder="Min. 8 characters" autocomplete="new-password" required minlength="8">
-            <span class="auth-field__error" id="register-password-error"></span>
-          </div>
-
-          <button type="submit" class="auth-submit" id="register-submit">
-            <span class="spinner"></span>
-            <span class="auth-submit__text">Create account</span>
-          </button>
-        </form>
-
-        <p class="auth-toggle">
-          Already have an account?
-          <a href="#" class="auth-toggle__link" id="show-login">Sign in</a>
-        </p>
-      </div>
-
     </div>
   </div>
 
+  <script src="config.js"></script>
   <script src="apiClient.js"></script>
   <script src="auth.js"></script>
 </body>

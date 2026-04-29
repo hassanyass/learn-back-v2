@@ -16,22 +16,32 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime
+from copy import deepcopy
+from datetime import datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.core.db import get_db
-from backend.models.core import LearningSession, SlideDeck
+from backend.core.usage_limits import (
+    MAX_ACTIVE_SESSIONS_PER_USER,
+    MAX_MESSAGES_PER_SESSION,
+    MAX_SESSIONS_PER_DAY,
+    MESSAGE_LIMIT_WARNING_REMAINING,
+    STALE_ACTIVE_SESSION_TIMEOUT_MINUTES,
+)
+from backend.models.core import LearningSession, SessionMessage, SlideDeck
 from backend.schemas.api_schemas import (
     ChatPayload,
+    DemoSessionRequest,
     MindMapPayload,
     SessionCreateRequest,
     WidgetSubmitPayload,
 )
+from backend.demo_content import get_demo_content, list_demo_content
 from pydantic import ValidationError
 from backend.services.auth_service import AuthService
 from backend.services.bkt_service import BKTService
@@ -63,7 +73,130 @@ _active_connections: dict[int, WebSocket] = {}
 
 
 # ──────────────────────────────────────────────────────────────────────
-# HTTP: Create session endpoint
+# Shared helper: build session_state from extracted_segments
+# ──────────────────────────────────────────────────────────────────────
+
+def _build_session_state(segments: list[dict[str, Any]]) -> dict[str, Any]:
+    """Build the nested session_state from extracted_segments.
+
+    Shared by both upload-based and demo-based session creation.
+    Identical BKT initialization, point structure, and progression logic.
+    """
+    bkt = BKTService()
+    topics: list[dict[str, Any]] = []
+    for t_idx, seg in enumerate(segments):
+        points: list[dict[str, Any]] = []
+        for p_idx, concept in enumerate(seg.get("extracted_concepts", [])):
+            points.append({
+                "id": f"topic_{t_idx}_point_{p_idx}",
+                "point_title": concept,
+                "bkt_score": bkt.initial_probability(),
+                "status": "pending",
+                "is_visited": False,
+                "is_correct": None,
+                "total_attempts": 0,
+                "widget_used": False,
+                "misconceptions": [],
+                "kido_memory": None,
+            })
+        topics.append({
+            "topic_title": seg.get("topic_title", "Untitled"),
+            "points": points,
+        })
+
+    # Activate the very first point
+    if topics and topics[0]["points"]:
+        topics[0]["points"][0]["status"] = "in_progress"
+        topics[0]["points"][0]["is_visited"] = True
+
+    return {
+        "current_topic_index": 0,
+        "current_point_index": 0,
+        "point_attempts": 0,
+        "current_difficulty": 1,
+        "topics": topics,
+        "skipped_indices": [],
+        "correction_events": [],
+    }
+
+
+def _utc_day_bounds(now: datetime) -> tuple[datetime, datetime]:
+    start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    return start, start + timedelta(days=1)
+
+
+async def _guard_session_creation_limits(db: AsyncSession, user_id: int) -> None:
+    """Reject session creation when testing-phase user limits are reached."""
+    now = datetime.utcnow()
+    stale_cutoff = now - timedelta(minutes=STALE_ACTIVE_SESSION_TIMEOUT_MINUTES)
+
+    active_sessions = (await db.execute(
+        select(LearningSession).where(
+            LearningSession.user_id == user_id,
+            LearningSession.status == "in_progress",
+        )
+    )).scalars().all()
+
+    for existing in active_sessions:
+        last_seen = existing.start_time or existing.created_at
+        if existing.id not in _active_connections and last_seen < stale_cutoff:
+            state = existing.session_state or {}
+            state["completion_type"] = "abandoned"
+            existing.session_state = deepcopy(state)
+            existing.status = "completed"
+            existing.end_time = now
+
+    if active_sessions:
+        await db.commit()
+
+    active_count = (await db.execute(
+        select(func.count()).select_from(LearningSession).where(
+            LearningSession.user_id == user_id,
+            LearningSession.status == "in_progress",
+        )
+    )).scalar_one()
+    if active_count >= MAX_ACTIVE_SESSIONS_PER_USER:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "ACTIVE_SESSION_LIMIT_REACHED",
+                "message": "You already have an active session. Please end or complete it first.",
+            },
+        )
+
+    day_start, day_end = _utc_day_bounds(now)
+    sessions_today = (await db.execute(
+        select(func.count()).select_from(LearningSession).where(
+            LearningSession.user_id == user_id,
+            LearningSession.created_at >= day_start,
+            LearningSession.created_at < day_end,
+        )
+    )).scalar_one()
+    if sessions_today >= MAX_SESSIONS_PER_DAY:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "code": "DAILY_SESSION_LIMIT_REACHED",
+                "message": "You've reached today's session limit. Please start a new session tomorrow.",
+            },
+        )
+
+
+def _session_create_response(session: LearningSession, topics: list) -> dict[str, Any]:
+    """Standard response shape for session creation (both flows)."""
+    current_topic = topics[0] if topics else {}
+    current_point = current_topic.get("points", [{}])[0] if current_topic else {}
+    return {
+        "session_id": session.id,
+        "session_status": "active",
+        "current_topic": current_topic,
+        "current_point": current_point,
+        "kido_message": "Let's begin!",
+    }
+
+
+# ──────────────────────────────────────────────────────────────────────
+# HTTP: Create session from uploaded slides
 # ──────────────────────────────────────────────────────────────────────
 
 @router.post("/session/create")
@@ -72,14 +205,9 @@ async def create_session(
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
-    """Create a new learning session for the requested slide deck.
+    """Create a new learning session for the requested slide deck."""
+    await _guard_session_creation_limits(db, user_id)
 
-    Initialises session_state as a complete map of the lesson, built from
-    the SlideDeck's segmented_json.  Every topic and every point within it
-    gets its own BKT score, misconceptions list, and kido_memory slot.
-    """
-    # Bind the session to the explicit document_id from the frontend so we
-    # never silently switch to a different SlideDeck by created_at ordering.
     stmt = (
         select(SlideDeck)
         .where(
@@ -95,54 +223,16 @@ async def create_session(
             detail="Slide deck not found for the provided document_id.",
         )
 
-    # Extract segments from the AI-generated curriculum
     segments = deck.segmented_json.get("extracted_segments", [])
     if not segments:
         raise HTTPException(
             status_code=422,
             detail="This slide deck has no segmented content. Please re-upload.",
         )
+
+    session_state = _build_session_state(segments)
     topic = segments[0].get("topic_title", "Untitled Topic")
 
-    # ── Build the nested session_state from segments ──────────────────
-    bkt = BKTService()
-    topics: list[dict[str, Any]] = []
-    for t_idx, seg in enumerate(segments):
-        points: list[dict[str, Any]] = []
-        for p_idx, concept in enumerate(seg.get("extracted_concepts", [])):
-            points.append({
-                "id": f"topic_{t_idx}_point_{p_idx}",
-                "point_title": concept,
-                "bkt_score": bkt.initial_probability(),
-                "status": "pending",     # pending → in_progress → completed
-                "is_visited": False,
-                "is_correct": None,
-                "total_attempts": 0,     # Accumulated across all exchanges for this point
-                "widget_used": False,    # True if a non-TEXT widget was rendered
-                "misconceptions": [],
-                "kido_memory": None,     # {"title": "...", "summary": "..."} on completion
-            })
-        topics.append({
-            "topic_title": seg.get("topic_title", "Untitled"),
-            "points": points,
-        })
-
-    # Set the very first point to in_progress and visited
-    if topics and topics[0]["points"]:
-        topics[0]["points"][0]["status"] = "in_progress"
-        topics[0]["points"][0]["is_visited"] = True
-
-    session_state: dict[str, Any] = {
-        "current_topic_index": 0,
-        "current_point_index": 0,
-        "point_attempts": 0,
-        "current_difficulty": 1,
-        "topics": topics,
-        "skipped_indices": [],
-        "correction_events": [],
-    }
-
-    # Create the learning session with the full state machine
     session = LearningSession(
         user_id=user_id,
         slide_deck_id=deck.id,
@@ -156,16 +246,71 @@ async def create_session(
     await db.commit()
     await db.refresh(session)
 
-    current_topic = topics[0] if topics else {}
-    current_point = current_topic.get("points", [{}])[0] if current_topic else {}
+    return _session_create_response(session, session_state["topics"])
 
-    return {
-        "session_id": session.id,
-        "session_status": "active",
-        "current_topic": current_topic,
-        "current_point": current_point,
-        "kido_message": "Let's begin!"
-    }
+
+# ──────────────────────────────────────────────────────────────────────
+# HTTP: Create session from demo content (bypasses ingestion)
+# ──────────────────────────────────────────────────────────────────────
+
+@router.post("/session/create-demo")
+async def create_demo_session(
+    payload: DemoSessionRequest,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Create a learning session from pre-loaded demo content.
+
+    Bypasses ingestion entirely. Uses the exact same BKT initialization
+    and session_state structure as upload-based sessions.
+    """
+    await _guard_session_creation_limits(db, user_id)
+
+    demo = get_demo_content(payload.demo_id)
+    if not demo:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Demo content '{payload.demo_id}' not found.",
+        )
+
+    segments = demo.get("extracted_segments", [])
+    if not segments:
+        raise HTTPException(
+            status_code=422,
+            detail="Demo content has no topics.",
+        )
+
+    session_state = _build_session_state(segments)
+    # Inject demo metadata into session_state for frontend
+    session_state["source_type"] = "demo"
+    session_state["demo_slide_url"] = demo["slide_url"]
+
+    topic = demo["title"]
+
+    session = LearningSession(
+        user_id=user_id,
+        slide_deck_id=None,  # No SlideDeck row for demo content
+        topic=topic,
+        status="in_progress",
+        start_time=datetime.utcnow(),
+        created_at=datetime.utcnow(),
+        session_state=session_state,
+    )
+    db.add(session)
+    await db.commit()
+    await db.refresh(session)
+
+    return _session_create_response(session, session_state["topics"])
+
+
+# ──────────────────────────────────────────────────────────────────────
+# HTTP: List available demo content
+# ──────────────────────────────────────────────────────────────────────
+
+@router.get("/demo-content")
+async def get_demo_content_list() -> list[dict[str, Any]]:
+    """Return available demo content for the choice page. No auth required."""
+    return list_demo_content()
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -194,6 +339,19 @@ async def get_session(
     for t in state.get("topics", []):
         topic_titles.append(t.get("topic_title", "Untitled"))
 
+    # Determine source type and slide URL
+    is_demo = state.get("source_type") == "demo"
+    if session.slide_deck:
+        pdf_url = session.slide_deck.pdf_storage_url
+        file_type = session.slide_deck.file_type
+        has_preview = session.slide_deck.has_preview
+        deck_status = session.slide_deck.status
+    else:
+        pdf_url = state.get("demo_slide_url")
+        file_type = "pdf" if pdf_url else None
+        has_preview = bool(pdf_url)
+        deck_status = None
+
     return {
         "session_id": session.id,
         "title": session.topic,
@@ -202,10 +360,11 @@ async def get_session(
         "current_topic_index": state.get("current_topic_index", 0),
         "topics": topic_titles,
         "slide_deck_id": session.slide_deck_id,
-        "pdf_url": session.slide_deck.pdf_storage_url if session.slide_deck else None,
-        "file_type": session.slide_deck.file_type if session.slide_deck else None,
-        "has_preview": session.slide_deck.has_preview if session.slide_deck else False,
-        "deck_status": session.slide_deck.status if session.slide_deck else None,
+        "source_type": "demo" if is_demo else "upload",
+        "pdf_url": pdf_url,
+        "file_type": file_type,
+        "has_preview": has_preview,
+        "deck_status": deck_status,
         "started_at": session.start_time.isoformat() if session.start_time else None,
         "completed_at": session.end_time.isoformat() if session.end_time else None,
         "session_state": state,
@@ -289,9 +448,46 @@ async def session_websocket(websocket: WebSocket, session_id: int) -> None:
                         if not user_text:
                             continue
 
+                        user_message_count = (await db.execute(
+                            select(func.count()).select_from(SessionMessage).where(
+                                SessionMessage.session_id == session_id,
+                                SessionMessage.sender_role == "user",
+                            )
+                        )).scalar_one()
+                        if user_message_count >= MAX_MESSAGES_PER_SESSION:
+                            await db.refresh(session)
+                            state = session.session_state or {}
+                            state["completion_type"] = "message_limit"
+                            session.session_state = deepcopy(state)
+                            session.status = "completed"
+                            session.end_time = datetime.utcnow()
+                            await db.commit()
+
+                            await websocket.send_json({
+                                "type": "session_complete",
+                                "data": {
+                                    "completion_type": "message_limit",
+                                    "reason": "SESSION_MESSAGE_LIMIT_REACHED",
+                                    "kido_response": (
+                                        "You've reached the message limit for this session. "
+                                        "You can end this session and view feedback, or start "
+                                        "a new session tomorrow."
+                                    ),
+                                    "next_actions": [
+                                        "END_SESSION_VIEW_FEEDBACK",
+                                        "START_NEW_SESSION_TOMORROW",
+                                    ],
+                                },
+                            })
+                            await websocket.close(code=1000)
+                            return
+
                         result = await service.process_user_message(
                             session_id=session_id,
                             user_text=user_text,
+                        )
+                        remaining_messages = (
+                            MAX_MESSAGES_PER_SESSION - (user_message_count + 1)
                         )
 
                         # Check if session completed
@@ -320,6 +516,16 @@ async def session_websocket(websocket: WebSocket, session_id: int) -> None:
                         # TEST MODE: include widget debug info if present
                         if result.get("widget_debug"):
                             response_data["widget_debug"] = result["widget_debug"]
+
+                        if 0 < remaining_messages <= MESSAGE_LIMIT_WARNING_REMAINING:
+                            response_data["quota_warning"] = {
+                                "code": "SESSION_MESSAGE_LIMIT_NEAR",
+                                "remaining_messages": remaining_messages,
+                                "detail": (
+                                    f"You have {remaining_messages} messages left in this "
+                                    "session. Try to wrap up your explanation soon."
+                                ),
+                            }
 
                         # Include checkpoint data if present
                         if result.get("topic_checkpoint"):
@@ -431,8 +637,12 @@ async def session_websocket(websocket: WebSocket, session_id: int) -> None:
                     logger.error("LLM exhaustion: %s", exc)
                     await db.rollback()
                     await websocket.send_json({
-                        "type": "error",
-                        "detail": "All AI providers are currently unavailable. Please try again shortly.",
+                        "type": "llm_unavailable",
+                        "code": "AI_PROVIDER_LIMIT_REACHED",
+                        "detail": (
+                            "Kido is temporarily busy because our AI provider limit was reached. "
+                            "Please try again in a few minutes."
+                        ),
                     })
                 except Exception as exc:
                     logger.error("Unexpected error in WS loop: %s", exc)
@@ -446,6 +656,31 @@ async def session_websocket(websocket: WebSocket, session_id: int) -> None:
             logger.info("WebSocket disconnected for session %s", session_id)
         finally:
             _active_connections.pop(session_id, None)
+
+            # ── Orphan session cleanup ──────────────────────────────────
+            # If the session is still in_progress after WS disconnect (user
+            # closed tab, lost connection, etc.), auto-complete it to prevent
+            # permanent orphans blocking the 1-active-session-per-user guard.
+            try:
+                await db.refresh(session)
+                if session.status == "in_progress":
+                    from copy import deepcopy
+                    state = session.session_state or {}
+                    state["completion_type"] = "abandoned"
+                    session.session_state = deepcopy(state)
+                    session.status = "completed"
+                    session.end_time = datetime.utcnow()
+                    await db.commit()
+                    logger.info(
+                        "Orphan session %s auto-completed (WS disconnect cleanup)",
+                        session_id,
+                    )
+            except Exception as cleanup_exc:
+                logger.error(
+                    "Failed to auto-complete orphan session %s: %s",
+                    session_id, cleanup_exc,
+                )
+
         break  # exit the async-for after one DB session
 
 
