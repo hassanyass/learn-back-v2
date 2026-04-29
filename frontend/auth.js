@@ -192,7 +192,7 @@
             user_id: me && me.user_id ? me.user_id : null,
             username: me && me.username ? me.username : null
           });
-          window.location.href = 'dashboard.html';
+          window.location.href = 'dashboard';
         } catch (err) {
           console.error("Login fetch error:", err);
           var loginErrorText = document.getElementById('login-error-text');
@@ -250,7 +250,7 @@
           });
 
           setTimeout(function () {
-            window.location.href = 'dashboard.html';
+            window.location.href = 'dashboard';
           }, 800);
         } catch (err) {
           console.error("Register fetch error:", err);

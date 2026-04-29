@@ -11,11 +11,11 @@ class ApiClient {
             const stored = window.localStorage.getItem('learnback_api_base');
             if (stored && typeof stored === 'string') return stored;
             const origin = window.location.origin || '';
-            if (origin.includes('127.0.0.1:8001') || origin.includes('localhost:8001')) {
-                return `${origin}/api`;
+            if (origin.includes('127.0.0.1:8002') || origin.includes('localhost:8002')) {
+                return `${origin}`;
             }
         } catch (_) { }
-        return 'http://127.0.0.1:8001/api';
+        return 'http://127.0.0.1:8002';
     }
 
     getAuthToken() {

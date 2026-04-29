@@ -14,4 +14,4 @@ RUN mkdir -p static/uploads
 
 EXPOSE 8002
 
-CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8002"]
+CMD ["sh", "-c", "alembic upgrade head && uvicorn backend.main:app --host 0.0.0.0 --port 8002"]

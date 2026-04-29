@@ -186,6 +186,7 @@
   box-shadow: 0 2px 0 var(--border-light, #e2e8f0);
   cursor: grab;
   user-select: none;
+  touch-action: none;
   transition: transform 0.1s ease, box-shadow 0.1s ease, border-color 0.2s ease, background 0.2s ease;
   margin-bottom: 6px;
 }
@@ -512,4 +513,44 @@
 @keyframes widgetSlideIn {
   from { opacity: 0; transform: translateY(-8px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── TOUCH DRAG GHOST ── */
+.widget-drag-ghost {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.85;
+  transform: rotate(2deg) scale(1.04);
+  box-shadow: 0 8px 24px rgba(2, 43, 58, 0.18);
+  border-radius: 10px;
+  background: #ffffff;
+  border: 2px solid var(--accent, #925E78);
+  padding: 10px 12px;
+  font-weight: 600;
+  font-size: 0.82rem;
+  color: var(--text-primary);
+  max-width: 280px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+[data-theme="dark"] .widget-drag-ghost {
+  background: var(--surface-3);
+  border-color: var(--plum, #B07A96);
+}
+
+.widget-sort-item.is-touch-placeholder {
+  opacity: 0.3;
+  border-style: dashed;
+}
+
+.widget-drop-zone.touch-drag-over {
+  background: #f0fdf4;
+  border-color: #4ade80;
+}
+
+[data-theme="dark"] .widget-drop-zone.touch-drag-over {
+  background: rgba(74, 222, 128, 0.1);
 }

@@ -158,6 +158,8 @@ window.LearnBackPDF = (function() {
           return;
         }
 
+        renderLayer.innerHTML = '<div style="padding:32px 24px;text-align:center;color:var(--text-secondary,#64748b);font-size:0.9rem;font-weight:600;display:flex;flex-direction:column;align-items:center;gap:12px;"><svg style="width:28px;height:28px;animation:spin 1s linear infinite;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>Loading slides...</div><style>@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}</style>';
+
         try {
             pdfDoc = await pdfInstance.getDocument(pdfUrl).promise;
             pdfTotalPages = pdfDoc.numPages;

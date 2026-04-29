@@ -193,6 +193,20 @@ import { UIStateManager } from './js/core/UIStateManager.js';
       ui.setChatLockout(false);
       ui.updateHud('waiting');
       console.log('[Session] WebSocket connected. Chat enabled.');
+
+      // Prefetch animation state files so they are browser-cached
+      // before the user's first evaluation result arrives.
+      var animFiles = [
+        'animation_states/got_it_level_1.html',
+        'animation_states/got_it_level_2.html',
+        'animation_states/got_it_level_3.html',
+        'animation_states/confused_level_1.html',
+        'animation_states/confused_level_2.html',
+        'animation_states/needs_more_information_level_1.html'
+      ];
+      animFiles.forEach(function (f) {
+        fetch(f, { priority: 'low' }).catch(function () {});
+      });
     }
   };
 

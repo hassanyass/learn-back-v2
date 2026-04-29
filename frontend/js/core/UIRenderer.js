@@ -361,9 +361,11 @@ export class UIRenderer {
           // Avoid reloading the iframe if the source is exactly the same
           if (!iframe.src || !iframe.src.includes(fileName)) {
             iframe.onload = function () {
-              canvas.style.display = 'none';
-              canvas.style.opacity = '0';
-              iframe.style.opacity = '1';
+              setTimeout(function () {
+                canvas.style.display = 'none';
+                canvas.style.opacity = '0';
+                iframe.style.opacity = '1';
+              }, 80);
             };
             // Keep iframe invisible while loading
             iframe.style.display = 'block';
@@ -1477,6 +1479,78 @@ export class UIRenderer {
         self._currentWidgetState.order = newOrder;
       });
 
+      // ── Touch drag support (mobile) ──
+      (function (touchItem) {
+        var ghost = null;
+        var offsetX = 0;
+        var offsetY = 0;
+
+        touchItem.addEventListener('touchstart', function (e) {
+          if (touchItem.draggable === false) return;
+          var touch = e.touches[0];
+          var rect = touchItem.getBoundingClientRect();
+          offsetX = touch.clientX - rect.left;
+          offsetY = touch.clientY - rect.top;
+
+          ghost = document.createElement('div');
+          ghost.className = 'widget-drag-ghost';
+          ghost.textContent = touchItem.querySelector('[style*="flex:1"]') ? touchItem.querySelector('[style*="flex:1"]').textContent : touchItem.textContent;
+          ghost.style.width = rect.width + 'px';
+          ghost.style.left = (touch.clientX - offsetX) + 'px';
+          ghost.style.top = (touch.clientY - offsetY) + 'px';
+          document.body.appendChild(ghost);
+          touchItem.classList.add('is-touch-placeholder');
+          e.preventDefault();
+        }, { passive: false });
+
+        touchItem.addEventListener('touchmove', function (e) {
+          if (!ghost) return;
+          var touch = e.touches[0];
+          ghost.style.left = (touch.clientX - offsetX) + 'px';
+          ghost.style.top = (touch.clientY - offsetY) + 'px';
+          e.preventDefault();
+        }, { passive: false });
+
+        touchItem.addEventListener('touchend', function (e) {
+          if (!ghost) return;
+          var touch = e.changedTouches[0];
+          ghost.remove();
+          ghost = null;
+          touchItem.classList.remove('is-touch-placeholder');
+
+          // Find element under finger (hide ghost first)
+          touchItem.style.display = 'none';
+          var target = document.elementFromPoint(touch.clientX, touch.clientY);
+          touchItem.style.display = '';
+
+          // Walk up to find a sibling sort item or the list itself
+          var sibling = target;
+          while (sibling && sibling !== list) {
+            if (sibling.classList && sibling.classList.contains('widget-sort-item') && sibling !== touchItem) break;
+            sibling = sibling.parentElement;
+          }
+
+          if (sibling && sibling !== list && sibling !== touchItem) {
+            // Insert before the sibling found under the finger
+            list.insertBefore(touchItem, sibling);
+          } else {
+            // Append to end if dropped on list or outside
+            list.appendChild(touchItem);
+          }
+
+          // Recalculate order
+          var newOrder = [];
+          var allItems = list.querySelectorAll('.widget-sort-item');
+          for (var i = 0; i < allItems.length; i++) {
+            newOrder.push(allItems[i].dataset.id);
+            var numBadge = allItems[i].querySelector('.widget-sort-num');
+            if (numBadge) numBadge.textContent = (i + 1);
+          }
+          self._currentWidgetState.order = newOrder;
+          e.preventDefault();
+        }, { passive: false });
+      })(item);
+
       list.appendChild(item);
     });
 
@@ -1781,6 +1855,86 @@ export class UIRenderer {
       itemEl.addEventListener('dragend', function () {
         itemEl.classList.remove('is-dragging');
       });
+
+      // ── Touch drag support (mobile) ──
+      (function (el, itemId) {
+        var ghost = null;
+        var offsetX = 0;
+        var offsetY = 0;
+
+        el.addEventListener('touchstart', function (e) {
+          if (el.draggable === false) return;
+          var touch = e.touches[0];
+          var rect = el.getBoundingClientRect();
+          offsetX = touch.clientX - rect.left;
+          offsetY = touch.clientY - rect.top;
+
+          ghost = document.createElement('div');
+          ghost.className = 'widget-drag-ghost';
+          ghost.textContent = el.textContent;
+          ghost.style.width = rect.width + 'px';
+          ghost.style.left = (touch.clientX - offsetX) + 'px';
+          ghost.style.top = (touch.clientY - offsetY) + 'px';
+          document.body.appendChild(ghost);
+          el.classList.add('is-touch-placeholder');
+          e.preventDefault();
+        }, { passive: false });
+
+        el.addEventListener('touchmove', function (e) {
+          if (!ghost) return;
+          var touch = e.touches[0];
+          ghost.style.left = (touch.clientX - offsetX) + 'px';
+          ghost.style.top = (touch.clientY - offsetY) + 'px';
+
+          // Highlight zone under finger
+          container.querySelectorAll('.widget-drop-zone, .widget-bank').forEach(function (z) {
+            z.classList.remove('touch-drag-over');
+          });
+          el.style.display = 'none';
+          var target = document.elementFromPoint(touch.clientX, touch.clientY);
+          el.style.display = '';
+          var zone = target;
+          while (zone && zone !== container) {
+            if (zone.classList && (zone.classList.contains('widget-drop-zone') || zone.classList.contains('widget-bank'))) break;
+            zone = zone.parentElement;
+          }
+          if (zone && zone !== container) zone.classList.add('touch-drag-over');
+          e.preventDefault();
+        }, { passive: false });
+
+        el.addEventListener('touchend', function (e) {
+          if (!ghost) return;
+          var touch = e.changedTouches[0];
+          ghost.remove();
+          ghost = null;
+          el.classList.remove('is-touch-placeholder');
+          container.querySelectorAll('.widget-drop-zone, .widget-bank').forEach(function (z) {
+            z.classList.remove('touch-drag-over');
+          });
+
+          // Find drop zone or bank under finger
+          el.style.display = 'none';
+          var target = document.elementFromPoint(touch.clientX, touch.clientY);
+          el.style.display = '';
+
+          var dropZone = target;
+          while (dropZone && dropZone !== container) {
+            if (dropZone.classList && (dropZone.classList.contains('widget-drop-zone') || dropZone.classList.contains('widget-bank'))) break;
+            dropZone = dropZone.parentElement;
+          }
+
+          if (dropZone && dropZone !== container) {
+            dropZone.appendChild(el);
+            if (dropZone.classList.contains('widget-drop-zone')) {
+              self._currentWidgetState.placements[itemId] = dropZone.dataset.category;
+            } else {
+              // Returned to bank
+              delete self._currentWidgetState.placements[itemId];
+            }
+          }
+          e.preventDefault();
+        }, { passive: false });
+      })(itemEl, item.id);
 
       bank.appendChild(itemEl);
     });

@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: learnback-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: GROQ_API_KEYS
+        sync: false
+      - key: SECONDARY_LLM_API_KEYS
+        sync: false
+      - key: CORS_ORIGINS
+        value: "https://learn-back-v2.vercel.app"
+      - key: DEBUG
+        value: "false"
+      - key: LOG_LEVEL
+        value: "INFO"
