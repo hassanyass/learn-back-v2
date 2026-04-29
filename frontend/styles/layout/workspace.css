@@ -147,6 +147,7 @@
     width: 85vw !important;
     max-width: 340px !important;
     height: calc(100vh - 56px) !important;
+    height: calc(100dvh - 56px) !important;
     z-index: 50 !important;
     border-radius: 0 !important;
     overflow-y: auto !important;
@@ -174,6 +175,7 @@
     width: 85vw !important;
     max-width: 340px !important;
     height: calc(100vh - 56px) !important;
+    height: calc(100dvh - 56px) !important;
     z-index: 100 !important;
     border-right: 1px solid var(--border) !important;
     box-shadow: 4px 0 24px rgba(0, 0, 0, 0.18) !important;
@@ -188,6 +190,7 @@
     width: 85vw !important;
     max-width: 340px !important;
     height: calc(100vh - 56px) !important;
+    height: calc(100dvh - 56px) !important;
     z-index: 100 !important;
     border-left: 1px solid var(--border) !important;
     box-shadow: -4px 0 24px rgba(0, 0, 0, 0.18) !important;
