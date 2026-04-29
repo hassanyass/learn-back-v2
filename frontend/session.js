@@ -146,6 +146,8 @@ import { UIStateManager } from './js/core/UIStateManager.js';
     // Wire "View Slides" button
     if (dom.btnOpenSlides) {
       if (hasRealPdf) {
+        // sessionSplitPane.js reads the PDF URL from this key on button click
+        try { localStorage.setItem('learnback_pdf_url', pdfUrl); } catch (_) {}
         dom.btnOpenSlides.addEventListener('click', function () {
           if (dom.slideDeckOverlay) dom.slideDeckOverlay.removeAttribute('hidden');
           // Lazy-load PDF on first open
