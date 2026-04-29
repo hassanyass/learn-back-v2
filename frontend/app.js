@@ -24,9 +24,10 @@ const CONFIG = {
     maxFileSize: 50 * 1024 * 1024, // 50MB
     minFileSize: 50 * 1024, // 50KB
     maxFiles: 1,
-    apiBaseUrl: window.LearnBackAPI && typeof window.LearnBackAPI.getApiBaseUrl === 'function'
+    apiBaseUrl: (window.LearnBackAPI && typeof window.LearnBackAPI.getApiBaseUrl === 'function')
         ? window.LearnBackAPI.getApiBaseUrl()
-        : 'http://127.0.0.1:8000',
+        : (window.__LEARNBACK_CONFIG__ && window.__LEARNBACK_CONFIG__.API_BASE_URL)
+          || 'http://127.0.0.1:8002',
     uploadEndpoint: '/api/upload_lecture'
 };
 

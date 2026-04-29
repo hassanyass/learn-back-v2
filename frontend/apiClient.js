@@ -70,11 +70,14 @@
   }
 
   function getApiBaseUrl() {
+    var cfg = window.__LEARNBACK_CONFIG__;
+    if (cfg && cfg.API_BASE_URL) return cfg.API_BASE_URL;
+    // Fallback if config.js didn't load
     var hostname = window.location.hostname;
-    if (hostname === "127.0.0.1" || hostname === "localhost") {
+    if (hostname === '127.0.0.1' || hostname === 'localhost') {
       return 'http://127.0.0.1:8002';
     }
-    return 'https://your-future-production-backend.com';
+    return window.location.origin;
   }
 
   function getAuthToken() {

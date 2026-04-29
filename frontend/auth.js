@@ -3,7 +3,8 @@
   console.warn("🚨 AUTH.JS HAS SUCCESSFULLY LOADED 🚨");
 
   // ── Constants ───────────────────────────────────────────────
-  var API_BASE = 'http://127.0.0.1:8002';
+  var API_BASE = (window.__LEARNBACK_CONFIG__ && window.__LEARNBACK_CONFIG__.API_BASE_URL)
+    || 'http://127.0.0.1:8002';
 
   // Sanitize auth errors — strip technical internals from user-facing messages.
   function sanitizeAuthError(err) {
