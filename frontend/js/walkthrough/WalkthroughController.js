@@ -86,9 +86,21 @@
     }
   }
 
+  function routeFromLocation() {
+    var name = window.location.pathname.split('/').pop() || 'dashboard.html';
+    if (!name) name = 'dashboard.html';
+    /* Vercel cleanUrls removes .html from the pathname (e.g. /dashboard instead
+       of /dashboard.html). Re-append it so segment lookups always work. */
+    if (name && name.indexOf('.') === -1) name = name + '.html';
+    return name;
+  }
+
   function routeTo(route) {
     if (!route || route === currentRoute) return;
-    window.location.href = route;
+    /* Strip .html suffix so Vercel cleanUrls serves the correct page.
+       Works transparently on local dev too (browser follows the redirect). */
+    var dest = route.replace(/\.html$/, '');
+    window.location.href = dest || route;
   }
 
   function isAwaitingTrigger(step) {

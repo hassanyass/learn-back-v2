@@ -192,7 +192,7 @@
             user_id: me && me.user_id ? me.user_id : null,
             username: me && me.username ? me.username : null
           });
-          window.location.href = 'dashboard.html';
+          window.location.href = 'dashboard';
         } catch (err) {
           console.error("Login fetch error:", err);
           var loginErrorText = document.getElementById('login-error-text');
@@ -250,7 +250,7 @@
           });
 
           setTimeout(function () {
-            window.location.href = 'dashboard.html';
+            window.location.href = 'dashboard';
           }, 800);
         } catch (err) {
           console.error("Register fetch error:", err);
@@ -267,10 +267,18 @@
     }
   });
 
-  // ── If already logged in, redirect ──────────────────────────
+  // ── If already logged in, redirect to dashboard ──────────────
+  // Guard: if we just came back from a failed dashboard redirect (e.g. expired
+  // token caused a 401 → back to auth), clear the stale token instead of
+  // looping. sessionStorage 'lb_auth_bounce' is set by the 401 redirect path.
   try {
-    if (window.localStorage.getItem(TOKEN_KEY)) {
-      window.location.href = 'dashboard.html';
+    var hadBounce = window.sessionStorage.getItem('lb_auth_bounce');
+    if (hadBounce) {
+      window.sessionStorage.removeItem('lb_auth_bounce');
+      window.localStorage.removeItem(TOKEN_KEY);
+      window.localStorage.removeItem(USER_KEY);
+    } else if (window.localStorage.getItem(TOKEN_KEY)) {
+      window.location.href = 'dashboard';
     }
   } catch (_) { /* ignore */ }
 })();

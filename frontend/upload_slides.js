@@ -85,7 +85,7 @@
         }
 
         // 9. Redirect to session interface
-        window.location.href = `session.html?sessionId=${encodeURIComponent(sessionId)}`;
+        window.location.href = `session?sessionId=${encodeURIComponent(sessionId)}`;
         
       } catch (error) {
         console.error("Upload/Session initialization failed:", error);

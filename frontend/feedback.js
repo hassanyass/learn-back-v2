@@ -414,14 +414,14 @@ document.addEventListener('DOMContentLoaded', function () {
     var dashboardButton = el('btn-dashboard');
     if (dashboardButton) {
       dashboardButton.addEventListener('click', function () {
-        window.location.href = 'dashboard.html';
+        window.location.href = 'dashboard';
       });
     }
 
     var retryButton = el('btn-retry');
     if (retryButton) {
       retryButton.addEventListener('click', function () {
-        window.location.href = 'upload_slides.html';
+        window.location.href = 'upload_slides';
       });
     }
 

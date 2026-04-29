@@ -9,13 +9,13 @@
   // ── Auth Guard ──────────────────────────────────────────────
   // Redirect to login if no JWT token is present
   if (window.LearnBackAPI && typeof window.LearnBackAPI.isLoggedIn === 'function' && !window.LearnBackAPI.isLoggedIn()) {
-    window.location.href = 'auth.html';
+    window.location.href = 'auth';
     return;
   }
   if (!window.LearnBackAPI) {
     try {
       if (!window.localStorage.getItem('learnback_token')) {
-        window.location.href = 'auth.html';
+        window.location.href = 'auth';
         return;
       }
     } catch (_) { /* proceed */ }
@@ -297,9 +297,9 @@
 
       button.addEventListener('click', function () {
         if (sessionRecord.status === 'in_progress') {
-          window.location.href = 'session.html?sessionId=' + encodeURIComponent(sessionRecord.id);
+          window.location.href = 'session?sessionId=' + encodeURIComponent(sessionRecord.id);
         } else {
-          window.location.href = 'feedback.html?sessionId=' + encodeURIComponent(sessionRecord.id);
+          window.location.href = 'feedback?sessionId=' + encodeURIComponent(sessionRecord.id);
         }
       });
 
@@ -343,7 +343,7 @@
     var start = document.getElementById('btn-start-session');
     if (start) {
       start.addEventListener('click', function () {
-        window.location.href = 'start_session.html';
+        window.location.href = 'start_session';
       });
     }
   }
@@ -494,18 +494,20 @@
           window.localStorage.removeItem('learnback_token');
           window.localStorage.removeItem('learnback_user');
         } catch (_) { /* ignore */ }
-        window.location.href = 'auth.html';
+        window.location.href = 'auth';
       }
     });
   }
 
   function wireWalkthrough() {
     var btn = document.getElementById('btn-view-walkthrough');
-    if (btn && window.LearnBackWalkthrough) {
-      btn.addEventListener('click', function () {
+    if (!btn) return;
+    btn.addEventListener('click', function () {
+      /* Check at click-time, not at init-time — controller loads async via defer */
+      if (window.LearnBackWalkthrough && typeof window.LearnBackWalkthrough.replayTour === 'function') {
         window.LearnBackWalkthrough.replayTour();
-      });
-    }
+      }
+    });
   }
 
   async function init() {
@@ -528,6 +530,8 @@
   }
 
   document.addEventListener("DOMContentLoaded", () => {
+    if (window.__DASHBOARD_INITIALIZED__) return;
+    window.__DASHBOARD_INITIALIZED__ = true;
     console.warn("🟢 DOM fully loaded and parsed (dashboard)");
     init();
   });

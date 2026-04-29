@@ -102,7 +102,7 @@
       window.localStorage.removeItem(STORAGE_KEYS.token);
       window.localStorage.removeItem(STORAGE_KEYS.user);
     } catch (_) { /* ignore */ }
-    window.location.href = 'auth.html';
+    window.location.href = 'auth';
   }
 
   function ApiError(message, options) {
@@ -175,8 +175,11 @@
           window.localStorage.removeItem(STORAGE_KEYS.token);
           window.localStorage.removeItem(STORAGE_KEYS.user);
         } catch (_) { /* ignore */ }
-        if (window.location.pathname.indexOf('auth.html') === -1) {
-          window.location.href = 'auth.html';
+        if (window.location.pathname.indexOf('auth') === -1) {
+          /* Mark that we bounced due to a 401 so auth.js can clear the stale
+             token instead of immediately redirecting back to dashboard. */
+          try { window.sessionStorage.setItem('lb_auth_bounce', '1'); } catch (_) {}
+          window.location.href = 'auth';
           return;
         }
       }
