@@ -283,9 +283,27 @@
     border-radius: 12px;
     z-index: 200;
     min-width: 180px;
+    max-height: calc(100dvh - 80px);
+    overflow-y: auto;
   }
 
   #header-actions-wrap.is-open {
+    display: flex !important;
+  }
+
+  .header-dropdown {
+    position: static !important;
+    width: 100% !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin-top: 4px;
+    background: transparent !important;
+    transform: none !important;
+    display: none !important;
+  }
+
+  .header-dropdown.active {
     display: flex !important;
   }
 
