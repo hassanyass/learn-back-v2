@@ -40,6 +40,7 @@
   function segmentForRoute(route) {
     if (route === 'dashboard.html') return 'dashboard';
     if (route === 'start_session.html') return 'choice';
+    if (route === 'session.html') return 'session';
     return null;
   }
 
@@ -117,6 +118,10 @@
   }
 
   function renderStep(step, state) {
+    /* Run optional per-step setup (e.g. expand a panel) before rendering */
+    if (step && typeof step.beforeRender === 'function') {
+      try { step.beforeRender(); } catch (_) { /* never block the tour */ }
+    }
     Renderer.destroy();
     Renderer.render(step, state, {
       index: state.stepIndex,
@@ -160,25 +165,64 @@
     if (state && state.active) {
       state.currentRoute = currentRoute;
       var current = getStep(state.stepIndex);
-      if (current && current.hidden === true) {
-        var resumeIdx = nextRenderableIndex(state, state.stepIndex);
-        if (resumeIdx >= 0) {
-          state.stepIndex = resumeIdx;
-          var resumeStep = getStep(resumeIdx);
-          state.segment = resumeStep.segment;
-          state.currentRoute = resumeStep.route;
+
+      /* ── Stale-state guard ───────────────────────────────────────
+         If the active step belongs to a different page (e.g. the user
+         navigated away from start_session.html by clicking Upload/Demo
+         without completing the choice walkthrough), the tour state is
+         abandoned. Clear active so the current page can start its own
+         walkthrough. */
+      if (current && current.route !== currentRoute) {
+        state.active = false;
+        state.dismissed = true;
+        saveState(state);
+        /* Fall through to the auto-start logic below */
+      } else {
+        if (current && current.hidden === true) {
+          var resumeIdx = nextRenderableIndex(state, state.stepIndex);
+          if (resumeIdx >= 0) {
+            state.stepIndex = resumeIdx;
+            var resumeStep = getStep(resumeIdx);
+            state.segment = resumeStep.segment;
+            state.currentRoute = resumeStep.route;
+          }
         }
+        saveState(state);
+        renderCurrentWithRetry();
+        return;
       }
-      saveState(state);
-      renderCurrentWithRetry();
-      return;
     }
 
     var routeSegment = segmentForRoute(currentRoute);
     if (routeSegment && routeSegment !== 'dashboard') {
       var stored = getStoredUser();
-      if (routeSegment === 'choice' && !hasSegmentEnded(state, routeSegment)) {
-        startSegment(routeSegment, { replay: false });
+      if (routeSegment === 'choice') {
+        /* The Upload vs Demo choice is shown every time the user lands on
+           start_session.html during an active onboarding tour, OR on first
+           ever visit. Clear prior 'choice' state so it never gets blocked. */
+        if (state) {
+          state.completedSegments = (state.completedSegments || []).filter(function(s){ return s !== 'choice'; });
+          state.skippedSegments   = (state.skippedSegments   || []).filter(function(s){ return s !== 'choice'; });
+          saveState(state);
+        }
+        startSegment('choice', { replay: false });
+        return;
+      }
+
+      if (routeSegment === 'session') {
+        /* Clear any prior skipped-state so a user who clicked Skip once
+           does not permanently lose the session walkthrough.
+           Only a fully-completed tour (completedSegments) suppresses it. */
+        if (state) {
+          state.skippedSegments = (state.skippedSegments || []).filter(function (s) { return s !== 'session'; });
+          saveState(state);
+        }
+        var sessionDone = state
+          && Array.isArray(state.completedSegments)
+          && state.completedSegments.indexOf('session') !== -1;
+        if (!sessionDone) {
+          startSegment('session', { replay: false });
+        }
         return;
       }
       if (stored && stored.has_seen_walkthrough === false && !hasSegmentEnded(state, routeSegment)) {
@@ -269,6 +313,8 @@
       state.active = false;
       state.dismissed = false;
       saveState(state);
+      /* session segment completion is tracked in completedSegments only;
+         no separate localStorage key is needed or used. */
     }
     Renderer.destroy();
 
@@ -495,4 +541,20 @@
     getCurrentStep: getCurrentStep,
     notify: notify
   };
+
+  /* ── Auto-init for session.html ─────────────────────────────────────────
+     Fire bind() immediately when this controller script executes on
+     session.html. Because this is a <script defer>, it runs after the DOM
+     is ready but BEFORE session.js (a <script type="module">) resumes from
+     any await. This gives the walkthrough the earliest possible start time
+     and removes the dependency on session.js calling bind() after a network
+     round-trip.
+  */
+  (function () {
+    var autoRoute = routeFromLocation();
+    if (autoRoute === 'session.html') {
+      bind(autoRoute);
+    }
+  }());
+
 })();

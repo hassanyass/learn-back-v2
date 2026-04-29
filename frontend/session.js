@@ -15,7 +15,6 @@ import { WebSocketManager } from './js/core/WebSocketManager.js';
 import { UIRenderer } from './js/core/UIRenderer.js';
 import { dom } from './js/core/dom.js';
 import { UIStateManager } from './js/core/UIStateManager.js';
-import { initSessionIntroWalkthrough } from './js/walkthrough/sessionIntroWalkthrough.js';
 
 (async function () {
   'use strict';
@@ -771,7 +770,11 @@ import { initSessionIntroWalkthrough } from './js/walkthrough/sessionIntroWalkth
     });
   }
 
-  // Initialize walkthrough if first time
-  initSessionIntroWalkthrough();
+  // Trigger the new full session walkthrough on first visit
+  // (WalkthroughController guards via localStorage 'session_walkthrough_seen')
+  if (window.LearnBackWalkthrough && typeof window.LearnBackWalkthrough.bind === 'function') {
+    window.LearnBackWalkthrough.bind('session.html');
+  }
+
 
 })();

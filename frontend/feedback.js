@@ -405,7 +405,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function wireFooterActions(sessionId) {
-    var SURVEY_URL = 'https://forms.gle/REPLACE_WITH_SURVEY_URL';
+    var SURVEY_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSffSU3GRTCHLJWQABwkKQ0FuyYSXkvUKU2QHMduSXgrlDg0SQ/viewform';
     var current = window.SessionStore && window.SessionStore.getSession ? window.SessionStore.getSession() : null;
     if (current && current.sessionId === sessionId && window.SessionStore) {
       window.SessionStore.clearSession();
