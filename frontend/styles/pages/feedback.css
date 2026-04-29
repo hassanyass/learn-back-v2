@@ -6,7 +6,9 @@
 /* ── Page Shell ───────────────────────────────────── */
 .fb-body {
   height: auto;
-  min-height: 100vh;
+  min-height: 100%;
+  min-height: 100svh;
+  min-height: 100dvh;
   overflow-y: auto;
   overflow-x: hidden;
   background: var(--bg);
@@ -15,7 +17,7 @@
 .fb-main {
   max-width: 1100px;
   margin: 0 auto;
-  padding: 48px 32px 140px;
+  padding: 48px 32px calc(140px + env(safe-area-inset-bottom, 0px));
   /* 140px clears the sticky footer */
   display: flex;
   flex-direction: column;
@@ -703,7 +705,7 @@
 [data-theme="dark"] /* ── Responsive ───────────────────────────────────── */
 @media (max-width: 768px) {
   .fb-main {
-    padding: 32px 20px 140px;
+    padding: 32px 20px calc(140px + env(safe-area-inset-bottom, 0px));
   }
 
   .fb-hero__title {
@@ -720,6 +722,6 @@
   }
 
   .fb-footer__inner {
-    padding: 16px 20px;
+    padding: 16px 20px max(16px, var(--safe-bottom, 16px));
   }
 }

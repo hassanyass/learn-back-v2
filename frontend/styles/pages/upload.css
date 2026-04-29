@@ -4,8 +4,9 @@
    ============================================ */
 
 .upload-page {
-    height: 100vh;
-    min-height: 100vh;
+    height: 100%;
+    height: 100svh;
+    height: 100dvh;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -625,7 +626,7 @@
 
 @media (max-width: 480px) {
     .upload-page .zone {
-        padding: 24px 16px;
+        padding: 24px 16px max(24px, var(--safe-bottom, 24px));
     }
     
     .content-actions {

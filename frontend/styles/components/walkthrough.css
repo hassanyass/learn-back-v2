@@ -43,7 +43,7 @@
   top: 50%;
   left: 50%;
   width: min(420px, calc(100vw - 32px));
-  max-height: min(620px, calc(100vh - 32px));
+  max-height: min(620px, calc(100dvh - 32px));
   overflow: auto;
   transform: translate(-50%, -50%);
   pointer-events: auto;
@@ -60,14 +60,14 @@
 
 .walkthrough-card--compact {
   width: min(390px, calc(100vw - 48px));
-  max-height: min(560px, calc(100vh - 48px));
+  max-height: min(560px, calc(100dvh - 48px));
   border-radius: 22px;
   padding: 20px;
 }
 
 .walkthrough-card--pop {
   width: min(320px, calc(100vw - 48px));
-  max-height: min(360px, calc(100vh - 48px));
+  max-height: min(360px, calc(100dvh - 48px));
   border-radius: 18px;
   padding: 16px 18px;
   box-shadow: 0 18px 44px rgba(15, 23, 42, 0.22);
