@@ -1,381 +1,1027 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>LearnBack — Learn by Teaching, Powered by AI</title>
-<meta name="description" content="LearnBack is an AI-powered learning-by-teaching platform. Teach KIDO, get real-time feedback, and master any topic through active recall.">
-<script src="https://cdn.tailwindcss.com"></script>
-<script>
-tailwind.config={theme:{extend:{colors:{bg:'#F6E8EA',ink:'#022B3A',cta:'#F6AE2D',ok:'#5DA271',kido:'#925E78'},fontFamily:{sans:['Inter','system-ui','sans-serif']}}}}
-</script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LearnBack — Learn by Teaching</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,700&display=swap" rel="stylesheet" />
 <style>
-@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
-@keyframes browL{0%,100%{transform:rotate(0)}30%{transform:rotate(-8deg)}60%{transform:rotate(4deg)}}
-@keyframes browR{0%,100%{transform:rotate(0)}30%{transform:rotate(8deg)}60%{transform:rotate(-4deg)}}
-@keyframes fadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
-@keyframes typing{0%{opacity:.2}50%{opacity:1}100%{opacity:.2}}
-.anim-float{animation:float 4s ease-in-out infinite}
-.anim-fade{opacity:0;transform:translateY(24px);transition:opacity .6s ease,transform .6s ease}
-.anim-fade.visible{opacity:1;transform:translateY(0)}
-.brow-l{animation:browL 3.5s ease-in-out infinite}
-.brow-r{animation:browR 3.5s ease-in-out infinite .2s}
-.dot-typing span{animation:typing 1.4s infinite;display:inline-block;width:6px;height:6px;border-radius:50%;background:#925E78;margin:0 2px}
-.dot-typing span:nth-child(2){animation-delay:.2s}
-.dot-typing span:nth-child(3){animation-delay:.4s}
-html{scroll-behavior:smooth}
+/* ── Design Tokens (mirrored from variables.css) ────────── */
+:root {
+  --navy:#022B3A; --plum:#925E78; --gold:#F6AE2D; --green:#5DA271; --danger:#ef4444;
+  --bg:#F3F4F6; --surface:#FFFFFF; --surface-kido:#FDF5F6; --action-card-bg:#F6E8EA;
+  --text-primary:#022B3A; --text-mid:rgba(2,43,58,0.60); --text-soft:rgba(2,43,58,0.38);
+  --border:#E4E5EB; --border-light:#EEEFF3;
+  --plum-bg:rgba(146,94,120,0.08); --plum-border:rgba(146,94,120,0.18);
+  --green-bg:rgba(93,162,113,0.10); --gold-bg:rgba(246,174,45,0.10);
+  --navy-05:rgba(2,43,58,0.05); --navy-10:rgba(2,43,58,0.10);
+  --shadow-sm:0 1px 4px rgba(2,43,58,0.06);
+  --shadow-card:0 2px 10px rgba(2,43,58,0.08);
+  --shadow-zone:0 4px 24px rgba(2,43,58,0.10);
+  --font:'Plus Jakarta Sans',-apple-system,sans-serif;
+  --r-zone:16px; --r-card:12px; --r-pill:100px; --r-sm:8px;
+  --t-fast:140ms ease; --t-normal:240ms ease;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+html{font-size:16px;-webkit-font-smoothing:antialiased;scroll-behavior:smooth;}
+body{font-family:var(--font);background:var(--bg);color:var(--text-primary);line-height:1.5;overflow-x:hidden;}
+a{text-decoration:none;color:inherit;}
+button{font-family:inherit;cursor:pointer;border:none;background:none;}
+img{display:block;max-width:100%;}
+
+.container{width:100%;max-width:1080px;margin:0 auto;padding:0 28px;}
+.section{padding:96px 0;}
+.section--tight{padding:64px 0;}
+
+/* ── Eyebrow labels ─── */
+.eyebrow{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:var(--r-pill);font-size:0.6875rem;font-weight:800;letter-spacing:0.09em;text-transform:uppercase;}
+.eyebrow svg{width:10px;height:10px;flex-shrink:0;}
+.eyebrow--plum{background:var(--plum-bg);color:var(--plum);border:1px solid var(--plum-border);}
+.eyebrow--gold{background:var(--gold-bg);color:#8a6000;border:1px solid rgba(246,174,45,0.28);}
+.eyebrow--green{background:var(--green-bg);color:#2D6A40;border:1px solid rgba(93,162,113,0.28);}
+.eyebrow--navy{background:var(--navy-05);color:var(--navy);border:1px solid var(--border);}
+
+.section-title{font-size:clamp(1.75rem,3.2vw,2.5rem);font-weight:800;line-height:1.1;letter-spacing:-0.03em;color:var(--navy);}
+.section-body{font-size:0.9375rem;line-height:1.75;color:var(--text-mid);}
+
+/* ── Buttons ─── */
+.btn{display:inline-flex;align-items:center;gap:8px;padding:11px 22px;border-radius:var(--r-card);font-size:0.875rem;font-weight:700;letter-spacing:-0.01em;transition:transform var(--t-fast),box-shadow var(--t-fast);cursor:pointer;border:none;}
+.btn:hover{transform:translateY(-2px);}
+.btn:active{transform:translateY(1px);}
+.btn svg{width:15px;height:15px;flex-shrink:0;}
+.btn--primary{background:var(--navy);color:#fff;box-shadow:0 4px 0 #011620,var(--shadow-card);}
+.btn--primary:hover{box-shadow:0 6px 0 #011620,var(--shadow-zone);}
+.btn--gold{background:var(--gold);color:var(--navy);box-shadow:0 4px 0 #b07e1a,var(--shadow-card);}
+.btn--gold:hover{box-shadow:0 6px 0 #b07e1a,var(--shadow-zone);}
+.btn--ghost{background:var(--surface);color:var(--text-mid);border:1.5px solid var(--border);box-shadow:var(--shadow-sm);}
+.btn--ghost:hover{color:var(--navy);border-color:rgba(2,43,58,0.22);}
+.btn--sm{padding:8px 16px;font-size:0.8125rem;border-radius:var(--r-sm);}
+
+/* ── NAV ─── */
+.nav{position:sticky;top:0;z-index:100;background:rgba(243,244,246,0.92);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);height:62px;}
+.nav__inner{display:flex;align-items:center;justify-content:space-between;gap:24px;height:100%;max-width:1080px;margin:0 auto;padding:0 28px;}
+.nav__logo{display:flex;align-items:center;gap:10px;}
+.nav__logo img{height:40px;width:auto;}
+.nav__wordmark{font-size:1.05rem;font-weight:800;color:var(--navy);letter-spacing:-0.02em;}
+.nav__wordmark span{color:var(--plum);}
+.nav__links{display:flex;align-items:center;gap:2px;}
+.nav__link{padding:6px 14px;border-radius:var(--r-pill);font-size:0.8125rem;font-weight:600;color:var(--text-mid);transition:background var(--t-fast),color var(--t-fast);}
+.nav__link:hover{background:var(--navy-05);color:var(--navy);}
+.nav__cta{display:flex;align-items:center;gap:8px;}
+
+/* ── HERO ─── */
+.hero{padding:80px 0 0;}
+.hero__inner{display:grid;grid-template-columns:1fr 1.12fr;gap:56px;align-items:center;}
+.hero__title{font-size:clamp(2.2rem,4vw,3.4rem);font-weight:800;line-height:1.04;letter-spacing:-0.04em;color:var(--navy);}
+.hero__title em{font-style:normal;color:var(--plum);}
+.hero__subtitle{font-size:1rem;line-height:1.75;color:var(--text-mid);margin-top:16px;max-width:44ch;}
+.hero__pills{display:flex;flex-direction:column;gap:9px;margin-top:28px;}
+.hero__pill{display:flex;align-items:center;gap:10px;font-size:0.8125rem;font-weight:600;color:var(--text-primary);}
+.hero__pill-icon{width:28px;height:28px;border-radius:7px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border:1.5px solid var(--border);}
+.hero__pill-icon svg{width:14px;height:14px;}
+.hero__ctas{display:flex;gap:12px;margin-top:36px;flex-wrap:wrap;}
+.hero__label{margin-bottom:18px;}
+
+/* ── Session App Mockup (hero) ─── */
+.app-mockup{border-radius:18px;border:1.5px solid var(--border);overflow:hidden;box-shadow:0 20px 60px rgba(2,43,58,0.14),0 4px 0 var(--border);background:var(--surface);}
+.app-mockup__nav{height:46px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 14px;gap:10px;}
+.app-mockup__nav-left{display:flex;align-items:center;gap:8px;}
+.app-mockup__back{width:24px;height:24px;border-radius:6px;background:var(--navy-05);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.app-mockup__back svg{width:11px;height:11px;color:var(--text-mid);}
+.app-mockup__logo{height:22px;width:auto;}
+.app-mockup__divider{width:1px;height:16px;background:var(--border);margin:0 2px;}
+.app-mockup__title{font-size:0.6875rem;font-weight:700;color:var(--text-mid);letter-spacing:-0.01em;}
+.app-mockup__end{padding:4px 10px;border-radius:6px;background:var(--navy);color:#fff;font-size:0.625rem;font-weight:700;letter-spacing:0.02em;}
+.app-mockup__avatar{width:22px;height:22px;border-radius:50%;background:var(--plum);display:flex;align-items:center;justify-content:center;font-size:0.5625rem;font-weight:800;color:#fff;}
+
+.app-mockup__workspace{display:grid;grid-template-columns:130px 1fr 110px;height:310px;}
+
+/* Left – Kido panel */
+.app-mockup__kido{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;}
+.app-panel-header{height:36px;padding:0 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:5px;font-size:0.5625rem;font-weight:800;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-soft);}
+.app-panel-header svg{width:10px;height:10px;flex-shrink:0;color:var(--text-soft);}
+.kido-zone-body{flex:1;display:flex;flex-direction:column;align-items:center;padding:8px;gap:6px;overflow:hidden;}
+.kido-mini-hud{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+.kido-mini-hud__head{padding:4px 8px;background:var(--plum-bg);font-size:0.5rem;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--plum);}
+.kido-mini-hud__body{padding:6px 8px;}
+.kido-mini-hud__row{display:flex;justify-content:space-between;font-size:0.5rem;font-weight:600;color:var(--text-soft);margin-bottom:4px;}
+.kido-mini-hud__pct{font-weight:800;color:var(--plum);}
+.kido-mini-hud__track{height:4px;background:var(--plum-bg);border-radius:100px;overflow:hidden;}
+.kido-mini-hud__fill{height:100%;background:var(--plum);border-radius:100px;width:62%;transition:width 1s ease;}
+.kido-state-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:100px;font-size:0.5rem;font-weight:800;letter-spacing:0.05em;text-transform:uppercase;}
+.kido-state-chip--thinking{background:var(--plum-bg);color:var(--plum);}
+.kido-state-chip--correct{background:var(--green-bg);color:#2D6A40;}
+.kido-canvas-wrap{flex:1;width:100%;display:flex;align-items:center;justify-content:center;min-height:0;}
+canvas#kido-hero-canvas{width:100%;height:100%;max-height:120px;}
+
+/* Center – Chat panel */
+.app-mockup__chat{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;}
+.chat-area{flex:1;padding:10px 12px;display:flex;flex-direction:column;gap:7px;overflow:hidden;}
+/* Real message styles matching session.html */
+.msg{display:flex;flex-direction:column;gap:3px;}
+.msg__label{display:flex;align-items:center;gap:4px;font-size:0.5rem;font-weight:700;color:var(--text-soft);letter-spacing:0.05em;text-transform:uppercase;}
+.msg__label-dot{width:5px;height:5px;border-radius:50%;background:var(--plum);flex-shrink:0;}
+.msg--user .msg__label-dot{background:var(--navy);}
+.msg__bubble{padding:7px 10px;border-radius:10px;font-size:0.6875rem;line-height:1.5;font-weight:500;}
+.msg__bubble--ai{background:var(--surface);border:1px solid var(--border);color:var(--text-primary);border-radius:10px 10px 10px 3px;box-shadow:var(--shadow-sm);}
+.msg__bubble--user{background:var(--navy);color:#fff;border-radius:10px 10px 3px 10px;align-self:flex-end;}
+.msg--user{align-items:flex-end;}
+.chat-pill-mini{padding:8px 10px;border-top:1px solid var(--border);display:flex;align-items:center;gap:7px;background:var(--bg);}
+.chat-pill-mini__icons{display:flex;gap:6px;}
+.chat-pill-mini__icon{width:18px;height:18px;border-radius:5px;display:flex;align-items:center;justify-content:center;color:var(--text-soft);}
+.chat-pill-mini__icon svg{width:9px;height:9px;}
+.chat-pill-mini__input{flex:1;height:22px;border-radius:6px;border:1px solid var(--border);background:var(--surface);font-size:0.5625rem;color:var(--text-soft);padding:0 8px;font-family:var(--font);display:flex;align-items:center;}
+.chat-pill-mini__send{width:22px;height:22px;border-radius:6px;background:var(--navy);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.chat-pill-mini__send svg{width:8px;height:8px;color:#fff;}
+
+/* Right – Session plan panel */
+.app-mockup__plan{background:var(--bg);display:flex;flex-direction:column;}
+.topic-list-mini{padding:8px;display:flex;flex-direction:column;gap:5px;}
+.topic-card-mini{display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:8px;background:var(--surface);border:1px solid var(--border);}
+.topic-card-mini--active{background:var(--navy);border-color:var(--navy);}
+.topic-card-mini__dot{width:6px;height:6px;border-radius:50%;background:var(--border);flex-shrink:0;}
+.topic-card-mini--active .topic-card-mini__dot{background:rgba(255,255,255,0.5);}
+.topic-card-mini--done .topic-card-mini__dot{background:var(--green);}
+.topic-card-mini__label{font-size:0.5625rem;font-weight:600;color:var(--text-mid);line-height:1.3;}
+.topic-card-mini--active .topic-card-mini__label{color:#fff;font-weight:700;}
+.topic-card-mini__check{width:10px;height:10px;margin-left:auto;flex-shrink:0;color:var(--green);}
+
+.app-mockup__badge{display:flex;align-items:center;justify-content:center;padding:10px 14px;border-top:1px solid var(--border);}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulseGreen 2s ease infinite;margin-right:6px;flex-shrink:0;}
+.live-text{font-size:0.5625rem;font-weight:700;color:var(--text-mid);}
+@keyframes pulseGreen{0%,100%{box-shadow:0 0 0 0 rgba(93,162,113,0.5)}50%{box-shadow:0 0 0 4px rgba(93,162,113,0)}}
+
+/* ── Value bar ─── */
+.value-bar{border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:26px 0;margin-top:48px;}
+.value-bar__inner{display:flex;justify-content:center;flex-wrap:wrap;}
+.vitem{display:flex;align-items:center;gap:10px;padding:8px 28px;border-right:1px solid var(--border);font-size:0.8125rem;font-weight:600;color:var(--text-mid);}
+.vitem:last-child{border-right:none;}
+.vitem svg{width:15px;height:15px;color:var(--text-mid);flex-shrink:0;}
+.vitem strong{color:var(--navy);}
+
+/* ── Process steps ─── */
+.process-wrap{display:grid;grid-template-columns:340px 1fr;border:1.5px solid var(--border);border-radius:20px;overflow:hidden;box-shadow:var(--shadow-zone);margin-top:48px;}
+.process-steps{background:var(--surface);border-right:1px solid var(--border);}
+.process-step{display:flex;gap:14px;padding:20px 22px;border-bottom:1px solid var(--border);cursor:pointer;transition:background var(--t-fast);position:relative;}
+.process-step:last-child{border-bottom:none;}
+.process-step:hover{background:var(--navy-05);}
+.process-step.is-active{background:var(--bg);}
+.process-step.is-active::after{content:'';position:absolute;right:-1px;top:50%;transform:translateY(-50%);width:3px;height:40px;border-radius:2px 0 0 2px;background:var(--navy);}
+.process-step__num{width:36px;height:36px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:0.8125rem;font-weight:800;background:var(--bg);border:1.5px solid var(--border);color:var(--text-soft);transition:background var(--t-normal),border-color var(--t-normal),color var(--t-normal);}
+.process-step.is-active .process-step__num{background:var(--navy);border-color:var(--navy);color:#fff;}
+.process-step__text{flex:1;padding-top:6px;}
+.process-step__title{font-size:0.875rem;font-weight:700;color:var(--navy);}
+.process-step__sub{font-size:0.75rem;line-height:1.5;color:var(--text-mid);margin-top:3px;}
+
+.process-preview{background:var(--bg);display:flex;flex-direction:column;min-height:400px;}
+.process-panel{display:none;flex-direction:column;height:100%;padding:28px;gap:18px;animation:panelIn 0.22s ease;}
+.process-panel.is-active{display:flex;}
+@keyframes panelIn{from{opacity:0;transform:translateX(8px)}to{opacity:1;transform:translateX(0)}}
+.process-panel__title{font-size:1.0625rem;font-weight:800;color:var(--navy);letter-spacing:-0.02em;margin-top:6px;}
+.process-panel__body{font-size:0.8125rem;line-height:1.7;color:var(--text-mid);max-width:44ch;}
+.process-panel__visual{flex:1;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r-zone);overflow:hidden;box-shadow:var(--shadow-sm);}
+
+/* Panel 1 – Upload */
+.upload-inner{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;}
+.upload-box{width:100%;border:2px dashed var(--border);border-radius:var(--r-card);padding:24px 16px;display:flex;flex-direction:column;align-items:center;gap:8px;background:var(--bg);}
+.upload-box svg{width:26px;height:26px;color:var(--text-soft);}
+.upload-box-label{font-size:0.8125rem;font-weight:600;color:var(--text-mid);}
+.upload-chips{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;}
+.upload-chip{padding:5px 12px;border-radius:var(--r-pill);background:var(--surface);border:1.5px solid var(--border);font-size:0.6875rem;font-weight:700;color:var(--text-mid);display:flex;align-items:center;gap:5px;}
+.upload-chip svg{width:11px;height:11px;}
+.upload-chip.active{background:var(--navy);border-color:var(--navy);color:#fff;}
+
+/* Panel 2 – Question */
+.qpanel{display:flex;flex-direction:column;height:100%;}
+.qpanel-bar{height:40px;background:var(--navy);display:flex;align-items:center;gap:7px;padding:0 14px;}
+.qpanel-dot{width:9px;height:9px;border-radius:50%;}
+.qpanel-dot--r{background:#ef4444;}.qpanel-dot--y{background:var(--gold);}.qpanel-dot--g{background:var(--green);}
+.qpanel-bar-title{flex:1;text-align:center;font-size:0.6875rem;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:rgba(255,255,255,0.35);}
+.qpanel-body{flex:1;padding:14px;display:flex;flex-direction:column;gap:10px;}
+.concept-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:var(--r-pill);background:var(--plum-bg);border:1px solid var(--plum-border);font-size:0.6875rem;font-weight:800;color:var(--plum);letter-spacing:0.06em;text-transform:uppercase;}
+.concept-chip svg{width:10px;height:10px;}
+
+/* Panel 3 – Chat (real session-style) */
+.teach-panel{display:flex;flex-direction:column;height:100%;}
+.teach-panel__body{flex:1;padding:14px 16px;display:flex;flex-direction:column;gap:8px;overflow:hidden;}
+.teach-panel__row{padding:10px 14px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:center;background:var(--surface);}
+.teach-pill{flex:1;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--bg);display:flex;align-items:center;padding:0 10px;font-size:0.8125rem;color:var(--text-soft);font-family:var(--font);}
+.teach-send{width:34px;height:34px;border-radius:9px;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.teach-send svg{width:13px;height:13px;}
+
+/* Panel 4 – Feedback */
+.fpanel{padding:16px;display:flex;flex-direction:column;gap:10px;height:100%;}
+.fcard{background:var(--surface);border-radius:var(--r-card);border:1.5px solid var(--border);padding:14px;box-shadow:var(--shadow-sm);}
+.fcard-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.fcard-title{font-size:0.75rem;font-weight:700;color:var(--navy);}
+.fcard-badge{font-size:0.6rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:2px 8px;border-radius:var(--r-pill);}
+.fcard-badge--ok{background:var(--green-bg);color:#2D6A40;}
+.fcard-badge--warn{background:var(--gold-bg);color:#7a4e00;}
+.fcard-badge--err{background:rgba(239,68,68,0.10);color:#b91c1c;}
+.fcard-track{height:5px;background:var(--bg);border-radius:100px;overflow:hidden;margin-top:4px;}
+.fcard-fill{height:100%;border-radius:100px;}
+.fcard-fill--g{background:var(--green);}
+.fcard-fill--y{background:var(--gold);}
+.fcard-fill--r{background:var(--danger);}
+
+/* ── DEMO SECTION ─── */
+.demo-wrap{display:grid;grid-template-columns:1fr 460px;gap:56px;align-items:start;}
+
+/* Demo session window — mirrors real session UI */
+.demo-session{border-radius:16px;border:1.5px solid var(--border);overflow:hidden;box-shadow:var(--shadow-zone);background:var(--surface);}
+.demo-session__nav{height:44px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 14px;}
+.demo-session__nav-left{display:flex;align-items:center;gap:8px;}
+.demo-session__logo{height:20px;width:auto;}
+.demo-session__divider{width:1px;height:14px;background:var(--border);}
+.demo-session__title{font-size:0.6875rem;font-weight:700;color:var(--text-mid);}
+.demo-session__end{padding:4px 10px;border-radius:6px;background:var(--navy);color:#fff;font-size:0.625rem;font-weight:700;}
+.demo-session__body{display:grid;grid-template-columns:120px 1fr;min-height:340px;}
+
+/* Kido side panel in demo */
+.demo-kido-panel{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;}
+.demo-kido-panel__header{height:34px;padding:0 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;font-size:0.5625rem;font-weight:800;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-soft);}
+.demo-kido-panel__header svg{width:9px;height:9px;}
+.demo-kido-panel__body{flex:1;display:flex;flex-direction:column;align-items:center;padding:8px;gap:8px;}
+.demo-kido-canvas-wrap{width:100%;flex:1;display:flex;align-items:center;justify-content:center;min-height:0;max-height:100px;}
+canvas#kido-demo-canvas{width:100%;height:100%;}
+.demo-hud{width:100%;border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+.demo-hud__head{padding:4px 8px;background:var(--plum-bg);font-size:0.5rem;font-weight:800;letter-spacing:0.05em;text-transform:uppercase;color:var(--plum);}
+.demo-hud__body{padding:5px 8px;}
+.demo-hud__row{display:flex;justify-content:space-between;font-size:0.5rem;font-weight:600;color:var(--text-soft);margin-bottom:3px;}
+.demo-hud__pct{font-weight:800;color:var(--plum);}
+.demo-hud__track{height:4px;background:var(--plum-bg);border-radius:100px;overflow:hidden;}
+.demo-hud__fill{height:100%;background:var(--plum);border-radius:100px;transition:width 0.8s ease;}
+.demo-kido-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:100px;font-size:0.5rem;font-weight:800;letter-spacing:0.04em;text-transform:uppercase;width:100%;justify-content:center;}
+.demo-kido-chip--thinking{background:var(--plum-bg);color:var(--plum);}
+.demo-kido-chip--correct{background:var(--green-bg);color:#2D6A40;}
+.demo-kido-chip--warn{background:var(--gold-bg);color:#7a4e00;}
+
+/* Chat side in demo */
+.demo-chat-panel{background:var(--surface);display:flex;flex-direction:column;}
+.demo-chat-panel__header{height:34px;padding:0 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;font-size:0.5625rem;font-weight:800;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-soft);}
+.demo-chat-panel__header svg{width:9px;height:9px;}
+.demo-messages{flex:1;padding:12px 14px;display:flex;flex-direction:column;gap:8px;overflow-y:auto;min-height:220px;max-height:240px;}
+/* Real session message styles */
+.demo-msg{display:flex;flex-direction:column;gap:3px;}
+.demo-msg__lbl{display:flex;align-items:center;gap:4px;font-size:0.5625rem;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text-soft);}
+.demo-msg__lbl-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+.demo-msg--ai .demo-msg__lbl-dot{background:var(--plum);}
+.demo-msg--user .demo-msg__lbl-dot{background:var(--navy);}
+.demo-msg__bubble{padding:8px 11px;font-size:0.75rem;line-height:1.5;font-weight:500;}
+.demo-msg--ai .demo-msg__bubble{background:var(--surface);border:1px solid var(--border);border-radius:10px 10px 10px 3px;color:var(--text-primary);box-shadow:var(--shadow-sm);max-width:90%;}
+.demo-msg--user .demo-msg__bubble{background:var(--navy);color:#fff;border-radius:10px 10px 3px 10px;align-self:flex-end;max-width:88%;}
+.demo-msg--user{align-items:flex-end;}
+
+/* Typing dots */
+.typing-dots{display:inline-flex;align-items:center;gap:3px;height:16px;padding:0 2px;}
+.typing-dots span{width:5px;height:5px;border-radius:50%;background:rgba(2,43,58,0.28);animation:tb 1.4s infinite ease-in-out both;}
+.typing-dots span:nth-child(1){animation-delay:-0.32s}.typing-dots span:nth-child(2){animation-delay:-0.16s}
+@keyframes tb{0%,80%,100%{transform:translateY(0);opacity:.3}40%{transform:translateY(-4px);opacity:1}}
+
+/* Chat input pill — real session style */
+.demo-input-pill{padding:8px 10px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;background:var(--bg);}
+.demo-input-pill__icons{display:flex;gap:5px;}
+.demo-input-pill__tool{width:22px;height:22px;border-radius:6px;border:1px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:center;color:var(--text-soft);}
+.demo-input-pill__tool svg{width:10px;height:10px;}
+.demo-input-pill__field{flex:1;min-height:32px;border-radius:8px;border:1px solid var(--border);background:var(--surface);padding:0 10px;font-size:0.8125rem;font-family:var(--font);color:var(--text-primary);outline:none;}
+.demo-input-pill__field:focus{border-color:var(--plum);box-shadow:0 0 0 2px var(--plum-bg);}
+.demo-input-pill__field::placeholder{color:var(--text-soft);}
+.demo-input-pill__send{width:32px;height:32px;border-radius:8px;background:var(--navy);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;transition:transform var(--t-fast),opacity var(--t-fast);}
+.demo-input-pill__send:hover{transform:translateY(-1px);}
+.demo-input-pill__send svg{width:12px;height:12px;color:#fff;}
+
+/* ── Comparison ─── */
+.ct{display:grid;grid-template-columns:1fr 1fr;border:1.5px solid var(--border);border-radius:18px;overflow:hidden;box-shadow:var(--shadow-zone);margin-top:48px;}
+.ct-col-head{padding:18px 26px;display:flex;align-items:center;gap:10px;font-size:0.75rem;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;}
+.ct-col-head svg{width:14px;height:14px;}
+.ct--old .ct-col-head{background:var(--surface);border-bottom:1px solid var(--border);border-right:1px solid var(--border);color:var(--text-soft);}
+.ct--new .ct-col-head{background:var(--navy);border-bottom:1px solid rgba(255,255,255,0.10);color:rgba(255,255,255,0.65);}
+.ct--new{background:var(--navy);}
+.ct-row{display:flex;align-items:center;gap:12px;padding:14px 26px;border-bottom:1px solid var(--border);font-size:0.8125rem;font-weight:600;}
+.ct--old .ct-row{color:var(--text-mid);background:var(--surface);border-right:1px solid var(--border);}
+.ct--old .ct-row:nth-child(odd){background:var(--bg);}
+.ct--new .ct-row{color:rgba(255,255,255,0.75);border-bottom-color:rgba(255,255,255,0.07);}
+.ct--new .ct-row:nth-child(odd){background:rgba(255,255,255,0.03);}
+.ct-row:last-child{border-bottom:none;}
+.ct-icon{width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.ct-icon svg{width:14px;height:14px;}
+.ct-icon--x svg{color:#ef4444;}
+.ct-icon--ok svg{color:var(--green);}
+
+/* ── Features ─── */
+.feat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:48px;}
+.feat-card{background:var(--surface);border:1.5px solid var(--border);border-radius:18px;padding:26px;box-shadow:var(--shadow-sm);transition:transform var(--t-normal),box-shadow var(--t-normal);}
+.feat-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-zone);}
+.feat-card--accent{border-color:var(--plum-border);background:var(--surface-kido);}
+.feat-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;border:1.5px solid var(--border);}
+.feat-icon svg{width:20px;height:20px;}
+.feat-title{font-size:0.9375rem;font-weight:700;color:var(--navy);margin-bottom:8px;}
+.feat-body{font-size:0.8125rem;line-height:1.7;color:var(--text-mid);}
+
+/* ── Science block ─── */
+.science{background:var(--navy);border-radius:22px;padding:56px 64px;display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:start;box-shadow:0 20px 60px rgba(2,43,58,0.18);}
+.sci-eyebrow{background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.60);border:1px solid rgba(255,255,255,0.14);}
+.sci-title{font-size:clamp(1.5rem,2.8vw,2rem);font-weight:800;letter-spacing:-0.03em;color:#fff;margin-top:14px;line-height:1.1;}
+.sci-body{font-size:0.9375rem;line-height:1.75;color:rgba(255,255,255,0.55);margin-top:14px;}
+.sci-stats{display:flex;flex-direction:column;gap:14px;}
+.sci-stat{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.10);border-radius:14px;padding:20px 22px;}
+.sci-num{font-size:2.2rem;font-weight:800;color:var(--gold);letter-spacing:-0.04em;line-height:1;}
+.sci-label{font-size:0.8125rem;color:rgba(255,255,255,0.50);margin-top:5px;font-weight:500;line-height:1.5;}
+.sci-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px;}
+.sci-tag{padding:4px 12px;border-radius:var(--r-pill);background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.14);font-size:0.6875rem;font-weight:700;color:rgba(255,255,255,0.50);}
+
+/* ── About ─── */
+.about-grid{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:start;}
+.pf{display:flex;flex-direction:column;gap:0;}
+.pf-item{display:flex;gap:12px;padding:14px 0;position:relative;}
+.pf-item:not(:last-child)::after{content:'';position:absolute;left:15px;bottom:0;width:1.5px;height:14px;background:var(--border);}
+.pf-dot{width:32px;height:32px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;border:1.5px solid var(--border);background:var(--surface);position:relative;z-index:1;}
+.pf-dot svg{width:14px;height:14px;}
+.pf-dot--ok{background:var(--green-bg);border-color:rgba(93,162,113,0.28);}
+.pf-dot--ok svg{color:var(--green);}
+.pf-dot--warn{background:var(--gold-bg);border-color:rgba(246,174,45,0.28);}
+.pf-dot--warn svg{color:#8a6000;}
+.pf-dot--soft svg{color:var(--text-soft);}
+.pf-dot--navy{background:var(--navy);border-color:var(--navy);}
+.pf-dot--navy svg{color:#fff;}
+.pf-title{font-size:0.875rem;font-weight:700;color:var(--navy);padding-top:5px;}
+.pf-sub{font-size:0.75rem;color:var(--text-mid);margin-top:2px;}
+.about-pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px;}
+.about-pill{padding:5px 13px;border-radius:var(--r-pill);background:var(--surface);border:1.5px solid var(--border);font-size:0.6875rem;font-weight:700;color:var(--text-mid);box-shadow:var(--shadow-sm);}
+
+/* ── CTA band ─── */
+.cta-band{background:var(--action-card-bg);border:1.5px solid var(--plum-border);border-radius:22px;padding:48px 52px;display:flex;align-items:center;justify-content:space-between;gap:40px;position:relative;overflow:hidden;}
+.cta-band::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--plum);}
+.cta-band__title{font-size:1.5rem;font-weight:800;color:var(--navy);letter-spacing:-0.03em;}
+.cta-band__body{font-size:0.875rem;color:var(--text-mid);line-height:1.7;margin-top:8px;max-width:44ch;}
+.cta-band__btns{display:flex;gap:10px;flex-wrap:wrap;flex-shrink:0;}
+
+/* ── Meta cards ─── */
+.meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.meta-card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r-zone);padding:24px 26px;box-shadow:var(--shadow-sm);}
+.meta-card__title{font-size:0.875rem;font-weight:700;color:var(--navy);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.meta-card__title svg{width:15px;height:15px;color:var(--plum);}
+.meta-item{display:flex;align-items:center;gap:9px;font-size:0.8125rem;color:var(--text-mid);margin-bottom:8px;font-weight:500;}
+.meta-dot{width:5px;height:5px;border-radius:50%;background:var(--green);flex-shrink:0;}
+.meta-link{color:var(--plum);font-weight:700;border-bottom:1.5px solid var(--plum-border);padding-bottom:1px;}
+.meta-link:hover{border-color:var(--plum);}
+
+/* ── Loop steps ─── */
+.loop-steps{display:flex;flex-direction:column;gap:0;}
+.loop-step{display:flex;gap:14px;padding-bottom:26px;position:relative;}
+.loop-step:last-child{padding-bottom:0;}
+.loop-step__line{position:absolute;left:17px;top:38px;bottom:0;width:1.5px;background:var(--border);}
+.loop-step:last-child .loop-step__line{display:none;}
+.loop-step__num{width:36px;height:36px;border-radius:50%;flex-shrink:0;background:var(--surface);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:0.8125rem;font-weight:800;color:var(--text-soft);position:relative;z-index:1;}
+.loop-step.is-active .loop-step__num{background:var(--navy);border-color:var(--navy);color:#fff;}
+.loop-step__title{font-size:0.875rem;font-weight:700;color:var(--navy);padding-top:8px;}
+.loop-step__body{font-size:0.8125rem;line-height:1.65;color:var(--text-mid);margin-top:3px;}
+
+/* ── Footer ─── */
+.footer{border-top:1px solid var(--border);padding:28px 0;}
+.footer__inner{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;}
+.footer__copy{font-size:0.75rem;color:var(--text-soft);font-weight:500;}
+.footer__links{display:flex;gap:20px;}
+.footer__link{font-size:0.75rem;color:var(--text-soft);font-weight:600;transition:color var(--t-fast);}
+.footer__link:hover{color:var(--navy);}
+.footer__logo-wrap{display:flex;align-items:center;gap:9px;}
+.footer__logo{height:22px;width:auto;}
+
+/* ── Animations ─── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+.anim{animation:fadeUp 0.6s ease-out both;}
+.anim[data-d="1"]{animation-delay:0.08s}.anim[data-d="2"]{animation-delay:0.18s}
+.anim[data-d="3"]{animation-delay:0.28s}.anim[data-d="4"]{animation-delay:0.38s}
+.reveal{opacity:0;transform:translateY(18px);transition:opacity 0.55s ease,transform 0.55s ease;}
+.reveal.is-visible{opacity:1;transform:translateY(0);}
+.reveal[data-d="1"]{transition-delay:0.08s}.reveal[data-d="2"]{transition-delay:0.16s}
+.reveal[data-d="3"]{transition-delay:0.24s}.reveal[data-d="4"]{transition-delay:0.32s}
+
+/* ── Hero Kido Frame ─── */
+.hero__kido-wrap{display:flex;align-items:center;justify-content:center;}
+.hero__kido-frame{width:100%;max-width:460px;height:520px;border:none;background:transparent;display:block;}
+
+/* ── Video Embed ─── */
+.yt-section{text-align:center;max-width:800px;margin:0 auto;}
+.yt-wrap{position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:18px;border:1.5px solid var(--border);box-shadow:var(--shadow-zone);margin-top:36px;}
+.yt-wrap iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:none;border-radius:18px;}
+.yt-cta{display:flex;justify-content:center;margin-top:28px;}
+
+/* ── Responsive ─── */
+@media(max-width:960px){
+  .hero__inner{grid-template-columns:1fr;}
+  .hero__kido-frame{max-width:340px;height:380px;}
+  .process-wrap{grid-template-columns:1fr;}
+  .process-preview{min-height:300px;border-top:1px solid var(--border);}
+  .demo-wrap{grid-template-columns:1fr;}
+  .science{grid-template-columns:1fr;padding:40px 32px;gap:32px;}
+  .about-grid{grid-template-columns:1fr;}
+  .cta-band{flex-direction:column;padding:36px 28px;}
+  .ct{grid-template-columns:1fr;}
+  .ct--old{display:none;}
+}
+@media(max-width:640px){
+  .feat-grid{grid-template-columns:1fr;}
+  .meta-grid{grid-template-columns:1fr;}
+  .nav__links{display:none;}
+  .section{padding:64px 0;}
+  .hero{padding:48px 0 0;}
+  .hero__ctas{flex-direction:column;}
+  .vitem{padding:10px 18px;border-right:none;border-bottom:1px solid var(--border);width:100%;}
+}
 </style>
 </head>
-<body class="bg-bg text-ink font-sans antialiased">
+<body>
 
-<!-- ========== HEADER ========== -->
-<header id="site-header" class="fixed top-0 inset-x-0 z-50 bg-bg/90 backdrop-blur border-b border-ink/5">
-<div class="max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-6 h-16">
-<a href="#" class="flex items-center gap-2 font-bold text-xl text-ink">
-<svg width="28" height="28" viewBox="0 0 40 40" fill="none"><rect width="40" height="40" rx="10" fill="#925E78"/><rect x="10" y="12" width="20" height="3" rx="1.5" fill="#F6E8EA"/><rect x="10" y="18" width="14" height="3" rx="1.5" fill="#F6E8EA"/><rect x="10" y="24" width="18" height="3" rx="1.5" fill="#F6E8EA"/></svg>
-LearnBack
-</a>
-<nav class="hidden md:flex items-center gap-6 text-sm font-medium">
-<a href="#how" class="hover:text-kido transition">How It Works</a>
-<a href="#walkthrough" class="hover:text-kido transition">Demo</a>
-<a href="#about" class="hover:text-kido transition">About</a>
-<a href="#testing" class="hover:text-kido transition">Testing</a>
-<a href="#contact" class="hover:text-kido transition">Contact</a>
+<!-- ═══ NAV ═══ -->
+<nav class="nav">
+  <div class="nav__inner">
+    <a href="#" class="nav__logo">
+      <img src="Logo/Transparent2.png" alt="LearnBack Logo" class="logo-light" style="height:36px;width:auto;">
+      <img src="Logo/transparent_dark_mode.png" alt="LearnBack Logo" class="logo-dark" style="height:36px;width:auto;display:none;">
+    </a>
+    <div class="nav__links">
+      <a href="#how-it-works" class="nav__link">How It Works</a>
+      <a href="#features"     class="nav__link">Features</a>
+      <a href="#science"      class="nav__link">Science</a>
+      <a href="#feedback"     class="nav__link">Beta</a>
+    </div>
+    <div class="nav__cta">
+      <a href="#feedback" class="btn btn--ghost btn--sm">Give Feedback</a>
+      <a href="auth.html" class="btn btn--primary btn--sm">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Try Demo
+      </a>
+    </div>
+  </div>
 </nav>
-<div class="flex items-center gap-3">
-<a href="auth.html" class="hidden sm:inline text-sm font-medium hover:text-kido transition">Sign In</a>
-<a href="auth.html" class="px-4 py-2 bg-cta text-ink text-sm font-semibold rounded-lg hover:brightness-110 transition shadow-sm">Start Testing</a>
-</div>
-</div>
-</header>
 
-<!-- ========== HERO ========== -->
-<section class="pt-28 pb-16 sm:pt-36 sm:pb-24">
-<div class="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
-<div class="flex-1 text-center lg:text-left">
-<h1 class="text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight tracking-tight">Learn by Teaching.<br><span class="text-kido">Powered by AI.</span></h1>
-<p class="mt-5 text-lg text-ink/70 max-w-xl mx-auto lg:mx-0">Upload your slides, teach an AI student called KIDO, and receive real-time feedback on your understanding. A learning-by-teaching system built for deeper mastery.</p>
-<div class="mt-8 flex flex-col sm:flex-row items-center gap-3 justify-center lg:justify-start">
-<a href="auth.html" class="w-full sm:w-auto px-6 py-3 bg-cta text-ink font-semibold rounded-lg hover:brightness-110 transition shadow text-center">Start Testing</a>
-<a href="#walkthrough" class="w-full sm:w-auto px-6 py-3 border-2 border-ink/15 text-ink font-semibold rounded-lg hover:border-kido hover:text-kido transition text-center">Watch Demo</a>
-</div>
-<p class="mt-4 text-xs text-ink/40 font-medium">Best experienced on laptop or desktop</p>
-<div class="mt-6 flex flex-wrap justify-center lg:justify-start gap-3">
-<span class="px-3 py-1 bg-ink/5 rounded-full text-xs font-medium text-ink/60">Academic Prototype — TRL 5</span>
-<span class="px-3 py-1 bg-ink/5 rounded-full text-xs font-medium text-ink/60">No personal data stored</span>
-<span class="px-3 py-1 bg-ink/5 rounded-full text-xs font-medium text-ink/60">Testing environment only</span>
-</div>
-</div>
-<!-- KIDO Character -->
-<div class="flex-shrink-0 anim-float" aria-label="KIDO AI character">
-<svg width="220" height="280" viewBox="0 0 220 280" fill="none">
-<rect x="50" y="40" width="120" height="160" rx="24" fill="#925E78"/>
-<rect x="60" y="210" width="30" height="50" rx="8" fill="#7a4e66"/>
-<rect x="130" y="210" width="30" height="50" rx="8" fill="#7a4e66"/>
-<rect x="30" y="80" width="24" height="60" rx="8" fill="#7a4e66"/>
-<rect x="166" y="80" width="24" height="60" rx="8" fill="#7a4e66"/>
-<rect class="brow-l" x="72" y="90" width="28" height="5" rx="2.5" fill="#F6E8EA" transform-origin="86 92"/>
-<rect class="brow-r" x="120" y="90" width="28" height="5" rx="2.5" fill="#F6E8EA" transform-origin="134 92"/>
-<rect x="85" y="150" width="50" height="6" rx="3" fill="#F6E8EA" opacity="0.5"/>
-</svg>
-</div>
-</div>
+<!-- ═══ HERO ═══ -->
+<section class="hero">
+  <div class="container">
+    <div class="hero__inner">
+      <div>
+        <div class="hero__label anim">
+          <span class="eyebrow eyebrow--navy">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 6v4l3 3"/></svg>
+            Teach to Learn
+          </span>
+        </div>
+        <h1 class="hero__title anim" data-d="1">Learn by<br><em>Teaching.</em><br>Master Everything.</h1>
+        <p class="hero__subtitle anim" data-d="2">Teach Kido — our reactive AI student — and instantly discover what you truly understand. Real explanations. Real feedback. Real mastery.</p>
+        <div class="hero__pills anim" data-d="3">
+          <div class="hero__pill">
+            <div class="hero__pill-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-mid)" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </div>
+            <span>Detect <strong>hidden misconceptions</strong> instantly</span>
+          </div>
+          <div class="hero__pill">
+            <div class="hero__pill-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-mid)" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <span>Learn through <strong>interaction</strong>, not memorisation</span>
+          </div>
+          <div class="hero__pill">
+            <div class="hero__pill-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-mid)" stroke-width="2" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            </div>
+            <span>Get <strong>real-time feedback</strong> on every explanation</span>
+          </div>
+        </div>
+        <div class="hero__ctas anim" data-d="4">
+          <a href="auth.html" class="btn btn--primary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Try Live Demo
+          </a>
+          <a href="#how-it-works" class="btn btn--ghost">How It Works →</a>
+        </div>
+      </div>
+
+      <!-- Kido Animation -->
+      <div class="hero__kido-wrap anim" data-d="2">
+        <iframe
+          src="animation_states/got_it_level_1.html?headless=true"
+          class="hero__kido-frame"
+          title="Kido — your AI learning companion"
+          scrolling="no"
+          frameborder="0"
+          loading="lazy"
+        ></iframe>
+      </div>
+    </div>
+  </div>
 </section>
 
-<!-- ========== HOW IT WORKS ========== -->
-<section id="how" class="py-16 sm:py-24 bg-white/40">
-<div class="max-w-6xl mx-auto px-4 sm:px-6">
-<div class="text-center mb-14 anim-fade">
-<h2 class="text-2xl sm:text-3xl font-semibold">How It Works</h2>
-<p class="mt-3 text-ink/60 text-lg max-w-lg mx-auto">Five steps from upload to mastery feedback.</p>
+<!-- ═══ VALUE BAR ═══ -->
+<div class="value-bar">
+  <div class="container">
+    <div class="value-bar__inner">
+      <div class="vitem">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <span>Instant <strong>misconception detection</strong></span>
+      </div>
+      <div class="vitem">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/></svg>
+        <span>Reactive <strong>AI character (Kido)</strong></span>
+      </div>
+      <div class="vitem">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <span>Concept-level <strong>progress tracking</strong></span>
+      </div>
+      <div class="vitem">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        <span>Built on the <strong>Protégé Effect</strong></span>
+      </div>
+    </div>
+  </div>
 </div>
-<div class="grid sm:grid-cols-3 gap-6 mb-6">
-<div class="bg-white rounded-2xl p-6 border border-ink/5 shadow-sm anim-fade">
-<div class="w-10 h-10 rounded-lg bg-cta/15 flex items-center justify-center mb-4"><svg class="w-5 h-5 text-cta" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="10"/></svg></div>
-<h3 class="font-semibold text-lg mb-1">1. Choose Your Topic</h3>
-<p class="text-sm text-ink/60">Upload lecture slides or pick a subject. The system segments your material into teachable concepts.</p>
-</div>
-<div class="bg-white rounded-2xl p-6 border border-ink/5 shadow-sm anim-fade">
-<div class="w-10 h-10 rounded-lg bg-kido/15 flex items-center justify-center mb-4"><svg class="w-5 h-5 text-kido" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
-<h3 class="font-semibold text-lg mb-1">2. Teach KIDO</h3>
-<p class="text-sm text-ink/60">Explain concepts to KIDO in your own words. Teaching forces you to organize and articulate knowledge.</p>
-</div>
-<div class="bg-white rounded-2xl p-6 border border-ink/5 shadow-sm anim-fade">
-<div class="w-10 h-10 rounded-lg bg-ok/15 flex items-center justify-center mb-4"><svg class="w-5 h-5 text-ok" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg></div>
-<h3 class="font-semibold text-lg mb-1">3. Answer Questions</h3>
-<p class="text-sm text-ink/60">KIDO asks follow-up questions to probe depth. The AI evaluator checks your reasoning in real time.</p>
-</div>
-</div>
-<div class="grid sm:grid-cols-2 gap-6 max-w-2xl mx-auto">
-<div class="bg-white rounded-2xl p-6 border border-ink/5 shadow-sm anim-fade">
-<div class="w-10 h-10 rounded-lg bg-cta/15 flex items-center justify-center mb-4"><svg class="w-5 h-5 text-cta" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
-<h3 class="font-semibold text-lg mb-1">4. Interact with Widgets</h3>
-<p class="text-sm text-ink/60">Knowledge checkpoints appear as interactive quizzes and selection tasks to verify understanding.</p>
-</div>
-<div class="bg-white rounded-2xl p-6 border border-ink/5 shadow-sm anim-fade">
-<div class="w-10 h-10 rounded-lg bg-kido/15 flex items-center justify-center mb-4"><svg class="w-5 h-5 text-kido" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8m8 4H8"/></svg></div>
-<h3 class="font-semibold text-lg mb-1">5. Get AI Feedback</h3>
-<p class="text-sm text-ink/60">Receive a detailed mastery report with per-topic scores, misconception analysis, and improvement suggestions.</p>
-</div>
-</div>
-</div>
+
+<!-- ═══ HOW IT WORKS ═══ -->
+<section class="section" id="how-it-works" style="background:var(--surface);border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
+  <div class="container">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:end">
+      <div>
+        <div class="reveal">
+          <span class="eyebrow eyebrow--navy">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+            How It Works
+          </span>
+        </div>
+        <h2 class="section-title reveal" data-d="1" style="margin-top:12px">From Passive Study<br>to Active Mastery</h2>
+      </div>
+      <p class="section-body reveal" data-d="2" style="padding-bottom:4px">Click each step to see what happens at every stage of a LearnBack session.</p>
+    </div>
+
+    <div class="process-wrap reveal" data-d="2">
+      <div class="process-steps" id="procSteps">
+        <div class="process-step is-active" onclick="setStep(0)">
+          <div class="process-step__num">1</div>
+          <div class="process-step__text">
+            <div class="process-step__title">Upload Your Content</div>
+            <div class="process-step__sub">Slides, notes, or a topic list — LearnBack extracts the core concepts.</div>
+          </div>
+        </div>
+        <div class="process-step" onclick="setStep(1)">
+          <div class="process-step__num">2</div>
+          <div class="process-step__text">
+            <div class="process-step__title">Kido Challenges You</div>
+            <div class="process-step__sub">Kido asks targeted questions designed to expose your blind spots.</div>
+          </div>
+        </div>
+        <div class="process-step" onclick="setStep(2)">
+          <div class="process-step__num">3</div>
+          <div class="process-step__text">
+            <div class="process-step__title">You Teach the Concept</div>
+            <div class="process-step__sub">Type your explanation in plain English — like teaching a friend.</div>
+          </div>
+        </div>
+        <div class="process-step" onclick="setStep(3)">
+          <div class="process-step__num">4</div>
+          <div class="process-step__text">
+            <div class="process-step__title">Gaps Surface Live</div>
+            <div class="process-step__sub">Misconceptions appear in real time. Concept scores update. Mastery grows.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="process-preview">
+        <!-- Panel 0 – Upload -->
+        <div class="process-panel is-active" id="panel-0">
+          <div>
+            <span class="eyebrow eyebrow--navy">Step 1</span>
+            <div class="process-panel__title">Upload your study material</div>
+            <p class="process-panel__body">Add lecture slides, PDF notes, or a typed topic list. LearnBack automatically parses the key concepts and builds a session around them.</p>
+          </div>
+          <div class="process-panel__visual">
+            <div class="upload-inner">
+              <div class="upload-box">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <div class="upload-box-label">Drop files or click to browse</div>
+              </div>
+              <div class="upload-chips">
+                <div class="upload-chip active">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  lecture-slides.pdf
+                </div>
+                <div class="upload-chip">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  notes.docx
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Panel 1 – Challenge -->
+        <div class="process-panel" id="panel-1">
+          <div>
+            <span class="eyebrow eyebrow--navy">Step 2</span>
+            <div class="process-panel__title">Kido targets your weak spots</div>
+            <p class="process-panel__body">Questions aren't random — they're generated from your material, weighted by what you've struggled with before.</p>
+          </div>
+          <div class="process-panel__visual">
+            <!-- Real Kido + HUD panel -->
+            <div style="display:flex;flex-direction:column;height:100%;">
+              <div style="padding:10px 14px;border-bottom:1px solid var(--border);background:var(--navy);display:flex;align-items:center;gap:7px;">
+                <div style="width:9px;height:9px;border-radius:50%;background:#ef4444;"></div>
+                <div style="width:9px;height:9px;border-radius:50%;background:var(--gold);"></div>
+                <div style="width:9px;height:9px;border-radius:50%;background:var(--green);"></div>
+                <span style="flex:1;text-align:center;font-size:0.6875rem;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:rgba(255,255,255,0.35);">LearnBack Session</span>
+              </div>
+              <div style="flex:1;display:grid;grid-template-columns:110px 1fr;">
+                <!-- Kido side -->
+                <div style="border-right:1px solid var(--border);background:var(--surface);display:flex;flex-direction:column;align-items:center;padding:12px 8px;gap:10px;">
+                  <iframe src="animation_states/got_it_level_1.html?headless=true" style="width:90px;height:110px;border:none;background:transparent;" scrolling="no" frameborder="0"></iframe>
+                  <!-- Mini HUD -->
+                  <div style="width:100%;border:1px solid var(--border);border-radius:7px;overflow:hidden;">
+                    <div style="padding:3px 8px;background:var(--plum-bg);font-size:0.5rem;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--plum);">Understanding</div>
+                    <div style="padding:5px 8px;">
+                      <div style="display:flex;justify-content:space-between;font-size:0.5rem;font-weight:600;color:var(--text-soft);margin-bottom:4px;"><span>Topic</span><span style="font-weight:800;color:var(--plum);">0%</span></div>
+                      <div style="height:4px;background:var(--plum-bg);border-radius:100px;"><div style="height:100%;width:0%;background:var(--plum);border-radius:100px;"></div></div>
+                    </div>
+                  </div>
+                  <div style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:100px;background:var(--plum-bg);color:var(--plum);font-size:0.5rem;font-weight:800;letter-spacing:0.05em;text-transform:uppercase;">Thinking…</div>
+                </div>
+                <!-- Chat side -->
+                <div style="background:var(--surface);display:flex;flex-direction:column;padding:12px;gap:8px;">
+                  <div style="display:flex;flex-direction:column;gap:3px;">
+                    <div style="display:flex;align-items:center;gap:4px;font-size:0.5rem;font-weight:700;color:var(--text-soft);letter-spacing:0.05em;text-transform:uppercase;"><div style="width:5px;height:5px;border-radius:50%;background:var(--plum);"></div>Kido</div>
+                    <div style="padding:7px 10px;border-radius:10px 10px 10px 3px;background:var(--surface);border:1px solid var(--border);font-size:0.6875rem;line-height:1.5;font-weight:500;box-shadow:var(--shadow-sm);">Hey! Can you teach me: <strong>what is Newton's Second Law</strong> and why does mass matter?</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Panel 2 – Teach (real chat style) -->
+        <div class="process-panel" id="panel-2">
+          <div>
+            <span class="eyebrow eyebrow--navy">Step 3</span>
+            <div class="process-panel__title">Explain it in your own words</div>
+            <p class="process-panel__body">Teaching forces your brain to reconstruct, not recall. The act of explaining exposes exactly where your understanding breaks down.</p>
+          </div>
+          <div class="process-panel__visual">
+            <div class="teach-panel">
+              <div class="teach-panel__body">
+                <div class="msg">
+                  <div class="msg__label"><div class="msg__label-dot"></div>Kido</div>
+                  <div class="msg__bubble msg__bubble--ai">What is Newton's Second Law? Explain it simply.</div>
+                </div>
+                <div class="msg msg--user">
+                  <div class="msg__label"><div class="msg__label-dot"></div>You</div>
+                  <div class="msg__bubble msg__bubble--user">Force equals mass times acceleration — F = ma. A heavier object needs more force to reach the same acceleration.</div>
+                </div>
+                <div class="msg">
+                  <div class="msg__label"><div class="msg__label-dot"></div>Kido</div>
+                  <div class="msg__bubble msg__bubble--ai" style="background:var(--gold-bg);border-color:rgba(246,174,45,0.28);color:#7a4e00;">Good start — can you give a real-world example?</div>
+                </div>
+              </div>
+              <div class="teach-panel__row">
+                <div class="teach-pill" style="font-size:0.8125rem;">Continue your explanation…</div>
+                <div class="teach-send">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Panel 3 – Feedback -->
+        <div class="process-panel" id="panel-3">
+          <div>
+            <span class="eyebrow eyebrow--navy">Step 4</span>
+            <div class="process-panel__title">Your gaps become visible</div>
+            <p class="process-panel__body">Misconceptions surface immediately. Your concept score updates in real time so you know exactly what to study next.</p>
+          </div>
+          <div class="process-panel__visual">
+            <div style="padding:16px;display:flex;flex-direction:column;gap:10px;height:100%;">
+              <!-- HUD card -->
+              <div style="background:var(--surface);border-radius:var(--r-card);border:1.5px solid var(--border);padding:14px;box-shadow:var(--shadow-sm);">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                  <div style="font-size:0.75rem;font-weight:700;color:var(--navy);">Newton's Second Law</div>
+                  <div style="font-size:0.6rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:2px 8px;border-radius:var(--r-pill);background:var(--green-bg);color:#2D6A40;">Mastered</div>
+                </div>
+                <div style="height:5px;background:var(--bg);border-radius:100px;overflow:hidden;"><div style="height:100%;width:88%;background:var(--green);border-radius:100px;"></div></div>
+              </div>
+              <!-- Misconception banner -->
+              <div style="background:rgba(246,174,45,0.12);border:1.5px solid rgba(246,174,45,0.32);border-radius:var(--r-card);padding:14px;display:flex;gap:10px;align-items:flex-start;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#8a6000" stroke-width="2" stroke-linecap="round" width="18" height="18" flex-shrink="0" style="flex-shrink:0;margin-top:1px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <div>
+                  <div style="font-size:0.75rem;font-weight:700;color:#7a4e00;margin-bottom:4px;">Misconception Detected</div>
+                  <div style="font-size:0.6875rem;line-height:1.5;color:#8a6000;">Confused force with momentum — these are related but different concepts.</div>
+                </div>
+              </div>
+              <!-- Inertia card -->
+              <div style="background:var(--surface);border-radius:var(--r-card);border:1.5px solid var(--border);padding:14px;box-shadow:var(--shadow-sm);">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                  <div style="font-size:0.75rem;font-weight:700;color:var(--navy);">Inertia &amp; Mass</div>
+                  <div style="font-size:0.6rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:2px 8px;border-radius:var(--r-pill);background:rgba(239,68,68,0.10);color:#b91c1c;">Needs Work</div>
+                </div>
+                <div style="height:5px;background:var(--bg);border-radius:100px;overflow:hidden;"><div style="height:100%;width:24%;background:#ef4444;border-radius:100px;"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </section>
 
-<!-- ========== LIVE WALKTHROUGH ========== -->
-<section id="walkthrough" class="py-16 sm:py-24">
-<div class="max-w-5xl mx-auto px-4 sm:px-6">
-<div class="text-center mb-10 anim-fade">
-<h2 class="text-2xl sm:text-3xl font-semibold">See It In Action</h2>
-<p class="mt-3 text-ink/60 text-lg">A simulated teaching session with KIDO.</p>
-</div>
-<div class="bg-white rounded-2xl border border-ink/10 shadow-lg overflow-hidden anim-fade">
-<!-- App bar -->
-<div class="flex items-center justify-between px-4 py-3 bg-ink/[.03] border-b border-ink/5">
-<div class="flex items-center gap-2">
-<div class="w-3 h-3 rounded-full bg-red-400"></div>
-<div class="w-3 h-3 rounded-full bg-yellow-400"></div>
-<div class="w-3 h-3 rounded-full bg-green-400"></div>
-</div>
-<span class="text-xs font-medium text-ink/40">LearnBack Session — Greedy Algorithms</span>
-<div></div>
-</div>
-<!-- Chat area -->
-<div class="p-4 sm:p-6 space-y-4 min-h-[420px]" id="wt-chat">
-<!-- User message -->
-<div class="flex justify-start"><div class="max-w-[75%] bg-ink/[.06] rounded-2xl rounded-bl-md px-4 py-3 text-sm">
-<p class="font-medium text-xs text-ink/40 mb-1">You (Teacher)</p>
-A greedy algorithm makes the locally optimal choice at each step, hoping to find the global optimum. For example, in activity selection, we always pick the activity that finishes earliest.
-</div></div>
-<!-- KIDO response -->
-<div class="flex justify-end"><div class="max-w-[75%] bg-kido/10 border border-kido/15 rounded-2xl rounded-br-md px-4 py-3 text-sm">
-<p class="font-medium text-xs text-kido mb-1">KIDO</p>
-That makes sense! But why does picking the earliest finishing activity actually give us the most activities? Could you explain the greedy-choice property?
-</div></div>
-<!-- User reply -->
-<div class="flex justify-start"><div class="max-w-[75%] bg-ink/[.06] rounded-2xl rounded-bl-md px-4 py-3 text-sm">
-<p class="font-medium text-xs text-ink/40 mb-1">You (Teacher)</p>
-The greedy-choice property means that a locally optimal choice leads to a globally optimal solution. By choosing the earliest finish time, we leave the maximum remaining time for other activities.
-</div></div>
-<!-- Widget checkpoint -->
-<div class="flex justify-end"><div class="max-w-[80%] w-full sm:w-auto">
-<div class="bg-kido/5 border border-kido/15 rounded-2xl rounded-br-md px-4 py-3">
-<p class="font-medium text-xs text-kido mb-2">KIDO — Knowledge Check</p>
-<p class="text-sm mb-3">Which property guarantees that the greedy approach works for activity selection?</p>
-<div class="space-y-2">
-<button class="w-full text-left px-3 py-2 rounded-lg border border-ink/10 bg-white text-sm hover:border-kido/40 transition cursor-default">A. Optimal substructure only</button>
-<button class="w-full text-left px-3 py-2 rounded-lg border-2 border-ok bg-ok/5 text-sm font-medium cursor-default">B. Greedy-choice property</button>
-<button class="w-full text-left px-3 py-2 rounded-lg border border-ink/10 bg-white text-sm hover:border-kido/40 transition cursor-default">C. Overlapping subproblems</button>
-</div>
-</div>
-</div></div>
-<!-- KIDO misconception correction -->
-<div class="flex justify-end"><div class="max-w-[75%] bg-kido/10 border border-kido/15 rounded-2xl rounded-br-md px-4 py-3 text-sm">
-<p class="font-medium text-xs text-kido mb-1">KIDO</p>
-Correct! One thing I want to clarify though — you mentioned greedy always finds the global optimum. That is only true when the greedy-choice property holds. Not all problems have this property. Can you think of a case where greedy fails?
-</div></div>
-<!-- Typing indicator -->
-<div class="flex justify-end"><div class="bg-kido/10 border border-kido/15 rounded-2xl rounded-br-md px-4 py-3">
-<div class="dot-typing flex items-center gap-0.5 h-4"><span></span><span></span><span></span></div>
-</div></div>
-<!-- Final feedback -->
-<div class="flex justify-end"><div class="max-w-[80%] bg-ok/5 border border-ok/20 rounded-2xl rounded-br-md px-4 py-3 text-sm">
-<p class="font-medium text-xs text-ok mb-1">KIDO — Session Feedback</p>
-<p>Strong understanding of greedy fundamentals. Your explanation of the greedy-choice property was accurate. <strong>Area to revisit:</strong> distinguish when greedy applies vs. when dynamic programming is needed. Overall mastery: <span class="font-bold text-ok">78%</span></p>
-</div></div>
-</div>
-</div>
-</div>
+<!-- ═══ VIDEO ═══ -->
+<section class="section" id="demo" style="background:var(--surface);border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
+  <div class="container">
+    <div class="yt-section reveal">
+      <span class="eyebrow eyebrow--navy">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        See It In Action
+      </span>
+      <h2 class="section-title reveal" data-d="1" style="margin-top:12px">Watch a Real Session</h2>
+      <p class="section-body reveal" data-d="2" style="margin-top:10px;max-width:48ch;margin-left:auto;margin-right:auto;">One real student, one AI character, one real topic. See how Kido surfaces misconceptions live.</p>
+      <div class="yt-wrap reveal" data-d="2">
+        <iframe
+          src="https://www.youtube.com/embed/ixTW_y2FBcs"
+          title="LearnBack — Real Session Demo"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowfullscreen
+          loading="lazy"
+        ></iframe>
+      </div>
+      <div class="yt-cta reveal" data-d="3">
+        <a href="auth.html" class="btn btn--primary">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Try It Yourself
+        </a>
+      </div>
+    </div>
+  </div>
 </section>
 
-<!-- ========== CTA BRIDGE ========== -->
-<section class="py-14 bg-kido/5">
-<div class="max-w-3xl mx-auto px-4 text-center anim-fade">
-<h2 class="text-2xl sm:text-3xl font-semibold">Ready to try it yourself?</h2>
-<p class="mt-3 text-ink/60 text-lg">Start a real session and experience AI-powered learning by teaching.</p>
-<div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
-<a href="auth.html" class="w-full sm:w-auto px-8 py-3 bg-cta text-ink font-semibold rounded-lg hover:brightness-110 transition shadow text-center">Start Testing</a>
-<a href="auth.html" class="text-sm font-medium text-kido hover:underline">or Sign In</a>
-</div>
-</div>
+
+
+<!-- ═══ COMPARISON ═══ -->
+<section class="section" style="background:var(--surface);border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
+  <div class="container">
+    <div style="text-align:center">
+      <div class="reveal">
+        <span class="eyebrow eyebrow--navy">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+          See the Difference
+        </span>
+      </div>
+      <h2 class="section-title reveal" data-d="1" style="margin-top:12px">Traditional Study vs LearnBack</h2>
+    </div>
+    <div class="ct reveal" data-d="2">
+      <div class="ct--old">
+        <div class="ct-col-head">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          Traditional Study
+        </div>
+        <div class="ct-row"><div class="ct-icon ct-icon--x"><svg viewBox="0 0 24 24" fill="none" stroke="var(--text-soft)" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>Passive reading &amp; highlighting</div>
+        <div class="ct-row"><div class="ct-icon ct-icon--x"><svg viewBox="0 0 24 24" fill="none" stroke="var(--text-soft)" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>Illusion of understanding</div>
+        <div class="ct-row"><div class="ct-icon ct-icon--x"><svg viewBox="0 0 24 24" fill="none" stroke="var(--text-soft)" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>No real-time feedback</div>
+        <div class="ct-row"><div class="ct-icon ct-icon--x"><svg viewBox="0 0 24 24" fill="none" stroke="var(--text-soft)" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>Gaps found only at exam</div>
+        <div class="ct-row"><div class="ct-icon ct-icon--x"><svg viewBox="0 0 24 24" fill="none" stroke="var(--text-soft)" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>No engagement signal</div>
+        <div class="ct-row" style="border-bottom:none"><div class="ct-icon ct-icon--x"><svg viewBox="0 0 24 24" fill="none" stroke="var(--text-soft)" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>Progress invisible until test</div>
+      </div>
+      <div class="ct--new">
+        <div class="ct-col-head">
+          <img src="Logo/Transparent2.png" alt="" style="width:16px;height:16px;object-fit:contain;filter:brightness(10);">
+          LearnBack
+        </div>
+        <div class="ct-row"><div class="ct-icon ct-icon--ok"><svg viewBox="0 0 24 24" fill="none" stroke="var(--plum)" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>Active teaching &amp; explanation</div>
+        <div class="ct-row"><div class="ct-icon ct-icon--ok"><svg viewBox="0 0 24 24" fill="none" stroke="var(--plum)" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>Real comprehension exposed</div>
+        <div class="ct-row"><div class="ct-icon ct-icon--ok"><svg viewBox="0 0 24 24" fill="none" stroke="var(--plum)" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>Instant AI evaluation</div>
+        <div class="ct-row"><div class="ct-icon ct-icon--ok"><svg viewBox="0 0 24 24" fill="none" stroke="var(--plum)" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>Misconceptions surface live</div>
+        <div class="ct-row"><div class="ct-icon ct-icon--ok"><svg viewBox="0 0 24 24" fill="none" stroke="var(--plum)" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>Kido reacts in real-time</div>
+        <div class="ct-row" style="border-bottom:none"><div class="ct-icon ct-icon--ok"><svg viewBox="0 0 24 24" fill="none" stroke="var(--plum)" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>Concept mastery tracked per session</div>
+      </div>
+    </div>
+  </div>
 </section>
 
-<!-- ========== DEMO VIDEO ========== -->
-<section id="demo" class="py-16 sm:py-24">
-<div class="max-w-4xl mx-auto px-4 sm:px-6">
-<div class="text-center mb-10 anim-fade">
-<h2 class="text-2xl sm:text-3xl font-semibold">Watch the Demo</h2>
-<p class="mt-3 text-ink/60 text-lg">See a complete teaching session from start to feedback.</p>
-</div>
-<div class="bg-white rounded-2xl border border-ink/10 shadow-lg overflow-hidden anim-fade">
-<div class="relative w-full" style="padding-bottom:56.25%">
-<iframe class="absolute inset-0 w-full h-full" src="https://www.youtube.com/embed/dQw4w9WgXcQ" title="LearnBack Demo" frameborder="0" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen loading="lazy"></iframe>
-</div>
-</div>
-</div>
+<!-- ═══ FEATURES ═══ -->
+<section class="section" id="features">
+  <div class="container">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:end">
+      <div>
+        <div class="reveal">
+          <span class="eyebrow eyebrow--plum">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+            Features
+          </span>
+        </div>
+        <h2 class="section-title reveal" data-d="1" style="margin-top:12px">Built for real<br>understanding</h2>
+      </div>
+      <p class="section-body reveal" data-d="2" style="padding-bottom:4px">Every feature is designed around one goal: helping you know what you actually know — before the exam does.</p>
+    </div>
+    <div class="feat-grid">
+      <div class="feat-card feat-card--accent reveal" data-d="1">
+        <div class="feat-icon" style="background:var(--plum-bg);border-color:var(--plum-border)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--plum)" stroke-width="1.8" stroke-linecap="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/></svg>
+        </div>
+        <div class="feat-title">AI Learner Character (Kido)</div>
+        <p class="feat-body">Kido responds to your explanations in real-time — showing confusion, understanding, or doubt. Visual feedback you can feel, not just read.</p>
+      </div>
+      <div class="feat-card reveal" data-d="2">
+        <div class="feat-icon" style="background:var(--gold-bg);border-color:rgba(246,174,45,0.28)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#8a6000" stroke-width="1.8" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <div class="feat-title">Adaptive Misconception Detection</div>
+        <p class="feat-body">Evaluates at the concept level, not keyword matching. It understands why you're wrong, not just that you are, and surfaces the precise gap.</p>
+      </div>
+      <div class="feat-card reveal" data-d="3">
+        <div class="feat-icon" style="background:var(--gold-bg);border-color:rgba(246,174,45,0.28)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#8a6000" stroke-width="1.8" stroke-linecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        </div>
+        <div class="feat-title">Interactive Learning Loop</div>
+        <p class="feat-body">Ask → Teach → React → Improve. A closed feedback loop that keeps you active. Designed to feel like a conversation, not a test.</p>
+      </div>
+      <div class="feat-card reveal" data-d="4">
+        <div class="feat-icon" style="background:var(--green-bg);border-color:rgba(93,162,113,0.28)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.8" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        </div>
+        <div class="feat-title">Concept-Level Progress Insights</div>
+        <p class="feat-body">Track mastery for each concept across every session. Know exactly which topics need more work — no more studying the wrong thing.</p>
+      </div>
+    </div>
+  </div>
 </section>
 
-<!-- ========== ABOUT ========== -->
-<section id="about" class="py-16 sm:py-24 bg-white/40">
-<div class="max-w-6xl mx-auto px-4 sm:px-6">
-<div class="text-center mb-12 anim-fade">
-<h2 class="text-2xl sm:text-3xl font-semibold">About the Project</h2>
-<p class="mt-3 text-ink/60 text-lg max-w-2xl mx-auto">LearnBack is an AI learning-by-teaching system where students teach a virtual AI student named KIDO. The system evaluates explanations in real time and provides structured feedback.</p>
-</div>
-<div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 anim-fade">
-<div class="bg-white rounded-xl p-5 border border-ink/5">
-<div class="w-9 h-9 rounded-lg bg-kido/10 flex items-center justify-center mb-3"><svg class="w-5 h-5 text-kido" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
-<h3 class="font-semibold mb-1">LLM Integration</h3>
-<p class="text-sm text-ink/60">Dual-agent architecture with evaluator and student agents powered by large language models.</p>
-</div>
-<div class="bg-white rounded-xl p-5 border border-ink/5">
-<div class="w-9 h-9 rounded-lg bg-cta/10 flex items-center justify-center mb-3"><svg class="w-5 h-5 text-cta" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg></div>
-<h3 class="font-semibold mb-1">RAG-Based Reasoning</h3>
-<p class="text-sm text-ink/60">Retrieval-augmented generation grounds KIDO's responses in your actual lecture content.</p>
-</div>
-<div class="bg-white rounded-xl p-5 border border-ink/5">
-<div class="w-9 h-9 rounded-lg bg-red-50 flex items-center justify-center mb-3"><svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
-<h3 class="font-semibold mb-1">Misconception Detection</h3>
-<p class="text-sm text-ink/60">Identifies and addresses conceptual errors during teaching through targeted follow-up questions.</p>
-</div>
-<div class="bg-white rounded-xl p-5 border border-ink/5">
-<div class="w-9 h-9 rounded-lg bg-ok/10 flex items-center justify-center mb-3"><svg class="w-5 h-5 text-ok" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg></div>
-<h3 class="font-semibold mb-1">Adaptive Questioning</h3>
-<p class="text-sm text-ink/60">Bayesian Knowledge Tracing adapts difficulty based on demonstrated mastery level.</p>
-</div>
-</div>
-</div>
+<!-- ═══ SCIENCE ═══ -->
+<section class="section" id="science" style="background:var(--surface);border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
+  <div class="container">
+    <div class="science reveal">
+      <div>
+        <span class="eyebrow sci-eyebrow">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/></svg>
+          Cognitive Science
+        </span>
+        <h2 class="sci-title">Backed by research.<br>Built for results.</h2>
+        <p class="sci-body">LearnBack is built on the <strong style="color:rgba(255,255,255,0.82)">Protégé Effect</strong> — the well-documented phenomenon where teaching forces deeper memory encoding. Explaining to others reveals exactly where your understanding breaks down, in ways passive reading never can.</p>
+        <div class="sci-tags">
+          <div class="sci-tag">Protégé Effect</div>
+          <div class="sci-tag">Retrieval Practice</div>
+          <div class="sci-tag">Elaborative Interrogation</div>
+          <div class="sci-tag">Metacognitive Monitoring</div>
+        </div>
+      </div>
+      <div class="sci-stats">
+        <div class="sci-stat"><div class="sci-num">2×</div><div class="sci-label">Better retention compared to passive re-reading, according to learning science research</div></div>
+        <div class="sci-stat"><div class="sci-num">52.6%</div><div class="sci-label">Of misconceptions go undetected until the exam — LearnBack surfaces them earlier</div></div>
+        <div class="sci-stat"><div class="sci-num">Live</div><div class="sci-label">Feedback loop — no waiting, no guessing. You know exactly where your understanding stands</div></div>
+      </div>
+    </div>
+  </div>
 </section>
 
-<!-- ========== EDUCATIONAL VALUE ========== -->
-<section class="py-16 sm:py-24">
-<div class="max-w-5xl mx-auto px-4 sm:px-6">
-<div class="text-center mb-12 anim-fade">
-<h2 class="text-2xl sm:text-3xl font-semibold">Why Learning by Teaching Works</h2>
-</div>
-<div class="grid md:grid-cols-3 gap-8 anim-fade">
-<div class="text-center">
-<div class="w-14 h-14 rounded-2xl bg-cta/10 flex items-center justify-center mx-auto mb-4"><svg class="w-7 h-7 text-cta" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div>
-<h3 class="font-semibold text-lg mb-2">Active Recall</h3>
-<p class="text-sm text-ink/60">Teaching forces you to retrieve and restructure knowledge from memory, one of the most effective study techniques proven by research.</p>
-</div>
-<div class="text-center">
-<div class="w-14 h-14 rounded-2xl bg-kido/10 flex items-center justify-center mx-auto mb-4"><svg class="w-7 h-7 text-kido" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M4.26 10.147a60.436 60.436 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.697 50.697 0 0112 13.489a50.702 50.702 0 017.74-3.342"/></svg></div>
-<h3 class="font-semibold text-lg mb-2">Protege Effect</h3>
-<p class="text-sm text-ink/60">Students who teach others demonstrate deeper understanding and longer retention than those who only study for themselves.</p>
-</div>
-<div class="text-center">
-<div class="w-14 h-14 rounded-2xl bg-ok/10 flex items-center justify-center mx-auto mb-4"><svg class="w-7 h-7 text-ok" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3"/></svg></div>
-<h3 class="font-semibold text-lg mb-2">Feedback Loops</h3>
-<p class="text-sm text-ink/60">Immediate, structured feedback after each explanation accelerates correction of misconceptions and strengthens retention.</p>
-</div>
-</div>
-</div>
+<!-- ═══ ABOUT ═══ -->
+<section class="section">
+  <div class="container">
+    <div class="about-grid">
+      <div>
+        <div class="reveal">
+          <span class="eyebrow eyebrow--navy">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            About the Project
+          </span>
+        </div>
+        <h2 class="section-title reveal" data-d="1" style="margin-top:12px">Built for deeper<br>learning</h2>
+        <p class="section-body reveal" data-d="2" style="margin-top:14px">LearnBack addresses one of self-learning's biggest problems: students finish a chapter feeling confident, only to discover gaps on the exam. We built an AI system that identifies those gaps before it's too late — using adaptive feedback, concept mapping, and a live AI character that reacts to your understanding.</p>
+        <div class="about-pills reveal" data-d="3">
+          <div class="about-pill">Misconception Detection</div>
+          <div class="about-pill">Adaptive AI Feedback</div>
+          <div class="about-pill">Concept Mapping</div>
+          <div class="about-pill">Real-Time Evaluation</div>
+        </div>
+      </div>
+      <div class="reveal" data-d="2">
+        <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r-zone);padding:28px;box-shadow:var(--shadow-sm)">
+          <div style="font-size:0.6875rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-soft);margin-bottom:20px">The Protégé Effect in Practice</div>
+          <div class="pf">
+            <div class="pf-item">
+              <div class="pf-dot pf-dot--soft">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+              </div>
+              <div><div class="pf-title">Read a concept passively</div><div class="pf-sub">Feels understood. Probably isn't.</div></div>
+            </div>
+            <div class="pf-item">
+              <div class="pf-dot pf-dot--warn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              </div>
+              <div><div class="pf-title">Try to explain it to Kido</div><div class="pf-sub">Gaps become immediately visible.</div></div>
+            </div>
+            <div class="pf-item">
+              <div class="pf-dot pf-dot--soft">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              </div>
+              <div><div class="pf-title">Misconceptions are exposed</div><div class="pf-sub">Kido flags exactly what's missing.</div></div>
+            </div>
+            <div class="pf-item">
+              <div class="pf-dot pf-dot--ok">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <div><div class="pf-title">Fix them now — not at the exam</div><div class="pf-sub">Deeper, lasting understanding secured.</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </section>
 
-<!-- ========== DIFFERENTIATORS ========== -->
-<section class="py-16 sm:py-24 bg-white/40">
-<div class="max-w-5xl mx-auto px-4 sm:px-6">
-<div class="text-center mb-12 anim-fade">
-<h2 class="text-2xl sm:text-3xl font-semibold">What Makes LearnBack Different</h2>
-</div>
-<div class="grid md:grid-cols-3 gap-6 anim-fade">
-<div class="bg-white rounded-2xl p-6 border border-ink/5 shadow-sm">
-<div class="w-12 h-12 rounded-xl bg-kido/10 flex items-center justify-center mb-4"><svg class="w-6 h-6 text-kido" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></div>
-<h3 class="font-semibold text-lg mb-2">Real-Time Misconception Detection</h3>
-<p class="text-sm text-ink/60">The evaluator agent identifies factual errors and conceptual gaps as you teach, not after. Corrections happen in the moment.</p>
-</div>
-<div class="bg-white rounded-2xl p-6 border border-ink/5 shadow-sm">
-<div class="w-12 h-12 rounded-xl bg-cta/10 flex items-center justify-center mb-4"><svg class="w-6 h-6 text-cta" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></div>
-<h3 class="font-semibold text-lg mb-2">Adaptive Questioning Engine</h3>
-<p class="text-sm text-ink/60">KIDO adjusts question difficulty using Bayesian Knowledge Tracing. Weak areas get more probing; strong areas advance faster.</p>
-</div>
-<div class="bg-white rounded-2xl p-6 border border-ink/5 shadow-sm">
-<div class="w-12 h-12 rounded-xl bg-ok/10 flex items-center justify-center mb-4"><svg class="w-6 h-6 text-ok" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg></div>
-<h3 class="font-semibold text-lg mb-2">AI-Driven Feedback Loop</h3>
-<p class="text-sm text-ink/60">Every session produces a structured mastery report with per-topic scores, identified misconceptions, and actionable improvement paths.</p>
-</div>
-</div>
-</div>
+<!-- ═══ FEEDBACK CTA ═══ -->
+<section class="section--tight" id="feedback" style="background:var(--surface);border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
+  <div class="container">
+    <div class="cta-band reveal">
+      <div>
+        <div style="margin-bottom:10px">
+          <span class="eyebrow eyebrow--plum">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            Beta Testing
+          </span>
+        </div>
+        <div class="cta-band__title">Help Us Improve LearnBack</div>
+        <p class="cta-band__body">Try the demo and share your feedback to help us refine how AI detects misconceptions and improves engagement. Your input directly shapes the next version.</p>
+      </div>
+      <div class="cta-band__btns">
+        <a href="auth.html" class="btn btn--primary">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Try the Demo
+        </a>
+        <a href="https://docs.google.com/forms/d/e/1FAIpQLSffSU3GRTCHLJWQABwkKQ0FuyYSXkvUKU2QHMduSXgrlDg0SQ/viewform" target="_blank" rel="noopener noreferrer" class="btn btn--gold">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Give Feedback
+        </a>
+      </div>
+    </div>
+  </div>
 </section>
 
-<!-- ========== USER TESTING ========== -->
-<section id="testing" class="py-16 sm:py-24">
-<div class="max-w-3xl mx-auto px-4 sm:px-6 text-center anim-fade">
-<h2 class="text-2xl sm:text-3xl font-semibold">Help Us Improve LearnBack</h2>
-<p class="mt-4 text-ink/60 text-lg">We are conducting user testing with 30-40 participants. Your feedback is essential for validating this system.</p>
-<div class="mt-8 bg-white rounded-2xl border border-ink/10 p-6 sm:p-8 text-left shadow-sm">
-<h3 class="font-semibold text-lg mb-4">How to participate:</h3>
-<ol class="space-y-3 text-sm text-ink/70">
-<li class="flex gap-3"><span class="flex-shrink-0 w-6 h-6 rounded-full bg-cta/15 flex items-center justify-center text-xs font-bold text-cta">1</span>Sign in and complete one full teaching session with KIDO.</li>
-<li class="flex gap-3"><span class="flex-shrink-0 w-6 h-6 rounded-full bg-cta/15 flex items-center justify-center text-xs font-bold text-cta">2</span>Review your feedback report at the end of the session.</li>
-<li class="flex gap-3"><span class="flex-shrink-0 w-6 h-6 rounded-full bg-cta/15 flex items-center justify-center text-xs font-bold text-cta">3</span>Fill out the feedback survey linked below.</li>
-</ol>
-</div>
-<a href="#" class="mt-8 inline-flex items-center gap-2 px-8 py-3 bg-cta text-ink font-semibold rounded-lg hover:brightness-110 transition shadow text-center">
-<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-Go to Feedback Survey
-</a>
-</div>
+<!-- ═══ PRIVACY & CONTACT ═══ -->
+<section class="section--tight">
+  <div class="container">
+    <div class="meta-grid reveal">
+      <div class="meta-card">
+        <div class="meta-card__title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          Privacy First
+        </div>
+        <div class="meta-item"><div class="meta-dot"></div>No personal data stored</div>
+        <div class="meta-item"><div class="meta-dot"></div>Demo environment only</div>
+        <div class="meta-item"><div class="meta-dot"></div>No third-party tracking</div>
+        <div class="meta-item"><div class="meta-dot"></div>Session data cleared on close</div>
+      </div>
+      <div class="meta-card">
+        <div class="meta-card__title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          Get In Touch
+        </div>
+        <div class="meta-item"><div class="meta-dot"></div>Email: <a class="meta-link" href="mailto:hassanyassin020@gmail.com" style="margin-left:4px">hassanyassin020@gmail.com</a></div>
+        <div class="meta-item"><div class="meta-dot"></div>Built for academic research &amp; demo purposes</div>
+        <div class="meta-item"><div class="meta-dot"></div>Open to collaboration and feedback</div>
+        <div class="meta-item"><div class="meta-dot"></div>Questions? We respond within 24 hours</div>
+      </div>
+    </div>
+  </div>
 </section>
 
-<!-- ========== PRIVACY ========== -->
-<section class="py-12 bg-white/40">
-<div class="max-w-3xl mx-auto px-4 sm:px-6 text-center anim-fade">
-<h2 class="text-xl font-semibold mb-4">Privacy Notice</h2>
-<div class="flex flex-wrap justify-center gap-4 text-sm text-ink/60">
-<span class="flex items-center gap-1.5"><svg class="w-4 h-4 text-ok" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>No personal data is stored</span>
-<span class="flex items-center gap-1.5"><svg class="w-4 h-4 text-ok" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>Testing environment only</span>
-<span class="flex items-center gap-1.5"><svg class="w-4 h-4 text-ok" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>No user identity tracking</span>
-</div>
-</div>
-</section>
-
-<!-- ========== CONTACT ========== -->
-<section id="contact" class="py-16 sm:py-20">
-<div class="max-w-3xl mx-auto px-4 sm:px-6 text-center anim-fade">
-<h2 class="text-2xl sm:text-3xl font-semibold mb-4">Contact</h2>
-<p class="text-ink/60 mb-6">Questions about the project or testing process? Reach out below.</p>
-<div class="flex flex-wrap justify-center gap-4">
-<a href="mailto:contact@learnback.ai" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-ink/10 rounded-lg text-sm font-medium hover:border-kido transition shadow-sm">
-<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-contact@learnback.ai
-</a>
-<a href="#" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-ink/10 rounded-lg text-sm font-medium hover:border-kido transition shadow-sm">
-<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-GitHub
-</a>
-<a href="#" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-ink/10 rounded-lg text-sm font-medium hover:border-kido transition shadow-sm">
-<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
-LinkedIn
-</a>
-</div>
-</div>
-</section>
-
-<!-- ========== FOOTER ========== -->
-<footer class="border-t border-ink/10 py-10 bg-ink/[.02]">
-<div class="max-w-6xl mx-auto px-4 sm:px-6">
-<div class="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-ink/50">
-<div class="flex items-center gap-2 font-semibold text-ink/70">
-<svg width="20" height="20" viewBox="0 0 40 40" fill="none"><rect width="40" height="40" rx="10" fill="#925E78"/><rect x="10" y="12" width="20" height="3" rx="1.5" fill="#F6E8EA"/><rect x="10" y="18" width="14" height="3" rx="1.5" fill="#F6E8EA"/><rect x="10" y="24" width="18" height="3" rx="1.5" fill="#F6E8EA"/></svg>
-LearnBack
-</div>
-<div class="flex flex-wrap justify-center gap-4 text-xs">
-<span>Copyright Pending</span>
-<span>Technology Readiness Level: TRL 5</span>
-<span>Academic prototype only</span>
-</div>
-<a href="#" class="text-xs font-medium text-kido hover:underline">Feedback Survey</a>
-</div>
-<p class="text-center text-xs text-ink/30 mt-4">This is an academic research prototype and is not a commercial product.</p>
-</div>
+<!-- ═══ FOOTER ═══ -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer__inner">
+      <div class="footer__logo-wrap">
+        <img src="Logo/Transparent2.png" alt="LearnBack" class="footer__logo">
+        <span class="footer__copy">© 2026 LearnBack. Built for better learning.</span>
+      </div>
+      <div class="footer__links">
+        <a href="#" class="footer__link">Privacy</a>
+        <a href="#" class="footer__link">About</a>
+        <a href="mailto:hassanyassin020@gmail.com" class="footer__link">Contact</a>
+      </div>
+    </div>
+  </div>
 </footer>
 
 <script>
-// Scroll fade-up animation
-const obs=new IntersectionObserver((entries)=>{entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');obs.unobserve(e.target)}})},{threshold:0.15});
-document.querySelectorAll('.anim-fade').forEach(el=>obs.observe(el));
+/* ── Scroll reveal ─── */
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting) e.target.classList.add('is-visible'); });
+}, { threshold:0.10, rootMargin:'0px 0px -32px 0px' });
+document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+
+/* ── Process step tabs ─── */
+function setStep(n) {
+  document.querySelectorAll('.process-step').forEach((el,i) => el.classList.toggle('is-active', i===n));
+  document.querySelectorAll('.process-panel').forEach((el,i) => el.classList.toggle('is-active', i===n));
+}
 </script>
+
+</script>
+
 </body>
 </html>
+
+

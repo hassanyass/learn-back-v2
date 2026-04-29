@@ -47,9 +47,8 @@
     if (hostname === '127.0.0.1' || hostname === 'localhost') {
       apiBase = 'http://127.0.0.1:8002';
     } else {
-      // Production: assume backend is at the same origin
-      // (override with __LEARNBACK_API_URL__ if backend is on a different domain)
-      apiBase = window.location.origin;
+      // Production backend (Render)
+      apiBase = 'https://learn-back-v2.onrender.com';
     }
   }
 
