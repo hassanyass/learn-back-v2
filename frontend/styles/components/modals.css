@@ -99,3 +99,9 @@
 }
 
 .toast--show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* End-session confirm modal — Cancel button dark-mode override */
+[data-theme="dark"] #btn-end-cancel,
+html[data-theme="dark"] #btn-end-cancel {
+  color: #000 !important;
+}

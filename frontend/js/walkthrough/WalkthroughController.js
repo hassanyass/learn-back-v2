@@ -230,9 +230,10 @@
     if (routeSegment && routeSegment !== 'dashboard') {
       var stored = getStoredUser();
       if (routeSegment === 'choice') {
-        /* The Upload vs Demo choice is shown every time the user lands on
-           start_session.html during an active onboarding tour, OR on first
-           ever visit. Clear prior 'choice' state so it never gets blocked. */
+        /* Only show to first-time users (has_seen_walkthrough === false) or
+           when the user explicitly replays the tour. */
+        var isReplayChoice = state && state.replay === true;
+        if (!isReplayChoice && !(stored && stored.has_seen_walkthrough === false)) return;
         if (state) {
           state.completedSegments = (state.completedSegments || []).filter(function(s){ return s !== 'choice'; });
           state.skippedSegments   = (state.skippedSegments   || []).filter(function(s){ return s !== 'choice'; });
@@ -243,9 +244,9 @@
       }
 
       if (routeSegment === 'session') {
-        /* Clear any prior skipped-state so a user who clicked Skip once
-           does not permanently lose the session walkthrough.
-           Only a fully-completed tour (completedSegments) suppresses it. */
+        /* Only show to first-time users or on explicit replay. */
+        var isReplaySession = state && state.replay === true;
+        if (!isReplaySession && !(stored && stored.has_seen_walkthrough === false)) return;
         if (state) {
           state.skippedSegments = (state.skippedSegments || []).filter(function (s) { return s !== 'session'; });
           saveState(state);

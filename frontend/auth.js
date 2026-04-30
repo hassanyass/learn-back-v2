@@ -190,7 +190,8 @@
           var me = await apiGet('/auth/me', data.access_token);
           storeAuth(data.access_token, {
             user_id: me && me.user_id ? me.user_id : null,
-            username: me && me.username ? me.username : null
+            username: me && me.username ? me.username : null,
+            has_seen_walkthrough: me ? !!me.has_seen_walkthrough : false
           });
           window.location.href = 'dashboard';
         } catch (err) {
@@ -246,7 +247,8 @@
           var me = await apiGet('/auth/me', loginData.access_token);
           storeAuth(loginData.access_token, {
             user_id: me && me.user_id ? me.user_id : null,
-            username: me && me.username ? me.username : null
+            username: me && me.username ? me.username : null,
+            has_seen_walkthrough: me ? !!me.has_seen_walkthrough : false
           });
 
           setTimeout(function () {
