@@ -29,7 +29,7 @@
   position: fixed;
   z-index: 1;
   border: 2px solid var(--plum, #925E78);
-  border-radius: 16px;
+  border-radius: 10px;
   box-shadow:
     0 0 0 9999px rgba(15, 23, 42, 0.58),
     0 0 32px rgba(146, 94, 120, 0.45);
@@ -278,6 +278,7 @@ html[data-theme="dark"] .walkthrough-card {
   position: relative;
   z-index: 1;
   pointer-events: auto;
+  scroll-margin-top: 72px;
 }
 
 .walkthrough-target--pulse {

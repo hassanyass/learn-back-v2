@@ -301,7 +301,7 @@
       );
 
       if (!isVisible) {
-        target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        target.scrollIntoView({ behavior: 'instant', block: 'nearest' });
       }
       target.classList.add('walkthrough-target', 'walkthrough-target--' + (step.action || 'highlight'));
     }
