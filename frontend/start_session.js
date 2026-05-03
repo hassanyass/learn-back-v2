@@ -39,6 +39,53 @@
   var demoData = null; // cached demo content response
   var isStarting = false; // double-click guard
 
+  // ── Friendly toast (replaces alert() for limit / error messages) ──
+  function showFriendlyToast(title, message) {
+    var existing = document.getElementById('learnback-friendly-toast');
+    if (existing) existing.remove();
+
+    var toast = document.createElement('div');
+    toast.id = 'learnback-friendly-toast';
+    toast.setAttribute('role', 'alert');
+    toast.style.cssText = [
+      'position:fixed', 'top:80px', 'left:50%', 'transform:translateX(-50%)',
+      'max-width:440px', 'width:calc(100% - 32px)',
+      'background:var(--surface,#fff)', 'color:var(--text-primary,#1E293B)',
+      'border:1px solid var(--border,#E2E8F0)', 'border-left:4px solid var(--plum,#925E78)',
+      'border-radius:12px', 'padding:14px 44px 14px 16px',
+      'box-shadow:0 10px 28px rgba(15,23,42,0.18)', 'z-index:9999',
+      'font-family:inherit', 'opacity:0',
+      'transition:opacity 200ms ease, transform 200ms ease'
+    ].join(';');
+
+    toast.innerHTML =
+      '<div style="font-weight:700;font-size:14px;margin-bottom:4px;">' + escapeText(title) + '</div>' +
+      '<div style="font-size:13px;line-height:1.5;color:var(--text-muted,#64748B);">' + escapeText(message) + '</div>' +
+      '<button type="button" aria-label="Dismiss" ' +
+        'style="position:absolute;top:8px;right:10px;width:28px;height:28px;border:0;background:transparent;' +
+        'color:var(--text-muted,#64748B);font-size:20px;line-height:1;cursor:pointer;border-radius:6px;">&times;</button>';
+
+    var dismiss = function () {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateX(-50%) translateY(-8px)';
+      setTimeout(function () { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 220);
+    };
+    toast.querySelector('button').addEventListener('click', dismiss);
+
+    document.body.appendChild(toast);
+    requestAnimationFrame(function () {
+      toast.style.opacity = '1';
+      toast.style.transform = 'translateX(-50%) translateY(0)';
+    });
+    setTimeout(dismiss, 6000);
+  }
+
+  function escapeText(value) {
+    var div = document.createElement('div');
+    div.textContent = value == null ? '' : String(value);
+    return div.innerHTML;
+  }
+
   // ── Theme Toggle (reused across all pages) ──────────────────
   (function initThemeToggle() {
     var toggle = document.getElementById('btn-theme-toggle');
@@ -181,11 +228,17 @@
         var detail = (err && err.message) || 'Failed to create session.';
         var code = err && err.payload && err.payload.detail && err.payload.detail.code;
         if (code === 'DAILY_SESSION_LIMIT_REACHED') {
-          alert('You reached today\'s session limit. Please come back tomorrow to continue testing LearnBack.');
+          showFriendlyToast(
+            'You\'ve reached today\'s session limit',
+            'Thanks for testing LearnBack! You can continue tomorrow, or use this time to review what Kido has learned so far.'
+          );
         } else if (detail.indexOf('active session') !== -1 || code === 'ACTIVE_SESSION_LIMIT_REACHED') {
-          alert('You already have an active session. Please end it first from the session page.');
+          showFriendlyToast(
+            'A session is already in progress',
+            'Please finish or end your current session before starting a new one.'
+          );
         } else {
-          alert('Error: ' + detail);
+          showFriendlyToast('Could not start the session', detail);
         }
       });
   }

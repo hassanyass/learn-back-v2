@@ -352,21 +352,32 @@
     }
     Renderer.destroy();
 
-    if (replay || (options && options.skipBackend)) return;
+    /* Always mark the local user as having seen the walkthrough on any
+       non-replay completion. bind() reads this flag from localStorage to
+       decide whether to start a segment, so it must be set even when the
+       backend call is skipped. */
+    if (!replay) {
+      try {
+        var rawUser = window.localStorage.getItem('learnback_user');
+        var storedUser = rawUser ? JSON.parse(rawUser) : {};
+        storedUser.has_seen_walkthrough = true;
+        window.localStorage.setItem('learnback_user', JSON.stringify(storedUser));
+      } catch (_) { /* ignore */ }
+    }
 
-    safeRequest('/auth/onboarding_complete', { method: 'PATCH' })
-      .then(function (user) {
-        try {
-          window.localStorage.setItem('learnback_user', JSON.stringify({
-            user_id: user.user_id,
-            username: user.username,
-            has_seen_walkthrough: user.has_seen_walkthrough
-          }));
-        } catch (_) { /* ignore */ }
-      })
-      .catch(function () {
-        // Completion is best-effort; the backend can mark it next time.
-      });
+    if (replay) return;
+
+    /* Sync to backend so DB.has_seen_walkthrough is set. Wrapped in an
+       async IIFE so we don't change completeTour's call signature, and
+       guarded so a network/API failure logs a warning instead of silently
+       leaving the system in a partial state. */
+    (async function () {
+      try {
+        await safeRequest('/auth/onboarding_complete', { method: 'PATCH' });
+      } catch (e) {
+        console.warn('Failed to sync onboarding state to backend', e);
+      }
+    })();
   }
 
   function dismissCurrentPopup() {
@@ -561,6 +572,11 @@
     if (step) Renderer.refresh(step);
   });
 
+  function isActive() {
+    var s = readState();
+    return !!(s && s.active);
+  }
+
   window.LearnBackWalkthrough = {
     bind: bind,
     maybeStart: maybeStart,
@@ -573,6 +589,7 @@
     skipTour: skipTour,
     completeTour: completeTour,
     getCurrentStep: getCurrentStep,
+    isActive: isActive,
     notify: notify
   };
 

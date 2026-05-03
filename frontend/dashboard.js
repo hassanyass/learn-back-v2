@@ -462,16 +462,32 @@
       // Update stored user details from backend
       if (user && user.username) {
         try {
-          window.localStorage.setItem('learnback_user', JSON.stringify(user));
+          /* Safe merge: preserve any existing local fields, overlay the
+             fresh server fields, then re-pin has_seen_walkthrough=true if
+             it was already true locally (guards against the GET /auth/me
+             ↔ PATCH /auth/onboarding_complete network race). */
+          var prev = JSON.parse(window.localStorage.getItem('learnback_user') || '{}');
+          var merged = Object.assign({}, prev, user);
+          if (prev && prev.has_seen_walkthrough === true) {
+            merged.has_seen_walkthrough = true;
+          }
+          window.localStorage.setItem('learnback_user', JSON.stringify(merged));
+          user = merged; // use the merged truth for the trigger check below
         } catch (_) { /* ignore */ }
 
         // Refresh the UI with the server-authoritative name
         state.dashboard.user.firstName = user.username.split(' ')[0] || 'Teacher';
         initWelcome();
 
-        // Walkthrough logic
-        if (user.has_seen_walkthrough === false && window.LearnBackWalkthrough) {
-          window.LearnBackWalkthrough.startTour({ replay: false });
+        // Walkthrough logic — only trigger if backend says unseen AND no
+        // tour is already active (prevents duplicate / forced triggers).
+        var wt = window.LearnBackWalkthrough;
+        if (
+          user.has_seen_walkthrough === false &&
+          wt &&
+          !(typeof wt.isActive === 'function' && wt.isActive())
+        ) {
+          wt.startTour({ replay: false });
         }
       }
     } catch (error) {

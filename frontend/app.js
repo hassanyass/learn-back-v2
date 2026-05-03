@@ -437,10 +437,17 @@ async function startProcessing() {
         const errorMessage = String(error && error.message ? error.message : '');
         
         // Show validation failed specifically if it's a known bad file type
+        const status = error && error.status;
         if (code === 'UPLOAD_LIMIT_REACHED' || code === 'DAILY_UPLOAD_LIMIT_REACHED') {
             showError(
                 'Upload limit reached',
                 'You can keep exploring LearnBack with demo content. Go back and choose Try Demo Content.'
+            );
+            navigateToScreen('upload');
+        } else if (status === 413 || /file too large|too large|exceeds.*size|maximum.*size/i.test(errorMessage)) {
+            showError(
+                'Your slides are a bit too heavy',
+                'The file is larger than 50 MB. Try compressing the PDF, removing high-resolution images, or splitting it into smaller decks before uploading again.'
             );
             navigateToScreen('upload');
         } else if (errorMessage.includes('Unsupported') || errorMessage.includes('Could not extract')) {
