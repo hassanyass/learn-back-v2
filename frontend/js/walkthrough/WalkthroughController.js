@@ -229,39 +229,15 @@
     var routeSegment = segmentForRoute(currentRoute);
     if (routeSegment && routeSegment !== 'dashboard') {
       var stored = getStoredUser();
-      if (routeSegment === 'choice') {
-        /* Only show to first-time users (has_seen_walkthrough === false) or
-           when the user explicitly replays the tour. */
-        var isReplayChoice = state && state.replay === true;
-        if (!isReplayChoice && !(stored && stored.has_seen_walkthrough === false)) return;
-        if (state) {
-          state.completedSegments = (state.completedSegments || []).filter(function(s){ return s !== 'choice'; });
-          state.skippedSegments   = (state.skippedSegments   || []).filter(function(s){ return s !== 'choice'; });
-          saveState(state);
-        }
-        startSegment('choice', { replay: false });
-        return;
-      }
+      var isReplay = state && state.replay === true;
 
-      if (routeSegment === 'session') {
-        /* Only show to first-time users or on explicit replay. */
-        var isReplaySession = state && state.replay === true;
-        if (!isReplaySession && !(stored && stored.has_seen_walkthrough === false)) return;
-        if (state) {
-          state.skippedSegments = (state.skippedSegments || []).filter(function (s) { return s !== 'session'; });
-          saveState(state);
-        }
-        var sessionDone = state
-          && Array.isArray(state.completedSegments)
-          && state.completedSegments.indexOf('session') !== -1;
-        if (!sessionDone) {
-          startSegment('session', { replay: false });
-        }
-        return;
-      }
-      if (stored && stored.has_seen_walkthrough === false && !hasSegmentEnded(state, routeSegment)) {
-        startSegment(routeSegment, { replay: false });
-      }
+      /* If user has seen the walkthrough globally, only proceed if they are explicitly replaying. */
+      if (!isReplay && !(stored && stored.has_seen_walkthrough === false)) return;
+
+      /* If they haven't seen it globally, but already ended THIS segment, don't force it again. */
+      if (!isReplay && hasSegmentEnded(state, routeSegment)) return;
+
+      startSegment(routeSegment, { replay: false });
     }
   }
 
@@ -315,24 +291,7 @@
     var stored = getStoredUser();
     if (stored && stored.has_seen_walkthrough === false && !hasSegmentEnded(existing, 'dashboard')) {
       startTour({ replay: false });
-      return;
     }
-
-    safeRequest('/auth/me')
-      .then(function (user) {
-        if (!user || user.has_seen_walkthrough !== false || hasSegmentEnded(readState(), 'dashboard')) return;
-        try {
-          window.localStorage.setItem('learnback_user', JSON.stringify({
-            user_id: user.user_id,
-            username: user.username,
-            has_seen_walkthrough: user.has_seen_walkthrough
-          }));
-        } catch (_) { /* ignore */ }
-        startTour({ replay: false });
-      })
-      .catch(function () {
-        // Do not block the app if onboarding status cannot be fetched.
-      });
   }
 
   function completeTour(options) {
@@ -421,6 +380,7 @@
   function skipTour() {
     var state = readState();
     var activeStep = state ? getStep(state.stepIndex) : null;
+    var replay = state && state.replay === true;
     if (!activeStep) return;
     if (activeStep.mandatory === true) return;
 
@@ -439,6 +399,24 @@
       saveState(state);
     }
     Renderer.destroy();
+
+    /* Sync global completion status so they aren't bothered again */
+    if (!replay) {
+      try {
+        var rawUser = window.localStorage.getItem('learnback_user');
+        var storedUser = rawUser ? JSON.parse(rawUser) : {};
+        storedUser.has_seen_walkthrough = true;
+        window.localStorage.setItem('learnback_user', JSON.stringify(storedUser));
+      } catch (_) { /* ignore */ }
+
+      (async function () {
+        try {
+          await safeRequest('/auth/onboarding_complete', { method: 'PATCH' });
+        } catch (e) {
+          console.warn('Failed to sync skip state to backend', e);
+        }
+      })();
+    }
   }
 
   function move(delta) {

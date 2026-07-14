@@ -29,7 +29,6 @@ from backend.core.db import get_db
 from backend.core.usage_limits import (
     MAX_ACTIVE_SESSIONS_PER_USER,
     MAX_MESSAGES_PER_SESSION,
-    MAX_SESSIONS_PER_DAY,
     MESSAGE_LIMIT_WARNING_REMAINING,
     STALE_ACTIVE_SESSION_TIMEOUT_MINUTES,
 )
@@ -120,13 +119,16 @@ def _build_session_state(segments: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def _utc_day_bounds(now: datetime) -> tuple[datetime, datetime]:
-    start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    return start, start + timedelta(days=1)
-
 
 async def _guard_session_creation_limits(db: AsyncSession, user_id: int) -> None:
-    """Reject session creation when testing-phase user limits are reached."""
+    """Reject session creation when testing-phase user limits are reached.
+
+    Two-pass cleanup strategy:
+      Pass 1 — Auto-complete sessions that are stale (no WS + older than timeout).
+      Pass 2 — If the user is STILL blocked, force-complete any in_progress
+               sessions that have no active WebSocket (prevents permanent 409
+               loops after server restarts or crashed connections).
+    """
     now = datetime.utcnow()
     stale_cutoff = now - timedelta(minutes=STALE_ACTIVE_SESSION_TIMEOUT_MINUTES)
 
@@ -137,6 +139,8 @@ async def _guard_session_creation_limits(db: AsyncSession, user_id: int) -> None
         )
     )).scalars().all()
 
+    # ── Pass 1: clean up stale sessions (no WS + past timeout) ──
+    cleaned = 0
     for existing in active_sessions:
         last_seen = existing.start_time or existing.created_at
         if existing.id not in _active_connections and last_seen < stale_cutoff:
@@ -145,41 +149,66 @@ async def _guard_session_creation_limits(db: AsyncSession, user_id: int) -> None
             existing.session_state = deepcopy(state)
             existing.status = "completed"
             existing.end_time = now
+            cleaned += 1
 
-    if active_sessions:
+    if cleaned:
         await db.commit()
+        logger.info(
+            "Pass 1: auto-completed %d stale session(s) for user %s",
+            cleaned, user_id,
+        )
 
+    # ── Re-count after pass 1 ──
     active_count = (await db.execute(
         select(func.count()).select_from(LearningSession).where(
             LearningSession.user_id == user_id,
             LearningSession.status == "in_progress",
         )
     )).scalar_one()
-    if active_count >= MAX_ACTIVE_SESSIONS_PER_USER:
-        raise HTTPException(
-            status_code=409,
-            detail={
-                "code": "ACTIVE_SESSION_LIMIT_REACHED",
-                "message": "You already have an active session. Please end or complete it first.",
-            },
-        )
 
-    day_start, day_end = _utc_day_bounds(now)
-    sessions_today = (await db.execute(
-        select(func.count()).select_from(LearningSession).where(
+    if active_count < MAX_ACTIVE_SESSIONS_PER_USER:
+        return  # Slot available — allow creation
+
+    # ── Pass 2: force-complete sessions with no active WebSocket ──
+    # This handles the case where a session is recent but the WebSocket
+    # is gone (server restart, tab close, network drop).
+    remaining = (await db.execute(
+        select(LearningSession).where(
             LearningSession.user_id == user_id,
-            LearningSession.created_at >= day_start,
-            LearningSession.created_at < day_end,
+            LearningSession.status == "in_progress",
         )
-    )).scalar_one()
-    if sessions_today >= MAX_SESSIONS_PER_DAY:
-        raise HTTPException(
-            status_code=429,
-            detail={
-                "code": "DAILY_SESSION_LIMIT_REACHED",
-                "message": "You've reached today's session limit. Please start a new session tomorrow.",
-            },
+    )).scalars().all()
+
+    force_cleaned = 0
+    for existing in remaining:
+        if existing.id not in _active_connections:
+            state = existing.session_state or {}
+            state["completion_type"] = "abandoned"
+            existing.session_state = deepcopy(state)
+            existing.status = "completed"
+            existing.end_time = now
+            force_cleaned += 1
+
+    if force_cleaned:
+        await db.commit()
+        logger.info(
+            "Pass 2: force-completed %d orphan session(s) for user %s "
+            "(no active WebSocket)",
+            force_cleaned, user_id,
         )
+        return  # Slots freed — allow creation
+
+    # ── Still blocked: user genuinely has an active WS session ──
+    raise HTTPException(
+        status_code=409,
+        detail={
+            "code": "ACTIVE_SESSION_LIMIT_REACHED",
+            "message": "You already have an active session. Please end or complete it first.",
+        },
+    )
+
+    # NOTE: Daily session limit has been removed — users may create
+    # unlimited sessions. Only the active-session guard above remains.
 
 
 def _session_create_response(session: LearningSession, topics: list) -> dict[str, Any]:

@@ -3,6 +3,7 @@
 Exposes the end-of-session feedback report to the frontend.
 """
 
+import logging
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -13,6 +14,8 @@ from backend.core.db import get_db
 from backend.models.core import LearningSession
 from backend.services.auth_service import AuthService
 from backend.services.feedback_service import FeedbackService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["feedback"])
 bearer_scheme = HTTPBearer(auto_error=True)
@@ -42,7 +45,15 @@ async def get_session_feedback(
     if not session or session.user_id != user_id:
         raise HTTPException(status_code=404, detail="Session not found.")
 
-    # The generate_session_feedback method already checks if feedback_data exists
-    # and returns it if it does, otherwise it generates it.
-    feedback_data = await service.generate_session_feedback(session_id)
-    return feedback_data
+    try:
+        feedback_data = await service.generate_session_feedback(session_id)
+        return feedback_data
+    except ValueError as exc:
+        logger.error("[FEEDBACK_ROUTER] Feedback generation failed for session_id=%s: %s", session_id, exc)
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.error("[FEEDBACK_ROUTER] Unexpected error generating feedback for session_id=%s: %s", session_id, exc, exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to generate feedback report. Please try again.",
+        ) from exc

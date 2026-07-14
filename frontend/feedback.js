@@ -146,19 +146,33 @@ document.addEventListener('DOMContentLoaded', function () {
     if (window.LearnBackAPI && typeof window.LearnBackAPI.fetchSessionFeedback === 'function') {
       try {
         var data = await window.LearnBackAPI.fetchSessionFeedback(sessionId, record && record.sessionTitle);
-        console.log('[Feedback] Loaded feedback for session ' + sessionId);
-        return data;
+        console.log('[Feedback] Loaded feedback for session ' + sessionId, data);
+        // Backend succeeded — check we actually got topics
+        if (data && Array.isArray(data.topics) && data.topics.length > 0) {
+          return data;
+        }
+        // Backend returned empty topics — fall through to local fallback
+        console.warn('[Feedback] Backend returned empty topics, trying local fallback.');
       } catch (error) {
-        console.warn('[Feedback] Feedback endpoint unavailable, using defaults.', error);
+        console.warn('[Feedback] Feedback endpoint failed, trying local fallback.', error);
       }
     }
 
-    // Defensive fallback — never return null
+    // Local fallback — build from sessionStore data if available
+    if (record && window.SessionStore && typeof window.SessionStore.getFeedback === 'function') {
+      console.log('[Feedback] Building local fallback from sessionStore.');
+      var localFeedback = window.SessionStore.getFeedback(sessionId);
+      if (localFeedback && Array.isArray(localFeedback.topics) && localFeedback.topics.length > 0) {
+        return localFeedback;
+      }
+    }
+
+    // Final defensive fallback — never return null
     return {
       sessionId: sessionId,
-      sessionTitle: 'Session Summary',
+      sessionTitle: (record && record.sessionTitle) || 'Session Summary',
       completionType: 'natural',
-      overallMastery: 0,
+      overallMastery: (record && record.progress) || 0,
       durationMinutes: null,
       topics: [],
       strengths: [],

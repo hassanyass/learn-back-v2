@@ -445,6 +445,11 @@
       });
     },
 
+    // Alias used by feedback.js to ensure session is finalized before loading report
+    finalizeSession: function (sessionId) {
+      return this.endSession(sessionId);
+    },
+
     fetchWidgetState: function (sessionId) {
       return request('/session/' + encodeURIComponent(sessionId) + '/widget-state');
     },

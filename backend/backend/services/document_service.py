@@ -108,6 +108,9 @@ class DocumentService:
 
         # Build and validate public URL.
         public_url = bucket.get_public_url(storage_key)
+        # SDK may append trailing '?' for filenames with spaces/parens; strip it.
+        if isinstance(public_url, str) and public_url.endswith("?"):
+            public_url = public_url[:-1]
         if not isinstance(public_url, str) or not public_url.startswith(("http://", "https://")):
             raise RuntimeError("Supabase did not return a valid public URL for the uploaded PDF.")
 

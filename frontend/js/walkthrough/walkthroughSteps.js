@@ -94,7 +94,7 @@
       route: 'start_session.html',
       target: '#btn-demo',
       title: 'Option 2: Try demo content',
-      description: 'Use demo content to explore how LearnBack works. This is ideal if you want a quick experience or have reached upload limits.',
+      description: 'Use demo content to explore how LearnBack works. This is ideal if you want a quick experience without uploading your own slides.',
       action: 'highlight',
       image: 'Components/walk_upload2.png',
       placement: 'right',

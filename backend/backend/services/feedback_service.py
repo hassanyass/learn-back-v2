@@ -88,8 +88,34 @@ class FeedbackService:
         await self.db.commit()
         logger.info("[FEEDBACK_LOCK] Acquired lock for session_id=%s", session_id)
 
-        # 2. Fetch Topics from SlideDeck
-        if session.slide_deck_id is not None:
+        # 2. Fetch Topics — demos use session_state; uploads use SlideDeck
+        state_topics = state.get("topics", [])
+        source_type = state.get("source_type")
+        max_topic_idx = state.get("current_topic_index", 0)
+
+        if source_type == "demo" or session.slide_deck_id is None:
+            # Demo sessions embed curriculum in session_state.topics directly.
+            # Also covers edge-case uploads where the deck row was deleted.
+            if not state_topics:
+                logger.warning("[FEEDBACK] No topics in session_state for session_id=%s (source=%s)", session_id, source_type)
+                # Build a minimal response so the frontend isn't left blank
+                return await self._build_and_persist_response(
+                    session, state, [], [], session_id
+                )
+            all_topics = [
+                {
+                    "topic_title": t.get("topic_title", f"Topic {i}"),
+                    "extracted_concepts": [
+                        p.get("point_title", f"Point {j}")
+                        for j, p in enumerate(t.get("points", []))
+                    ],
+                }
+                for i, t in enumerate(state_topics)
+            ]
+            visited_topics = all_topics[: max_topic_idx + 1]
+            logger.info("[FEEDBACK] Using session_state topics for session_id=%s (%d topics)", session_id, len(all_topics))
+        else:
+            # Normal upload path — read from SlideDeck
             stmt_deck = (
                 select(SlideDeck)
                 .where(
@@ -98,21 +124,28 @@ class FeedbackService:
                 )
                 .limit(1)
             )
-        else:
-            stmt_deck = (
-                select(SlideDeck)
-                .where(SlideDeck.user_id == session.user_id)
-                .order_by(SlideDeck.created_at.desc())
-                .limit(1)
-            )
-
-        deck = (await self.db.execute(stmt_deck)).scalars().first()
-        if not deck or not deck.segmented_json:
-            raise ValueError("No slide deck found to analyze topics.")
-
-        all_topics = deck.segmented_json.get("extracted_segments", [])
-        max_topic_idx = state.get("current_topic_index", 0)
-        visited_topics = all_topics[:max_topic_idx + 1]
+            deck = (await self.db.execute(stmt_deck)).scalars().first()
+            if deck and deck.segmented_json:
+                all_topics = deck.segmented_json.get("extracted_segments", [])
+            elif state_topics:
+                # Deck missing/corrupted — fall back to session_state
+                logger.warning("[FEEDBACK] SlideDeck missing for session_id=%s, falling back to session_state topics", session_id)
+                all_topics = [
+                    {
+                        "topic_title": t.get("topic_title", f"Topic {i}"),
+                        "extracted_concepts": [
+                            p.get("point_title", f"Point {j}")
+                            for j, p in enumerate(t.get("points", []))
+                        ],
+                    }
+                    for i, t in enumerate(state_topics)
+                ]
+            else:
+                logger.error("[FEEDBACK] No slide deck and no session_state topics for session_id=%s", session_id)
+                return await self._build_and_persist_response(
+                    session, state, [], [], session_id
+                )
+            visited_topics = all_topics[: max_topic_idx + 1]
 
         # 3. Fetch Conversation History
         stmt_msgs = select(SessionMessage).where(SessionMessage.session_id == session_id).order_by(SessionMessage.created_at.asc())
@@ -123,7 +156,6 @@ class FeedbackService:
             history_text = "(no conversation recorded)"
 
         # 4. Check for proper interaction — skip LLM if no user messages
-        state_topics = state.get("topics", [])
         has_interaction = len(user_messages) > 0
         if not has_interaction:
             logger.info("[FEEDBACK] No user messages found for session_id=%s. Skipping LLM, using deterministic fallback.", session_id)

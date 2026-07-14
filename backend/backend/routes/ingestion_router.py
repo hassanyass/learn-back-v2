@@ -1,15 +1,14 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.core.db import get_db
 from backend.core.llm_manager import LLMFallbackExhaustedError
-from backend.core.usage_limits import MAX_UPLOADS_PER_DAY, MAX_UPLOADS_PER_USER
+# NOTE: Upload limits have been removed — users may upload unlimited slide decks.
 from backend.models.core import SlideDeck
 from backend.services.ai_ingestion_service import AIIngestionService
 from backend.services.auth_service import AuthService
@@ -30,47 +29,7 @@ async def get_current_user_id(
     return auth_service.decode_token(credentials.credentials)
 
 
-def _utc_day_bounds(now: datetime) -> tuple[datetime, datetime]:
-    start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    return start, start + timedelta(days=1)
 
-
-async def _guard_upload_limits(db: AsyncSession, user_id: int) -> None:
-    now = datetime.utcnow()
-    total_uploads = (await db.execute(
-        select(func.count()).select_from(SlideDeck).where(SlideDeck.user_id == user_id)
-    )).scalar_one()
-    if total_uploads >= MAX_UPLOADS_PER_USER:
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "code": "UPLOAD_LIMIT_REACHED",
-                "message": (
-                    "You've reached the upload limit for this testing phase. "
-                    "Please use demo content to continue exploring LearnBack."
-                ),
-            },
-        )
-
-    day_start, day_end = _utc_day_bounds(now)
-    uploads_today = (await db.execute(
-        select(func.count()).select_from(SlideDeck).where(
-            SlideDeck.user_id == user_id,
-            SlideDeck.created_at >= day_start,
-            SlideDeck.created_at < day_end,
-        )
-    )).scalar_one()
-    if uploads_today >= MAX_UPLOADS_PER_DAY:
-        raise HTTPException(
-            status_code=429,
-            detail={
-                "code": "DAILY_UPLOAD_LIMIT_REACHED",
-                "message": (
-                    "You've reached today's upload limit. Please use a demo "
-                    "session or try uploading again tomorrow."
-                ),
-            },
-        )
 
 
 @router.post("/upload-slides")
@@ -81,7 +40,7 @@ async def upload_slides(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     _ = timezone  # Reserved for future ingestion-time timezone-aware metadata.
-    await _guard_upload_limits(db, user_id)
+    # NOTE: Upload limits removed — unlimited uploads allowed.
 
     document_service = DocumentService()
     ai_ingestion_service = AIIngestionService(db)

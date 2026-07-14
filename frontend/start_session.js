@@ -227,12 +227,7 @@
         // Show inline error
         var detail = (err && err.message) || 'Failed to create session.';
         var code = err && err.payload && err.payload.detail && err.payload.detail.code;
-        if (code === 'DAILY_SESSION_LIMIT_REACHED') {
-          showFriendlyToast(
-            'You\'ve reached today\'s session limit',
-            'Thanks for testing LearnBack! You can continue tomorrow, or use this time to review what Kido has learned so far.'
-          );
-        } else if (detail.indexOf('active session') !== -1 || code === 'ACTIVE_SESSION_LIMIT_REACHED') {
+        if (detail.indexOf('active session') !== -1 || code === 'ACTIVE_SESSION_LIMIT_REACHED') {
           showFriendlyToast(
             'A session is already in progress',
             'Please finish or end your current session before starting a new one.'
